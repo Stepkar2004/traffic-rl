@@ -1,30 +1,53 @@
 ---
 name: project-base
-description: Portfolio-project conventions, self-evolving lessons, and the teach-me protocol for this repo. Applies to every work session here; also use when Stepan says he doesn't understand something or asks to be taught a concept.
+description: Manifest-driven setup (initc), research-rigor conventions, the teach-me protocol, and growing lessons for traffic-rl; applies to every work session in this repo.
 ---
 # project-base — traffic-rl
 
-Instantiated 2026-07-09 from init-configurator's canonical template. This copy EVOLVES
-with this repo and never syncs back — divergence is the design, not drift.
+Instantiated from init-configurator on 2026-07-09; genome refreshed 2026-07-10 (after the
+scaffolder → agentic-base amputation upstream). This copy EVOLVES with this repo and never
+syncs back — divergence is the design. A lesson worth keeping goes through the `evolve`
+skill: a procedure, not an anecdote, appended below as a reviewed diff.
 
-## Conventions (from TheBrain2 `knowledge/projects/job-first-pivot.md`)
+## The setup workflow (everything derives from project.yaml)
+
+1. `initc doctor` — is this machine ready? Three-state report; every problem prints its fix.
+2. `initc run install` — installing is a declared task; it creates `./.venv`.
+3. `initc run <task>` — run any declared task from anywhere in the tree.
+4. `initc env` — regenerate `.env.example` after changing the env contract.
+5. `initc lint-paths` — no absolute paths, ever. `pre-commit install` wires it into every
+   commit once `.pre-commit-config.yaml` exists.
+
+`project.yaml` does not exist yet — traffic-rl is at stage 0. The `bootstrap` skill writes
+it when the Python stack is scaffolded; until then this workflow is the target, not the
+state. (`initc` itself must be available first — see `docs/state/now.md` for the one open
+prerequisite.)
+
+## Conventions
 
 1. **Stepan owns every line.** AI drafts; nothing merges to main until he can explain the
    change. This is the research-rigor showcase — CIs over seeds, locked metrics, honest
    negative results. He must be able to defend every experiment choice.
-2. **Root-relative paths only.** No absolutes; everything resolves from project root.
-3. **No global installs.** venv in-project or Docker (init-configurator modes).
-4. **Ship visibly:** a stage isn't done until README shows it and a LinkedIn reflection
+2. **project.yaml is the single source of truth.** Runtimes, dependency files, tasks, env
+   vars, and data paths are declared there — change IT, not a workaround.
+3. **Root-relative paths only.** No machine-absolute paths anywhere; resolve from the
+   project root. Use `project_root()` / `path_to()` from the `init_configurator` package.
+4. **No global installs.** Dependencies live in `./.venv`.
+5. **The env rule.** The same turn code first reads a new env var, declare it in
+   `project.yaml` and re-run `initc env` — doctor's env-sync check fails on drift, both
+   directions. Vars marked `secret: true` never get a value in `.env.example`.
+6. **Ship visibly.** A stage isn't done until the README shows it and a LinkedIn reflection
    draft exists. Every stage is a post.
-5. On session start: read the brain note pointer in CLAUDE.md for current stage.
+7. On session start: read the brain-note pointer in CLAUDE.md for the current stage.
 
-## Teach-me protocol (optional; fires when Stepan says "I don't understand X" / "teach me X")
+## Teach-me protocol (fires when Stepan says "I don't understand X" / "teach me X")
 
-Explain PROPERLY, not fast: (1) first principles, no jargon assumed; (2) minimal generic
-example; (3) the same idea in THIS repo's code; (4) common pitfalls; (5) check
-understanding with 1-2 questions back. For deep topics (max-pressure control, PPO
-internals, SUMO/TraCI), suggest a fresh side session — keeps this session's context
-lean. Teaching writes NOTHING to the repo unless asked.
+Explain PROPERLY, not fast: (1) the concept from first principles, no jargon assumed;
+(2) a minimal generic example; (3) the same idea as it appears in THIS repo's code;
+(4) common pitfalls/misconceptions; (5) check understanding with 1-2 questions back. For
+deep topics (max-pressure control, PPO internals, SUMO/TraCI), suggest a fresh side session
+dedicated to teaching — keeps this session's context lean. Teaching writes NOTHING to the
+repo unless asked.
 
 ## Lessons (append one line per real session: date · lesson; prune when stale)
 

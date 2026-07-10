@@ -1,0 +1,6 @@
+# init-configurator writes LF (see src/init_configurator/textfile.py); git must
+# not undo that on checkout. Without this, a Windows clone gets CRLF working-tree
+# copies of the generated artifacts (schema/, docs/cli.md), and the CI steps that
+# regenerate and `git diff --exit-code` them fail for reasons that have nothing to
+# do with the drift they exist to catch.
+* text=auto eol=lf

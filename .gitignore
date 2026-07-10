@@ -1,0 +1,15 @@
+# Environments live INSIDE the project (init-configurator rule) but never in git.
+.venv/
+.env
+
+# Python build/tool caches
+__pycache__/
+*.py[cod]
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+
+# Personal working notes, never part of the repo
+*.local.md
