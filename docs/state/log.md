@@ -2,6 +2,13 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-10 · Phase 0 scaffold: gates green, repo public, CI green.** uv init --lib
+  (Python 3.13), baseline dev group from the live registry, initc editable in a `local`
+  group (CI syncs `--no-group local` + `uv run --no-sync` — green once fixed). project.yaml
+  reviewed from `initc describe`; pre-commit (path-lint + ruff) proven on real commits.
+  `github.com/Stepkar2004/traffic-rl` created public and pushed. The one CI failure taught:
+  setup-uv publishes no floating v8 major tag — check tags, not releases/latest, before
+  pinning an action.
 - **2026-07-10 · Phase plan v2: 6 stages → 5-phase reality ladder.** Stepan's notes-app
   arc adopted: omniscient RL → partial observability → heterogeneity + chaos → topology
   generalization, with the classics as the phase-1 honest floor. Locked cross-cutting:

@@ -54,3 +54,6 @@ repo unless asked.
 ## Lessons (append one line per real session: date · lesson; prune when stale)
 
 <!-- self-evolution starts here -->
+- 2026-07-10 · GitHub Actions: `releases/latest` lies about usable refs — setup-uv's
+  latest is v8.3.2 but no floating `v8` tag exists. Check `repos/<owner>/<repo>/tags`
+  and exact-pin when the major tag is absent.
