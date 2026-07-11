@@ -1,8 +1,7 @@
----
-name: evolve
-description: Fire the moment a lesson lands - a bug's root cause found, a tool swapped, a convention decided, the same mistake made twice, or the user overrides a default. Converts lessons into reviewed skill diffs so the next session inherits them.
----
 # evolve — lesson → procedure → reviewed diff
+
+> Moved intact from the standalone `evolve` skill into `skill-manager/references/` on
+> 2026-07-11 (nested-skill consolidation, Stepan's decision).
 
 Self-evolution is the point of this whole system, and it is also its worst failure mode:
 a system that silently rewrites its own instructions fossilizes its own mistakes, and no
@@ -25,10 +24,10 @@ test will fail. So evolution has exactly one door, and this is it.
      translates newlines to `os.linesep`."
 2. **Pick the altitude** — where does it belong?
    - This repo only → the `project-base` Lessons section.
-   - A task-shape's procedure changed → that skill's body.
+   - A task-shape's procedure changed → that skill's body (or the relevant reference).
    - Stack-specific knowledge → the stack reference under `bootstrap/references/`.
-   - No home exists → one line in `docs/state/miss-log.md`; the `skill-manager` decides
-     if it has earned a new skill.
+   - No home exists → one line in `docs/state/miss-log.md`; the skill-manager pass
+     decides if it has earned a new skill (mind the cap).
    Altitude smells: the same diff recurs after your fix → you patched too low; your edit
    forces rewriting sibling sections → too high.
 3. **Mark trust.** A claim you inferred yourself is `raw (YYYY-MM)`. Only the human

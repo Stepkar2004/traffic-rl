@@ -1,8 +1,7 @@
----
-name: absorb
-description: Conjugation between projects - fire on "absorb/learn from/steal from <repo>", "spawn a new project from this one", or "move what we learned to X". Horizontal gene transfer in, vertical inheritance out; every gene enters through a reviewed diff.
----
 # absorb — the genome moves between detached projects
+
+> Moved intact from the standalone `absorb` skill into `skill-manager/references/` on
+> 2026-07-11 (nested-skill consolidation, Stepan's decision).
 
 Projects stay detached: this is open source, and nothing may assume a stranger's clone
 syncs with anything of ours. Detached does not mean isolated. The behaviour is bacterial:
@@ -40,5 +39,5 @@ because horizontal transfer is exactly how a bad gene gets in.
 4. From that moment the copies are detached — the child evolves alone. Divergence is
    the design.
 
-`initc spawn` / `initc absorb` as commands come later; until then this skill IS the
+`initc spawn` / `initc absorb` as commands come later; until then this reference IS the
 procedure, executed by hand.

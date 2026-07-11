@@ -1,12 +1,11 @@
----
-name: rot-check
-description: Fire before any release, after a long gap in the repo, or on "rot check" / "is anything stale" - hunts stale version claims, gates that can no longer fail, docs that describe a tool that no longer exists, and expired raw claims.
----
 # rot-check — a check you have never watched fail is not a check
+
+> Moved intact from the standalone `rot-check` skill into `workflow/references/` on
+> 2026-07-11 (nested-skill consolidation, Stepan's decision).
 
 Everything in this system rots: pinned versions, skill claims, docs, and — worst,
 because it is invisible — the gates themselves. A gate that silently passes everything
-is worse than no gate. This skill is the periodic hunt.
+is worse than no gate. This reference is the periodic hunt.
 
 ## 1. Watch every gate fail (the core move)
 
@@ -50,5 +49,5 @@ or remove it and its ADR gets a closing note.
 
 ## Output
 
-A short report: what was checked, what failed, proposed diffs (through `evolve` for
-skill content). Rot found is not embarrassing; rot unfound is.
+A short report: what was checked, what failed, proposed diffs (through the evolve
+procedure for skill content). Rot found is not embarrassing; rot unfound is.

@@ -6,8 +6,9 @@ description: Manifest-driven setup (initc), research-rigor conventions, the teac
 
 Instantiated from init-configurator on 2026-07-09; genome refreshed 2026-07-10 (after the
 scaffolder → agentic-base amputation upstream). This copy EVOLVES with this repo and never
-syncs back — divergence is the design. A lesson worth keeping goes through the `evolve`
-skill: a procedure, not an anecdote, appended below as a reviewed diff.
+syncs back — divergence is the design. A lesson worth keeping goes through the evolve
+procedure (`skill-manager/references/evolve.md`): a procedure, not an anecdote, appended
+below as a reviewed diff.
 
 ## The setup workflow (everything derives from project.yaml)
 
@@ -40,7 +41,9 @@ CI syncs `--no-group local` and runs the ruff/mypy/pytest gates directly.
    draft exists. Every phase is a post.
 7. **Posts.** Drafts live in `docs/posts/` (gitignored — drafts never ship to the public
    repo). No em dashes (U+2014) in post text, ever: use commas, colons, or parentheses.
-8. On session start: read the brain-note pointer in CLAUDE.md for the current phase.
+8. **Implementation sessions run the `workflow` skill loop.** Commit at every green
+   chunk boundary; **never push** — Stepan pushes, or explicitly says push.
+9. On session start: read the brain-note pointer in CLAUDE.md for the current phase.
 
 ## Teach-me protocol (fires when Stepan says "I don't understand X" / "teach me X")
 

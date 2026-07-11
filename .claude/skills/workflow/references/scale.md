@@ -1,8 +1,7 @@
----
-name: scale
-description: Fire when work outgrows one context window - a massive task or refactor, a flood of small tasks, mass research/data digestion, or any session where output quality may degrade before anyone notices. The four moves and the five stress patterns.
----
 # scale — context is working memory; files are long-term memory
+
+> Moved intact from the standalone `scale` skill into `workflow/references/` on
+> 2026-07-11 (nested-skill consolidation, Stepan's decision).
 
 The system scales only if working memory is never load-bearing. Everything below is one
 law applied five ways, and the four moves are always the same:
