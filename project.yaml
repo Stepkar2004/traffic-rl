@@ -1,0 +1,32 @@
+# project.yaml - the single source of truth for setup (see .claude/skills/project-base).
+# Drafted by `initc describe` on 2026-07-10, reviewed and completed the same day.
+schema_version: 1
+
+project:
+  name: "traffic-rl"
+  description: "Traffic-signal scheduling from classical control to multi-agent RL: custom 2D simulator, honest baselines, fairness-aware metrics."
+
+stacks:
+  - name: "python"
+    language: python
+    version: "3.13"
+    root: .
+    package_manager: uv
+    dependency_files: [pyproject.toml]
+    tasks:
+      install: "uv sync"
+      test: "uv run pytest"
+      lint: "uv run ruff check src tests"
+      format: "uv run ruff format --check src tests"
+      typecheck: "uv run mypy src tests"
+
+# No env vars yet - the env rule (project-base convention 5) adds them the same
+# turn code first reads one.
+
+path_lint:
+  include: ["**/*.py", "**/*.md", "**/*.yaml", "**/*.yml", "**/*.toml"]
+  # CLAUDE.md and the skills intentionally reference a machine-local brain note -
+  # the only allowed absolute paths in this repo (same precedent as init-configurator).
+  # docs/posts/ is gitignored (drafts never ship) but excluded here too so local
+  # drafts never block a commit.
+  exclude: [".venv/", ".git/", "CLAUDE.md", ".claude/", "docs/posts/"]

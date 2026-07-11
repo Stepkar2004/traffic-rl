@@ -18,10 +18,10 @@ skill: a procedure, not an anecdote, appended below as a reviewed diff.
 5. `initc lint-paths` — no absolute paths, ever. `pre-commit install` wires it into every
    commit once `.pre-commit-config.yaml` exists.
 
-`project.yaml` does not exist yet — traffic-rl is at stage 0. The `bootstrap` skill writes
-it when the Python stack is scaffolded; until then this workflow is the target, not the
-state. (`initc` itself must be available first — see `docs/state/now.md` for the one open
-prerequisite.)
+`project.yaml` exists as of phase 0 (2026-07-10). `initc` rides in the `local` dependency
+group as an editable install from the sibling checkout `../init-configurator` (unpublished
+upstream — the standing `evolve` candidate); plain `uv sync` includes it on this machine,
+CI syncs `--no-group local` and runs the ruff/mypy/pytest gates directly.
 
 ## Conventions
 
@@ -36,9 +36,11 @@ prerequisite.)
 5. **The env rule.** The same turn code first reads a new env var, declare it in
    `project.yaml` and re-run `initc env` — doctor's env-sync check fails on drift, both
    directions. Vars marked `secret: true` never get a value in `.env.example`.
-6. **Ship visibly.** A stage isn't done until the README shows it and a LinkedIn reflection
-   draft exists. Every stage is a post.
-7. On session start: read the brain-note pointer in CLAUDE.md for the current stage.
+6. **Ship visibly.** A phase isn't done until the README shows it and a LinkedIn reflection
+   draft exists. Every phase is a post.
+7. **Posts.** Drafts live in `docs/posts/` (gitignored — drafts never ship to the public
+   repo). No em dashes (U+2014) in post text, ever: use commas, colons, or parentheses.
+8. On session start: read the brain-note pointer in CLAUDE.md for the current phase.
 
 ## Teach-me protocol (fires when Stepan says "I don't understand X" / "teach me X")
 

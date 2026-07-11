@@ -1,0 +1,26 @@
+# Every hook is `language: system` and goes through `uv run`, so the versions that
+# run here are exactly the ones pinned in uv.lock - no second copy of ruff to keep
+# in sync, and no global installs. (Pattern inherited from init-configurator.)
+repos:
+  - repo: local
+    hooks:
+      - id: path-lint
+        name: no absolute paths
+        entry: uv run initc lint-paths
+        language: system
+        pass_filenames: true
+        types: [text]
+
+      - id: ruff-check
+        name: ruff
+        entry: uv run ruff check --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true
+
+      - id: ruff-format
+        name: ruff-format
+        entry: uv run ruff format --check --force-exclude
+        language: system
+        types_or: [python, pyi]
+        require_serial: true

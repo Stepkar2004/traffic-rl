@@ -1,0 +1,24 @@
+# Mirrors the local gates that can run without initc (initc is an editable install
+# from an unpublished sibling checkout, isolated in the `local` dependency group —
+# see docs/decisions/0001-phase0-stack.md). Action versions checked 2026-07-10.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v8
+      # --no-group local: the ../init-configurator checkout does not exist here.
+      - run: uv sync --frozen --no-group local
+      # --no-sync everywhere below: an implicit re-sync would pull default-groups
+      # back in and fail on the missing sibling path.
+      - run: uv run --no-sync ruff check src tests
+      - run: uv run --no-sync ruff format --check src tests
+      - run: uv run --no-sync mypy src tests
+      - run: uv run --no-sync pytest

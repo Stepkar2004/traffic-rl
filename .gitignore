@@ -13,3 +13,6 @@ dist/
 
 # Personal working notes, never part of the repo
 *.local.md
+
+# Post drafts stay local - the public repo shows the work, not the marketing
+docs/posts/
