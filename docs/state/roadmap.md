@@ -14,20 +14,27 @@
 - 2D top-down only; 3D is a non-goal (far-future maybe).
 - Honesty layer everywhere: RL that can't beat max-pressure ships as a negative result.
 
+Phase plans live in `docs/plans/` — [phase-1.md](../plans/phase-1.md) is the active
+plan; [phases-2-5-draft.md](../plans/phases-2-5-draft.md) holds draft directions.
+
 ## Phases
 
 1. **World + honest floor** (current) — lock metrics BEFORE building (mean travel time,
    mean wait, p95 wait = fairness, throughput, stops/vehicle, pedestrian wait as
    first-class) and realism constraints (yellow = physics ~1s/10 mph, ped min-green,
-   max-red starvation cap, all-red clearance); build the custom 2D sim (grid, cars,
-   pedestrians, proper signal state machines) + viewer/GIF export; benchmark the classics —
-   fixed-time, Webster, actuated gap-out, max-pressure, coordinated offsets (hand-built
-   green wave) — over demand profiles (asymmetric rush, balanced, night). Post: the
-   70-years-of-engineering leaderboard + the mean-vs-p95 starvation reveal.
-2. **Omniscient RL** — DQN/PPO on one intersection, then parameter-shared PPO on the 3×3
-   grid; realism constraints as hard action masks, reward = −total-wait + p95 penalty;
-   train on one demand profile / test on others; communication ablation. Headline: does a
-   green wave EMERGE, or must it be encoded?
+   max-red starvation cap, all-red clearance); build the custom 2D sim on a **single
+   4-way intersection** (two perpendicular roads, through traffic; cars, pedestrians,
+   proper signal state machines) + viewer/GIF export; benchmark the classics —
+   fixed-time, Webster, actuated gap-out, max-pressure — over demand profiles
+   (asymmetric rush, balanced, night). Post: the 70-years-of-engineering leaderboard +
+   the mean-vs-p95 starvation reveal. (Amended 2026-07-11: grid + coordinated-offset
+   baseline moved to phase 2 — offsets only exist with more than one signal.)
+2. **Omniscient RL (and the grid)** — chain intersections, then the 3×3 grid (topology
+   configs, not new code), plus the coordinated-offset fixed-time baseline (hand-built
+   green wave) and likely permissive turning movements; DQN/PPO on one intersection,
+   then parameter-shared PPO on the grid; realism constraints as hard action masks,
+   reward = −total-wait + p95 penalty; train on one demand profile / test on others;
+   communication ablation. Headline: does a green wave EMERGE, or must it be encoded?
 3. **Partial observability** — sensor model with a quality dial (detection probability,
    range, occlusion, noisy speed, false positives); classical controllers get their REAL
    sensors too (actuated was designed for loop detectors — fair fight); POMDP tooling

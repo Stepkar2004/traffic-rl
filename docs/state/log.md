@@ -2,6 +2,17 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-11 · Phase 0 direction lock: phase-1 plan drafted, reviewed, skills 7→5.**
+  Phase-1 plan written (single 4-way intersection first — grid + offsets moved to
+  phase 2; NumPy SoA lane-segmented core, detection-level Observation, headless +
+  viewer/GIF, 8 gated chunks) and adversarially reviewed by an Opus subagent: 12
+  findings folded in (detector-channel Observation, exact-stop ballistic corrections,
+  measured saturation-flow calibration for Webster, chunk reordering so FixedTime lands
+  before the visual gate, tolerance-based golden traces, CSR segment layout as the
+  batching story). Phases 2-5 draft + sourced research notes added. Vision drafted from
+  Stepan's words (provisional). Skills consolidated per his nested-skill decision:
+  workflow (absorbs scale, rot-check), skill-manager (absorbs evolve, absorb, + embedded
+  authoring essentials), realism-scan created; never-push rule encoded. Nothing pushed.
 - **2026-07-10 · Phase 0 scaffold: gates green, repo public, CI green.** uv init --lib
   (Python 3.13), baseline dev group from the live registry, initc editable in a `local`
   group (CI syncs `--no-group local` + `uv run --no-sync` — green once fixed). project.yaml
