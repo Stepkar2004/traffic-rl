@@ -16,3 +16,6 @@ dist/
 
 # Post drafts stay local - the public repo shows the work, not the marketing
 docs/posts/
+
+# experiment outputs: traces, results, figures
+runs/

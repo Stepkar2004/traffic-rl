@@ -19,6 +19,11 @@ stacks:
       lint: "uv run ruff check src tests"
       format: "uv run ruff format --check src tests"
       typecheck: "uv run mypy src tests"
+      bench: "uv run traffic-rl bench"
+
+paths:
+  scenarios: scenarios/
+  runs: runs/  # gitignored: traces, results, figures
 
 # No env vars yet - the env rule (see CLAUDE.md, the constitution) adds them the same
 # turn code first reads one.

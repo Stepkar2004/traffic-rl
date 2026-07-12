@@ -2,6 +2,16 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-12 · Chunk 3 (Vehicles) landed, Opus-reviewed.** IDM + ballistic with the
+  exact-stop correction (never overshoots a wall, even one materializing 1 m ahead at
+  full speed), CSR leader gaps continuous across the junction, per-vehicle virtual-wall
+  overlay (a light-runner's follower still sees the line), overlap tripwire that must
+  never fire (and doesn't: asserted at 0 across every property test), pre-generated
+  Poisson schedules (segment restarts exact by memorylessness), boundary queues with
+  running trip clocks, conservation counters. Bench: ~810x realtime at 1k vehicles
+  (acceptance: 100x). Opus adversarial review found zero correctness defects
+  (probed: overshoot, saturation conservation, seam gaps, dtype discipline); its three
+  coverage findings landed as tests, two NITs as comments. 52 tests.
 - **2026-07-12 · Chunk 2 (Skeleton) landed.** Core scaffolding: strict scenario loader
   over frozen dataclasses, per-subsystem rng streams off one logged root SeedSequence,
   4-way topology graph (outbound lanes start AT the stop line so positions never
