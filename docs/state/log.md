@@ -2,6 +2,13 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-12 · Chunk 2 (Skeleton) landed.** Core scaffolding: strict scenario loader
+  over frozen dataclasses, per-subsystem rng streams off one logged root SeedSequence,
+  4-way topology graph (outbound lanes start AT the stop line so positions never
+  teleport across the box), SoA arrays with capacity doubling + order-stable compaction
+  + CSR lane segmentation, World with the plan-§4 sub-step order stubbed in place, and
+  a working `traffic-rl run` CLI. Tolerance-based golden-trace harness proves same-seed
+  determinism on the (still empty) world. 34 tests; mypy strict clean on first pass.
 - **2026-07-12 · Phase 1 approved; chunk 1 (Frame) landed.** Stepan green-lit
   implementation with async gates + Opus review at chunks 3/4/5/7 and end-of-phase.
   ADR 0002 written (metrics locked before any sim code: demand-event trip clock, p95

@@ -3,7 +3,16 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-12 (phase 1 implementation running, chunk 1 done):**
+**As of 2026-07-12 (phase 1 implementation running, chunks 1-2 done):**
+
+Chunk 2 (skeleton) landed: `core/{units,rng,config,topology,arrays,world}.py` + `cli.py`
+(`traffic-rl run` works headless on all three scenarios). Frozen-dataclass config with a
+strict YAML loader, root-SeedSequence rng with per-subsystem streams, 4-way topology
+graph (lanes continuous across the junction box, conflict matrix, ADR 0002 crosswalk
+concurrency encoded), growable SoA arrays with CSR `lane_order`, and a World whose
+`step()` carries the plan-§4 sub-step order as stubs. Golden-trace harness
+(tolerance-based) lives in `tests/core/harness.py`. Deps added: numpy, pyyaml, typer.
+34 tests, mypy strict clean.
 
 Stepan approved the phase-1 plan; agreed run mode: **async gates** (ADR 0002 + chunk-6
 GIFs reviewed by him in parallel, work never blocks, phase only DECLARED done after his
@@ -42,5 +51,6 @@ brain note; the phase plan lives in `docs/plans/`. Teach-me protocol kept as a r
 `workflow/references/teach-me.md` (base retired it as too personal). Migration is
 committed and **pushed** through `c06af9f`.
 
-**Next action:** chunk 2 (core skeleton: config, units, rng, topology, arrays; empty
-World steps deterministically). Commit at each green chunk; never push (Stepan pushes).
+**Next action:** chunk 3 (vehicle kernels: leader gaps, IDM, ballistic integrate with
+exact-stop, spawn/despawn, Poisson demand, bench task; Opus review before commit).
+Commit at each green chunk; never push (Stepan pushes).

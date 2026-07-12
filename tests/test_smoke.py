@@ -4,4 +4,4 @@ import traffic_rl
 
 
 def test_package_imports() -> None:
-    assert traffic_rl.hello() == "Hello from traffic-rl!"
+    assert traffic_rl.__doc__ is not None

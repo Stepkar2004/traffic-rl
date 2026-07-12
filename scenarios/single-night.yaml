@@ -17,7 +17,7 @@ topology:
   approach_length_m: 300
   lanes_per_approach: 1
   lane_width_m: 3.5
-  crosswalk_length_m: 14.0
+  crosswalk_length_m: 9.0    # 2-lane cross-section (7 m) + curb margins
 
 demand:
   vehicles:
