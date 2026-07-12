@@ -46,10 +46,6 @@ Ask only what changes the outcome:
    pointer block and never overwrite it; a fresh repo gets the full constitution inline.
    Do not invade an existing constitution — it may be carefully tuned, and it costs the
    user's context budget on every prompt.
-8. **Second brain?** — does the user keep an external notes system / command center (a
-   "second brain")? If so, take its machine-local path: one pointer line goes in the
-   constitution ("Brain note (machine-local): <path> — read on session start"). Optional;
-   skip it entirely if they keep none.
 
 The *choice* lands in `project.yaml` (machine-checkable); the *reason* lands in an ADR
 under `docs/decisions/` (readable next session). The owner identity lands in the stack's
@@ -95,7 +91,6 @@ growing lessons live in the `workflow` skill (via evolve). The template source i
   the other (`context_beacons` returns both).
 - The primary file already exists → APPEND `pointer_block()`, never overwrite what the user
   wrote.
-- Pass the second-brain path (step 1) so the pointer line lands; omit it otherwise.
 
 Materialize the template, then adapt to the interview answers. Never overwrite an existing
 constitution.
