@@ -56,3 +56,13 @@ long-term costs. Blocked beats wrong.
 - 2026-07-10 · GitHub Actions: `releases/latest` lies about usable refs — setup-uv's
   latest is v8.3.2 but no floating `v8` tag exists. Check `repos/<owner>/<repo>/tags`
   and exact-pin when the major tag is absent.
+- 2026-07-12 · Preview numbers are not results: never write a headline figure into
+  README/posts/leaderboards from a single-seed run — execute the locked protocol
+  (N seeds + CIs) and transcribe from ITS output. (Seed 42 previewed p95 = 261 s;
+  the 20-seed protocol said 102 [85, 121] — the draft claim had to be walked back.)
+  raw (2026-07)
+- 2026-07-12 · Adversarial reviews must PROBE, not read: instruct reviewers to run
+  instrumented experiments AND to verify each component does what its NAME claims.
+  (A "Webster" that never executed its own plan and a "detector-only" controller
+  that was silently omniscient both sat behind fully green test suites; only
+  run-and-measure reviews caught them.) raw (2026-07)
