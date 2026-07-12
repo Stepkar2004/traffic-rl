@@ -10,7 +10,7 @@ Honesty notes:
 - Webster runs on the sim's MEASURED saturation flow (1440 veh/h, startup lost 1.60 s), never textbook constants.
 - ActuatedGapOut sees only a stop-line loop + 50 m advance detector.
 - FixedTime runs a deliberately naive 50/50 split - it is the floor, and losing to it means something is broken.
-- refusals > 0 would mean a controller tried to break the signal machine's safety interlocks; forced > 0 means the machine had to rescue a starving approach (max-red cap).
+- refusals > 0 would mean a controller tried to break the signal machine's safety interlocks. forced > 0 means the max-red cap fired: either a genuinely starved road user (night max-pressure: blind to pedestrians, so the machine rescues them), or the first arrival on an approach whose green had been resting past the cap (night actuated: the cap front-runs a controller that honestly cannot see a distant car).
 
 ## single-balanced
 

@@ -61,5 +61,6 @@ uv run traffic-rl bench                                           # kernel throu
 ```
 
 Sim core: NumPy structure-of-arrays over CSR lane segments, IDM car-following,
-ballistic integration with exact-stop correction, dt = 0.1 s — ~800x realtime at
-1k vehicles on one CPU core, and the same layout batches many worlds in phase 2.
+ballistic integration with exact-stop correction, dt = 0.1 s — ~800x realtime for
+the vehicle kernel at 1k vehicles (synthetic bench, one CPU core), and the same
+layout batches many worlds in phase 2.

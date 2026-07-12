@@ -2,6 +2,15 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-12 · Final phase-1 Opus review: PHASE-GATE-READY, zero blockers.** The
+  cross-cutting pass reproduced docs/leaderboard.md byte-for-byte from stored rows,
+  re-ran cells to <1e-9, re-verified calibration/bench/ADR-vs-config, audited every
+  DoD line (all met; Stepan's async sign-offs pending by design), and confirmed each
+  headline behavior has a non-vacuous guarding test. Four precision items folded:
+  `forced` note now distinguishes genuine starvation rescue (night max-pressure peds)
+  from cap-front-running a blind-by-design controller (night actuated); protocol line
+  derived from rows instead of a literal; calibration regenerated at the ADR's 10
+  seeds; README's 800x claim scoped to the kernel bench.
 - **2026-07-12 · Chunk 8 (Leaderboard) landed — phase-1 chunks complete.** Matrix
   runner (process pool, 240 full episodes in ~4 min), bootstrap-CI stats with the
   overlap rule printed next to the numbers, markdown leaderboard + CI bar chart +

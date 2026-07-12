@@ -50,11 +50,18 @@ def leaderboard_markdown(rows: list[dict[str, Any]], calibration: dict[str, floa
     agg = aggregate(rows)
     scenarios = sorted({sc for sc, _ in agg})
     n_seeds = len({r["seed"] for r in rows})
+    # protocol timing DERIVED from the rows, never asserted by literal (a
+    # future scenario with different timing must not make this line lie)
+    warmups = {float(r.get("warmup_s", 300.0)) for r in rows}
+    measures = {float(r.get("measure_s", 3600.0)) for r in rows}
+    if len(warmups) != 1 or len(measures) != 1:
+        raise ValueError(f"mixed episode timings in rows: {warmups=} {measures=}")
     lines: list[str] = [
         "# Phase-1 leaderboard: classical controllers",
         "",
-        f"Protocol (ADR 0002 §6): {n_seeds} seeds per cell, 300 s warmup excluded, "
-        "3600 s measurement window, mean [95% bootstrap CI] over seeds.",
+        f"Protocol (ADR 0002 §6): {n_seeds} seeds per cell, {warmups.pop():.0f} s "
+        f"warmup excluded, {measures.pop():.0f} s measurement window, "
+        "mean [95% bootstrap CI] over seeds.",
         "",
         "**Read the brackets before the means: no two controllers are called "
         "different when their CIs overlap.**",
@@ -70,8 +77,11 @@ def leaderboard_markdown(rows: list[dict[str, Any]], calibration: dict[str, floa
         "- FixedTime runs a deliberately naive 50/50 split - it is the floor, "
         "and losing to it means something is broken.",
         "- refusals > 0 would mean a controller tried to break the signal "
-        "machine's safety interlocks; forced > 0 means the machine had to "
-        "rescue a starving approach (max-red cap).",
+        "machine's safety interlocks. forced > 0 means the max-red cap fired: "
+        "either a genuinely starved road user (night max-pressure: blind to "
+        "pedestrians, so the machine rescues them), or the first arrival on an "
+        "approach whose green had been resting past the cap (night actuated: "
+        "the cap front-runs a controller that honestly cannot see a distant car).",
         "",
     ]
     for sc in scenarios:

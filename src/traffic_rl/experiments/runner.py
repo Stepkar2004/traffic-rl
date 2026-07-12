@@ -44,6 +44,8 @@ def run_cell(
         "controller": controller_kind,
         "seed": seed,
         "entropy": str(world.rng.entropy),
+        "warmup_s": cfg.episode.warmup_s,
+        "measure_s": cfg.episode.measure_s,
     }
     row.update(dataclasses.asdict(world.episode_metrics()))
     return row

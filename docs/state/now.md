@@ -3,7 +3,22 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-12 (phase 1 implementation: all 8 chunks done, final review pending):**
+**As of 2026-07-12 (phase 1 COMPLETE pending Stepan's gate review):**
+
+Final full-phase Opus review: **PHASE-GATE-READY, zero blockers.** It reproduced the
+leaderboard byte-for-byte from stored rows, re-ran cells to <1e-9 determinism,
+re-verified calibration and bench (818x), audited the DoD table, and found four
+MINOR/NIT precision items — all folded: honest `forced` wording (night-actuated
+forcing is the cap front-running a blind-by-design controller, not a rescue),
+protocol line now derived from rows, calibration regenerated at the ADR's 10 seeds,
+README bench claim scoped to the kernel bench.
+
+**Waiting on Stepan (the async gates, all material ready):**
+1. ADR 0002 review — [decisions/0002](../decisions/0002-metrics-and-realism-constraints.md)
+2. Visual sign-off — `runs/gifs/{balanced,rush-ns}-s42.gif` or `traffic-rl view ...`
+3. Leaderboard + README + post draft blessing — [docs/leaderboard.md](../leaderboard.md),
+   README, `docs/posts/phase-1-honest-floor.md`
+4. Phase-gate: declare phase 1 shippable (and push — 10+ local commits ahead).
 
 Chunk 8 (leaderboard) landed: `experiments/{runner,stats,report}.py` — process-pool
 matrix runner (240 cells: 4 controllers x 3 scenarios x 20 seeds, full ADR 0002
@@ -114,7 +129,6 @@ brain note; the phase plan lives in `docs/plans/`. Teach-me protocol kept as a r
 `workflow/references/teach-me.md` (base retired it as too personal). Migration is
 committed and **pushed** through `c06af9f`.
 
-**Next action:** final full-phase Opus review (fold findings), then the phase-gate
-summary for Stepan (ADR 0002 review + GIF sign-off + leaderboard blessing still
-pending — async-gate mode), then phase-2 plan + phases 3-5 restructure. Never push
-(Stepan pushes).
+**Next action:** phase-2 plan drafting + phases 2-5 draft restructured to 3-5 (per
+Stepan's instruction, happens now, before his gate review lands). Never push (Stepan
+pushes).
