@@ -2,6 +2,11 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-11 · Kept teach-me as a repo-local reference.** Base retired the teach-me
+  protocol upstream as too personal (and made the Stepan→user / brain-note-drop generic
+  fixes, landed here as `63502e3`, `c06af9f`, pushed). Ported the protocol into
+  `.claude/skills/workflow/references/teach-me.md` with a trigger row in the workflow
+  skill — repo-local, survives future `--force` (new file, not a genome file).
 - **2026-07-11 · Migrated to init-configurator ADR 0003 (project-base retired).** Ran
   `initc spawn . --force` from the packaged upstream genome: refreshed workflow,
   skill-manager, bootstrap; added `socials` (+ github/linkedin/visuals references);

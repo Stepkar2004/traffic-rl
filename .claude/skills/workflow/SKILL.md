@@ -46,6 +46,7 @@ long-term costs. Blocked beats wrong.
 |---|---|
 | Work outgrows one context window: massive task or refactor, flood of small tasks, mass research, quality degrading with context size | [references/scale.md](references/scale.md) |
 | Before a release; after a long gap in the repo; "rot check" / "is anything stale"; a gate that has not been seen failing lately | [references/rot-check.md](references/rot-check.md) |
+| Stepan says "teach me X" / "I don't understand X" / "explain X properly" — switch from building to teaching (repo-local) | [references/teach-me.md](references/teach-me.md) |
 
 ## Lessons (repo-local; append one line per real session: date · lesson; prune when stale)
 

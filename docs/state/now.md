@@ -1,7 +1,7 @@
 # Now
 
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
-> Cold start reads: the brain note (phase plan) → this file → roadmap.md.
+> Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
 **As of 2026-07-11 (phase 0 direction lock drafted):**
 
@@ -20,11 +20,14 @@ references), `bootstrap`, `socials` (new from upstream), `realism-scan` (repo-lo
 what-should-we-simulate-next gap hunts). **`project-base` retired** (init-configurator
 ADR 0003): its role split into the constitution (CLAUDE.md) + the skills; its one real
 lesson (setup-uv floating-tag) moved to the workflow body. **CLAUDE.md is now the
-constitution** — always-loaded skill index + binding rules + tasks + brain-note line,
-materialized from `beacons.py::constitution()`. Standing rule (commit at chunk
-boundaries, **never push**) now lives in the constitution and workflow.
+constitution** — skill index + binding rules + tasks + a "where things live" section,
+materialized from `beacons.py::constitution()`. The base later dropped the machine-local
+brain-note prompt (it was personal, not generic), so CLAUDE.md no longer points at the
+brain note; the phase plan lives in `docs/plans/`. Teach-me protocol kept as a repo-local
+`workflow/references/teach-me.md` (base retired it as too personal). Migration is
+committed and **pushed** through `c06af9f`.
 
-**Next action:** Stepan reviews docs/plans/phase-1.md (and the vision draft). On his
-approval, implementation starts at chunk 1 (metrics & realism-constraints ADR 0002) —
-possibly on a cheaper model, with the `workflow` skill binding every session. Nothing
-is pushed; local commits await his push.
+**Next action:** Stepan reviews [docs/plans/phase-1.md](../plans/phase-1.md) (and the
+vision draft). On his approval, implementation starts at chunk 1 (metrics &
+realism-constraints ADR 0002) — possibly on a cheaper model, with the `workflow` skill
+binding every session. Commit at each green chunk; never push (Stepan pushes).
