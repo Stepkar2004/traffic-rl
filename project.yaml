@@ -20,6 +20,8 @@ stacks:
       format: "uv run ruff format --check src tests"
       typecheck: "uv run mypy src tests"
       bench: "uv run traffic-rl bench"
+      calibrate: "uv run traffic-rl calibrate"
+      leaderboard: "uv run traffic-rl leaderboard"
 
 paths:
   scenarios: scenarios/

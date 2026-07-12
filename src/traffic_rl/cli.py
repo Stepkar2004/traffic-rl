@@ -108,6 +108,48 @@ def gif(
 
 
 @app.command()
+def leaderboard(
+    n_seeds: Annotated[int, typer.Option(help="Seeds per (controller, scenario) cell.")] = 20,
+    workers: Annotated[int | None, typer.Option(help="Process-pool size (default: cores).")] = None,
+    scenario_dir: Annotated[Path, typer.Option(help="Scenario YAML directory.")] = Path(
+        "scenarios"
+    ),
+    out_dir: Annotated[Path, typer.Option(help="Committed outputs (md + chart).")] = Path("docs"),
+) -> None:
+    """Run the full matrix (ADR 0002 §6) and write docs/leaderboard.md + CI chart.
+
+    Calibrates first if runs/calibration.json is missing, so Webster can never
+    silently run on defaults. Raw per-run rows land in runs/leaderboard/.
+    """
+    import json
+
+    from traffic_rl.experiments.calibrate import run_calibration
+    from traffic_rl.experiments.report import ci_bar_chart, leaderboard_markdown
+    from traffic_rl.experiments.runner import run_matrix
+
+    cal_path = Path("runs/calibration.json")
+    if not cal_path.exists():
+        typer.echo("no calibration found - running the queue-discharge bench first")
+        run_calibration(out_path=cal_path)
+    calibration = json.loads(cal_path.read_text(encoding="utf-8"))
+
+    rows = run_matrix(
+        scenario_dir=scenario_dir,
+        calibration=calibration,
+        n_seeds=n_seeds,
+        workers=workers,
+        out_path=Path("runs/leaderboard/results.json"),
+    )
+    md = leaderboard_markdown(rows, calibration)
+    md_path = out_dir / "leaderboard.md"
+    md_path.parent.mkdir(parents=True, exist_ok=True)
+    md_path.write_text(md, encoding="utf-8")
+    chart_path = out_dir / "assets" / "leaderboard-p95-wait.png"
+    ci_bar_chart(rows, chart_path)
+    typer.echo(f"leaderboard: {len(rows)} runs -> {md_path} + {chart_path}")
+
+
+@app.command()
 def calibrate(
     n_queue: Annotated[int, typer.Option(help="Standing-queue size (>= 15).")] = 16,
     n_seeds: Annotated[int, typer.Option(help="Seeds to average over.")] = 10,

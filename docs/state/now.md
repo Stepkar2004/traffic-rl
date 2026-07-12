@@ -3,7 +3,17 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-12 (phase 1 implementation running, chunks 1-7 done):**
+**As of 2026-07-12 (phase 1 implementation: all 8 chunks done, final review pending):**
+
+Chunk 8 (leaderboard) landed: `experiments/{runner,stats,report}.py` — process-pool
+matrix runner (240 cells: 4 controllers x 3 scenarios x 20 seeds, full ADR 0002
+protocol, ~4 min wall), percentile-bootstrap CIs, [docs/leaderboard.md](../leaderboard.md)
++ CI chart + README GIF (committed under docs/assets/). Headline: rush p95 wait
+fixed_time 102.1 s [84.6, 120.8] (widest CI on the board = instability is the finding)
+vs webster 25.2 / actuated 23.8 / max_pressure 29.8; night exposes max-pressure's
+ped-blindness (p95 ped wait 70 s, bounded only by the machine's cap). Post #1 draft in
+docs/posts/phase-1-honest-floor.md (no em dashes; numbers match the 20-seed table).
+`traffic-rl leaderboard` re-runs everything; raw rows in runs/leaderboard/.
 
 Chunk 7 (controllers) landed: Webster (measured sat flow via params or
 runs/calibration.json; greens ANCHORED to green onsets, not a drifting wall clock —
@@ -104,6 +114,7 @@ brain note; the phase plan lives in `docs/plans/`. Teach-me protocol kept as a r
 `workflow/references/teach-me.md` (base retired it as too personal). Migration is
 committed and **pushed** through `c06af9f`.
 
-**Next action:** chunk 8 (leaderboard: matrix runner controllers x scenarios x >=20
-seeds, bootstrap CIs, report + README + post #1 draft), then the final full-phase Opus
-review. Commit at each green chunk; never push (Stepan pushes).
+**Next action:** final full-phase Opus review (fold findings), then the phase-gate
+summary for Stepan (ADR 0002 review + GIF sign-off + leaderboard blessing still
+pending — async-gate mode), then phase-2 plan + phases 3-5 restructure. Never push
+(Stepan pushes).

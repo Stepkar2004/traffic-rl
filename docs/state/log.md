@@ -2,6 +2,17 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-12 · Chunk 8 (Leaderboard) landed — phase-1 chunks complete.** Matrix
+  runner (process pool, 240 full episodes in ~4 min), bootstrap-CI stats with the
+  overlap rule printed next to the numbers, markdown leaderboard + CI bar chart +
+  committed README GIF. The 20-seed truth corrected the seed-42 preview: rush
+  fixed_time p95 is 102.1 s [84.6, 120.8] — not 260 — and the CI width itself is the
+  instability finding; webster/actuated/max_pressure sit at 24-30 s with tight
+  brackets. Night: actuated dominates; max-pressure's ped-blindness surfaces as 70 s
+  p95 ped wait, bounded only by the machine's starvation cap (working as designed).
+  README rewritten for phase-1 status with honest numbers; post #1 drafted (no em
+  dashes). `bench` stays the kernel benchmark; the matrix is `traffic-rl leaderboard`
+  (the plan overloaded one name for both).
 - **2026-07-12 · Chunk 7 (Controllers) landed, Opus-reviewed (FIX-FIRST, both MAJORs
   fixed pre-commit).** Webster computes plans from Observation flows + MEASURED
   saturation values and now anchors each green to its onset via green_elapsed_s — the
