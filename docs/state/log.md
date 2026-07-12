@@ -2,6 +2,19 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-12 · Chunk 4 (Signals + FixedTime) landed, Opus-reviewed.** Timing formulas
+  (ITE yellow 3.2 s at 30 mph, all-red from geometry, MUTCD ped clearance, Webster
+  cycle) feed a signal machine whose interlocks refuse-and-count illegal commands:
+  min-green, ped WALK/clearance (call-driven, once per green), transition integrity,
+  max-red forcing with demand. Dilemma-zone scoping is a per-vehicle LATCH (too close
+  to stop at the ITE comfortable decel → proceed; unlatch when stopped or on cross
+  green). Controller protocol + detection-level Observation (per-approach detected
+  vehicles, stop-line detector recency, rolling flow, DERIVED queue aggregates,
+  earliest_switch_s so honest controllers avoid refusals). FixedTime cycles a full
+  3900 s episode: 0 refusals, 0 forced, 0 interventions. Opus review: no blockers;
+  folded per-crosswalk clearance math, the mid-green-WALK starvation gate (+ ADR
+  bounded-overshoot amendment), a structural latch guard, and the speeder-vs-compliant
+  all-red test. 82 tests.
 - **2026-07-12 · Chunk 3 (Vehicles) landed, Opus-reviewed.** IDM + ballistic with the
   exact-stop correction (never overshoots a wall, even one materializing 1 m ahead at
   full speed), CSR leader gaps continuous across the junction, per-vehicle virtual-wall

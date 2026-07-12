@@ -1,52 +1,103 @@
 """World: the ONLY mutable orchestrator (phase-1 plan §4).
 
-Owns topology + arrays + signals + rng streams; ``step()`` advances one dt in
-a fixed sub-step order. The order is the model — chunks 4-5 fill the remaining
-stubs WITHOUT reordering.
+Owns topology + arrays + signals + rng streams + the controller loop;
+``step()`` advances one dt in a fixed sub-step order. The order is the model —
+chunk 5 fills the remaining stubs WITHOUT reordering.
 """
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 
-from traffic_rl.core.arrays import F32, I32, PedArrays, VehicleArrays
+from traffic_rl.core.arrays import BOOL, F32, I32, I64, PedArrays, VehicleArrays
 from traffic_rl.core.config import APPROACHES, SimConfig
 from traffic_rl.core.demand import build_arrival_schedule
 from traffic_rl.core.rng import RngStreams, spawn_streams
-from traffic_rl.core.topology import Topology, four_way_intersection
+from traffic_rl.core.signals import Indication, SignalState
+from traffic_rl.core.topology import N_PHASES, Topology, four_way_intersection
+from traffic_rl.core.units import ftps_to_mps
 from traffic_rl.core.vehicles import GAP_EPS, step_vehicles
+
+if TYPE_CHECKING:
+    from traffic_rl.control.base import Controller
+    from traffic_rl.control.observation import ObservationModel
 
 
 @dataclass
 class WorldCounters:
-    """Conservation bookkeeping: demanded = entered + completed' + in-network + queued."""
+    """Conservation bookkeeping: demanded = entered + completed + in-network + queued."""
 
     veh_demanded: int = 0
     veh_entered: int = 0
     veh_completed: int = 0
     ped_demanded: int = 0
     ped_completed: int = 0
-    refused_commands: int = 0
+    refused_commands: int = 0  # controller asked for something illegal
+    forced_switches: int = 0  # max-red starvation cap fired (ADR 0002 §3)
     safety_interventions: int = 0  # enforce_no_overlap firings; 0 in a healthy model
 
 
 class World:
-    def __init__(self, cfg: SimConfig, seed: int | None = None) -> None:
+    def __init__(
+        self,
+        cfg: SimConfig,
+        seed: int | None = None,
+        controller: "Controller | None" = None,
+        observation: "ObservationModel | None" = None,
+    ) -> None:
         self.cfg = cfg
         self.topology: Topology = four_way_intersection(cfg.topology)
         self.rng: RngStreams = spawn_streams(seed)
         self.vehicles = VehicleArrays()
         self.peds = PedArrays()
         self.counters = WorldCounters()
+        self.signals = SignalState(self.topology, cfg.signal)
         self.step_count = 0
 
         topo = self.topology
         self._lane_length: F32 = np.array([ln.length_m for ln in topo.lanes], dtype=np.float32)
         self._next_lane: I32 = np.array([ln.next_lane for ln in topo.lanes], dtype=np.int32)
         self._inbound_lane: list[int] = [topo.inbound_lane_of(a).id for a in range(len(APPROACHES))]
+        #: inbound lane ids grouped by the phase serving them (demand probe).
+        self._lanes_of_phase: list[I32] = [
+            np.array([m.in_lane for m in topo.movements if int(m.phase) == p], dtype=np.int32)
+            for p in range(N_PHASES)
+        ]
+        #: approach INDICES grouped by phase (for boundary-queue demand probes).
+        self._approach_ids_of_phase: list[list[int]] = [
+            [
+                a
+                for a in range(len(APPROACHES))
+                if topo.inbound_lane_of(a).id in self._lanes_of_phase[p]
+            ]
+            for p in range(N_PHASES)
+        ]
         #: Per-lane virtual-leader position (red stop line); +inf = no wall.
-        #: Chunk 4's signal machine drives this; without signals, all green.
         self.wall_s: F32 = np.full(topo.n_lanes, np.inf, dtype=np.float32)
+        #: Comfortable-stop threshold for dilemma-zone exemptions — the SAME
+        #: deceleration the ITE yellow formula assumes (ADR 0002 §3).
+        self._comfort_brake_mps2 = ftps_to_mps(cfg.signal.decel_rate_ftps2)
+
+        # Controller wiring (lazy imports keep core import-clean at module level).
+        if controller is None:
+            from traffic_rl.control import make_controller
+
+            controller = make_controller(cfg.controller)
+        if observation is None:
+            from traffic_rl.control.observation import PerfectObservation
+
+            observation = PerfectObservation()
+        self.controller = controller
+        self.obs_model = observation
+        self.controller.reset(topo)
+        self.obs_model.reset(topo)
+        dt = cfg.episode.dt_s
+        self._ctrl_every = max(1, round(self.controller.cadence_s / dt))
+        if abs(self._ctrl_every * dt - self.controller.cadence_s) > 1e-9:
+            raise ValueError(
+                f"controller cadence {self.controller.cadence_s}s is not a multiple of dt={dt}s"
+            )
 
         # Both schedules are drawn at build time, vehicles first, so the
         # demand stream's draw order never changes between chunks.
@@ -58,6 +109,7 @@ class World:
         #: FIFO of demand_t for vehicles waiting at each boundary (ADR 0002 §1:
         #: their trip clock is already running).
         self.boundary_queue: list[list[float]] = [[] for _ in APPROACHES]
+        self.veh_demanded_by_approach: I64 = np.zeros(len(APPROACHES), dtype=np.int64)
 
     @property
     def t(self) -> float:
@@ -66,12 +118,18 @@ class World:
 
     def step(self) -> None:
         """Advance one dt. Sub-step order per phase-1 plan §4 — do not reorder."""
-        # 1. signals advance (chunk 4)
-        # 2. controller acts on its declared cadence (chunk 4)
-        self._spawn_vehicles()  # 3
-        self._advance_vehicles()  # 4
+        self.signals.advance(self.cfg.episode.dt_s, self._demand_by_phase(), self._ped_calls())
+        if self.step_count % self._ctrl_every == 0:
+            obs = self.obs_model.observe(self)
+            wanted = self.controller.decide(obs, self.t)
+            if not self.signals.request(wanted):
+                self.counters.refused_commands += 1
+        self._update_walls()
+        self._spawn_vehicles()
+        self._advance_vehicles()
         # 5. pedestrian kernel (chunk 5)
         # 6. metrics accumulate + recorder snapshot (chunk 5)
+        self.counters.forced_switches = self.signals.forced
         self.step_count += 1
 
     def run(self, duration_s: float | None = None) -> None:
@@ -88,7 +146,72 @@ class World:
         for _ in range(n_steps):
             self.step()
 
-    # -- sub-steps ---------------------------------------------------------
+    # -- signal plumbing -----------------------------------------------------
+
+    def _demand_by_phase(self) -> BOOL:
+        """Per phase: is anyone waiting for it (vehicle on approach, queued at
+        the boundary, or a pedestrian call on a concurrent crosswalk)?"""
+        veh = self.vehicles
+        n = veh.n
+        counts = np.bincount(veh.lane[:n], minlength=self.topology.n_lanes)
+        ped_call = self._ped_calls()
+        demand = np.zeros(N_PHASES, dtype=np.bool_)
+        for p in range(N_PHASES):
+            has_veh = bool(counts[self._lanes_of_phase[p]].sum() > 0)
+            has_queued = any(self.boundary_queue[a] for a in self._approach_ids_of_phase[p])
+            has_ped = bool(ped_call[self.signals.cw_phase == p].any())
+            demand[p] = has_veh or has_queued or has_ped
+        return demand
+
+    def _ped_calls(self) -> BOOL:
+        """Push-button model: a call is a pedestrian waiting at the curb."""
+        peds = self.peds
+        n = peds.n
+        n_cw = len(self.topology.crosswalks)
+        if n == 0:
+            return np.zeros(n_cw, dtype=np.bool_)
+        waiting = peds.state[:n] == PedArrays.STATE_WAITING
+        counts = np.bincount(peds.crosswalk[:n][waiting], minlength=n_cw)
+        result: BOOL = counts > 0
+        return result
+
+    def _update_walls(self) -> None:
+        """Translate signal indications into per-lane walls + per-vehicle exemptions.
+
+        Dilemma-zone scoping (phase-1 plan §4): at YELLOW, a vehicle that
+        cannot stop at the comfortable deceleration LATCHES an exemption and
+        proceeds; the latch clears on green, or if the vehicle ends up
+        (nearly) stopped anyway — a blocked "runner" that has come to rest
+        obeys the red in front of it.
+        """
+        active = self.signals.wall_active()
+        self.wall_s = np.where(active, self._lane_length, np.inf).astype(np.float32)
+        veh = self.vehicles
+        n = veh.n
+        if n == 0:
+            return
+        lane = veh.lane[:n]
+        walled = active[lane]
+        yellow = self.signals.yellow_lane_mask()[lane]
+        # clear latches wherever no wall faces the lane (green / outbound)
+        veh.yellow_exempt[:n][~walled] = False
+        # structural guard: once the CROSS phase is green, any still-upstream
+        # latch is stale — a straggler that hasn't cleared by now must not
+        # ride through the conflicting green. (Unreachable under phase-1
+        # kinematics, but the invariant should not rest on parameters.)
+        if int(self.signals.indication[0]) == Indication.GREEN:
+            veh.yellow_exempt[:n][walled] = False
+        if bool(yellow.any()):
+            dist = self._lane_length[lane] - veh.s[:n]
+            v = veh.v[:n]
+            required = v * v / (2.0 * np.maximum(dist, np.float32(1e-3)))
+            latch = yellow & (required > self._comfort_brake_mps2)
+            veh.yellow_exempt[:n][latch] = True
+        # a latched vehicle that has (nearly) stopped can evidently stop: unlatch
+        stopped = walled & (veh.v[:n] < 1.0)
+        veh.yellow_exempt[:n][stopped] = False
+
+    # -- demand + dynamics sub-steps ------------------------------------------
 
     def _spawn_vehicles(self) -> None:
         t = self.t
@@ -99,6 +222,7 @@ class World:
             while cur < arrivals.size and arrivals[cur] <= t:
                 queue.append(float(arrivals[cur]))
                 self.counters.veh_demanded += 1
+                self.veh_demanded_by_approach[a_idx] += 1
                 cur += 1
             self._veh_cursor[a_idx] = cur
             if not queue:
@@ -148,7 +272,7 @@ class World:
             self._lane_length,
             self._next_lane,
             self.wall_s,
-            None,  # wall exemptions arrive with the signal machine (chunk 4)
+            self.vehicles.yellow_exempt,
             self.cfg.idm.delta,
             self.cfg.episode.dt_s,
         )
@@ -171,7 +295,3 @@ class World:
             float(np.sum(self.vehicles.s[:n], dtype=np.float64)),
             float(np.sum(self.vehicles.v[:n], dtype=np.float64)),
         )
-
-    def in_network_plus_served(self) -> int:
-        """Conservation helper: entered = in-network + completed."""
-        return self.vehicles.n + self.counters.veh_completed

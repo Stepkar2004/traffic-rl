@@ -105,6 +105,7 @@ class VehicleArrays(_SoA):
         "stops": np.int32,  # hysteresis-counted stops (ADR 0002 section 1)
         "stopped": np.bool_,  # hysteresis state: in a stop since last release
         "compliant": np.bool_,  # phase 4 hook: red-light compliance flag
+        "yellow_exempt": np.bool_,  # latched: too close to stop when yellow began
     }
 
     lane: I32
@@ -124,6 +125,7 @@ class VehicleArrays(_SoA):
     stops: I32
     stopped: BOOL
     compliant: BOOL
+    yellow_exempt: BOOL
 
     def lane_order(self, n_lanes: int) -> tuple[I64, I64]:
         """CSR lane segmentation of the live rows.

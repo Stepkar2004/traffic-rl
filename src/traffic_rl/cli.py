@@ -35,7 +35,9 @@ def run(
         f"{cfg.name}: t={world.t:.1f}s steps={world.step_count} "
         f"entropy={world.rng.entropy} vehicles(demanded={c.veh_demanded} "
         f"entered={c.veh_entered} completed={c.veh_completed}) "
-        f"peds(demanded={c.ped_demanded} completed={c.ped_completed})"
+        f"peds(demanded={c.ped_demanded} completed={c.ped_completed}) "
+        f"signals(refused={c.refused_commands} forced={c.forced_switches} "
+        f"interventions={c.safety_interventions})"
     )
 
 

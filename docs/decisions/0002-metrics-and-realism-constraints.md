@@ -75,6 +75,14 @@ constants. Chosen values recorded here with sources; an illegal controller comma
 Every switch inserts yellow → all-red before the next green; min-green is enforced from
 green onset; timers live in the signal machine, not in controllers.
 
+**Bounded max-red overshoot (resolution recorded 2026-07-12, from chunk-4 review):**
+the machine never truncates a pedestrian WALK/clearance or a minimum green to meet the
+120 s cap — safety interlocks outrank the fairness cap. The forced switch therefore
+lands within `max_red + max(min green, WALK + ped clearance) + yellow + all-red` in the
+worst collision of timers (~135 s here). Discretionary mid-green WALK starts are
+deferred when a cross phase with demand is within one WALK+clearance of its cap, so the
+overshoot only arises from green-onset pedestrian service, which is never deferred.
+
 ## 4. Crosswalk–vehicle-phase concurrency map
 
 Geometry: a north–south road crossing an east–west road. Two vehicle phases (through

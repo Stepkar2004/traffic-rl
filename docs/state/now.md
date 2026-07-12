@@ -3,7 +3,18 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-12 (phase 1 implementation running, chunks 1-3 done):**
+**As of 2026-07-12 (phase 1 implementation running, chunks 1-4 done):**
+
+Chunk 4 (signals) landed: `core/timing.py` (ITE yellow / all-red / MUTCD ped clearance /
+Webster cycle as named formulas), `core/signals.py` (state machine with refusal-counted
+interlocks, call-driven WALK, max-red forcing), dilemma-zone exemption LATCHING in
+World, and the `control/` package (Controller protocol, detection-level Observation
+contract, PerfectObservation with stateful detector recency + rolling flow window,
+FixedTime). Full 4-way world cycles: 3900 s balanced run = 1302 demanded / 1277
+completed, 0 refusals, 0 interventions. Opus review: COMMIT-READY, no blockers; folded
+in per-crosswalk clearance math, mid-green-WALK starvation gate + ADR 0002 bounded
+max-red-overshoot amendment, structural latch guard, speeder-vs-compliant all-red
+scoping test.
 
 Chunk 3 (vehicles) landed: pure kernels in `core/vehicles.py` (CSR leader gaps incl.
 cross-junction lookup, per-vehicle wall overlay, IDM with unclamped braking, ballistic
@@ -59,7 +70,6 @@ brain note; the phase plan lives in `docs/plans/`. Teach-me protocol kept as a r
 `workflow/references/teach-me.md` (base retired it as too personal). Migration is
 committed and **pushed** through `c06af9f`.
 
-**Next action:** chunk 4 (timing formulas, signal machine + interlocks, red = virtual
-leader with dilemma-zone scoping, Controller protocol + Observation contract +
-FixedTime, full 4-way; Opus review before commit). Commit at each green chunk; never
-push (Stepan pushes).
+**Next action:** chunk 5 (pedestrian kernel + concurrency map, metric suite with
+hysteresis stops, npz recorder, queue-discharge calibration bench; Opus review before
+commit). Commit at each green chunk; never push (Stepan pushes).

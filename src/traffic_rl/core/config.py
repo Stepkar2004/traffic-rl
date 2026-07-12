@@ -23,6 +23,12 @@ from traffic_rl.core.units import mph_to_mps
 #: order. Index into this tuple is the approach id used across topology/arrays.
 APPROACHES: tuple[str, ...] = ("north", "south", "east", "west")
 
+#: ADR 0002 §6 thresholds, shared by metrics (chunk 5) and derived
+#: Observation aggregates: waiting = speed below V_WAIT; a stop cannot be
+#: re-counted until speed exceeds V_RELEASE (hysteresis).
+V_WAIT_MPS = 0.1
+V_RELEASE_MPS = 2.0
+
 
 class ScenarioError(ValueError):
     """A scenario file is malformed or inconsistent."""
