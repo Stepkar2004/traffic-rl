@@ -2,6 +2,16 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-11 · Migrated to init-configurator ADR 0003 (project-base retired).** Ran
+  `initc spawn . --force` from the packaged upstream genome: refreshed workflow,
+  skill-manager, bootstrap; added `socials` (+ github/linkedin/visuals references);
+  docs and standards kept. Deleted `.claude/skills/project-base/`, moving its one real
+  lesson (setup-uv floating-tag) into the workflow body per the refreshed evolve
+  procedure. Replaced CLAUDE.md with the materialized `constitution()` (skill index incl.
+  repo-local realism-scan, binding rules, tasks, machine-local brain-note line);
+  repointed stale `project-base` references in project.yaml + ADR 0001 to the
+  constitution. Gates green. Not pushed. (Open: teach-me protocol had no home in the new
+  constitution — flagged to Stepan.)
 - **2026-07-11 · Phase 0 direction lock: phase-1 plan drafted, reviewed, skills 7→5.**
   Phase-1 plan written (single 4-way intersection first — grid + offsets moved to
   phase 2; NumPy SoA lane-segmented core, detection-level Observation, headless +

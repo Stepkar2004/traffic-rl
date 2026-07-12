@@ -14,12 +14,15 @@ Research grounding: [docs/research/sim-architecture-notes-2026-07.md](../researc
 it**. Roadmap + brain note amended: grid and coordinated-offset baseline moved to
 phase 2.
 
-Skills consolidated 7 → 5 top-level (Stepan's nested-skill decision, cap 10, prefer
-5-7): `workflow` (SWE loop; scale + rot-check as lazy references), `skill-manager`
-(genome lifecycle; evolve + absorb + authoring as references), `realism-scan` (new:
-what-should-we-simulate-next gap hunts), `project-base`, `bootstrap`. Standing rule now
-encoded in workflow + project-base: commit at chunk boundaries, **never push** (Stepan
-pushes or explicitly says push).
+Skills now 5 top-level (cap 10, prefer 5-7): `workflow` (SWE loop; scale + rot-check as
+lazy references), `skill-manager` (genome lifecycle; evolve + absorb + authoring as
+references), `bootstrap`, `socials` (new from upstream), `realism-scan` (repo-local:
+what-should-we-simulate-next gap hunts). **`project-base` retired** (init-configurator
+ADR 0003): its role split into the constitution (CLAUDE.md) + the skills; its one real
+lesson (setup-uv floating-tag) moved to the workflow body. **CLAUDE.md is now the
+constitution** — always-loaded skill index + binding rules + tasks + brain-note line,
+materialized from `beacons.py::constitution()`. Standing rule (commit at chunk
+boundaries, **never push**) now lives in the constitution and workflow.
 
 **Next action:** Stepan reviews docs/plans/phase-1.md (and the vision draft). On his
 approval, implementation starts at chunk 1 (metrics & realism-constraints ADR 0002) —

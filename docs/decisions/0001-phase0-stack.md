@@ -22,7 +22,7 @@ Date: 2026-07-10 · Status: accepted
   can run without initc: ruff check, ruff format --check, mypy, pytest. `initc validate`
   / `lint-paths` gates run locally via pre-commit instead.
 - **`docs/posts/` is gitignored.** Post drafts are working material, not repo content;
-  the published post is the public artifact. Standing content rule (also in
-  project-base): no em dashes (U+2014) in post text, ever.
+  the published post is the public artifact. Standing content rule (also in the
+  constitution): no em dashes (U+2014) in post text, ever.
 - **path_lint excludes `CLAUDE.md` and `.claude/`** — they intentionally reference the
   machine-local brain note (same documented precedent as init-configurator itself).

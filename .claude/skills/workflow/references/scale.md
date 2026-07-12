@@ -1,7 +1,7 @@
 # scale — context is working memory; files are long-term memory
 
-> Moved intact from the standalone `scale` skill into `workflow/references/` on
-> 2026-07-11 (nested-skill consolidation, Stepan's decision).
+> Consolidated from the standalone `scale` skill on 2026-07-11 (nested-skill
+> architecture).
 
 The system scales only if working memory is never load-bearing. Everything below is one
 law applied five ways, and the four moves are always the same:

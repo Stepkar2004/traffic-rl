@@ -7,10 +7,9 @@ description: The genome's lifecycle and hygiene, all in one place. Fire on "revi
 Individual lessons enter through the evolve procedure, one reviewed diff at a time.
 Somebody still has to see the whole genome: whether the pieces are at the right
 altitude, whether gaps and corpses are accumulating. That somebody is this skill, and
-the periodic pass runs with FRESH context — the writer of a skill never grades it
-(TheBrain2 Law 7).
+the periodic pass runs with FRESH context — the writer of a skill never grades it.
 
-## Nested-skill architecture (policy, decided by Stepan 2026-07-11)
+## Nested-skill architecture (policy, decided 2026-07-11)
 
 - **Few top-level skills, lazy references inside.** A skill's body is the always-loaded
   front door; variants and less-common procedures live in `references/` files loaded
@@ -18,8 +17,8 @@ the periodic pass runs with FRESH context — the writer of a skill never grades
   auto-triggering for sub-procedures.
 - **Hard cap: 10 top-level skills; prefer 5-7.** At the cap, adding a skill requires
   first consolidating two related ones (merge into core + references). Current
-  top-level set (5): `project-base`, `workflow`, `skill-manager`, `bootstrap`,
-  `realism-scan`.
+  top-level set (5): `workflow`, `skill-manager`, `socials`, `bootstrap`, and
+  `realism-scan` (repo-local — this repo's own skill, not in the shipped base).
 - **Portability.** Embed the external knowledge the genome needs (e.g. authoring
   standards in `references/authoring.md`) so any coding agent operating this repo has
   it — never depend on a specific tool's plugin being installed.

@@ -1,7 +1,8 @@
 # absorb — the genome moves between detached projects
 
-> Moved intact from the standalone `absorb` skill into `skill-manager/references/` on
-> 2026-07-11 (nested-skill consolidation, Stepan's decision).
+> Consolidated from the standalone `absorb` skill on 2026-07-11 (nested-skill
+> architecture). Spawn was promoted to a command the same day, after one proven
+> by-hand run.
 
 Projects stay detached: this is open source, and nothing may assume a stranger's clone
 syncs with anything of ours. Detached does not mean isolated. The behaviour is bacterial:
@@ -29,15 +30,26 @@ because horizontal transfer is exactly how a bad gene gets in.
 
 ## spawn <new-project-path> (vertical, this project → a child)
 
-1. Copy the genome: `.claude/skills/` (including lessons — inheritance is the point),
-   `.gitattributes`, hook/CI configs worth carrying.
-2. Do NOT copy state: `docs/state/` starts empty, `docs/vision.md` is the new human's to
-   write, `project.yaml` is written fresh by `bootstrap`/`describe` for the new repo.
-3. Reset instantiation metadata in the child's `project-base` (new date, new repo name),
-   and record lineage as the first line of the child's `docs/state/log.md`:
-   "spawned from <parent> @ <commit> on <date>."
-4. From that moment the copies are detached — the child evolves alone. Divergence is
-   the design.
+`initc spawn <path>` is the mechanical half — a real command since 2026-07-11. It copies
+the packaged genome (skills, standards, docs templates) into the target, additive by
+default: a file that already exists is reported as kept and not overwritten. `--force`
+is the deliberate exception — it lets the base's version win for existing skill files
+only (docs and standards stay additive, and it never deletes), which is how you push
+base skill updates down into an already-spawned child. The judgment half stays with the
+agent:
 
-`initc spawn` / `initc absorb` as commands come later; until then this reference IS the
-procedure, executed by hand.
+1. Run `initc spawn <path>` — or, in the child with nothing installed:
+   `uvx --refresh --from git+https://github.com/Stepkar2004/init-configurator initc spawn .`
+   (add `--force` to update skills the child has not changed; `--refresh` defeats uvx's cache).
+2. **Review the "kept" (and, with `--force`, "replaced") lines.** Kept files are the
+   child's own; merge genome content by hand only if the human wants it. Replaced files
+   moved to the base's version — `git diff` shows exactly what changed.
+3. `project.yaml` and the child's root constitution (CLAUDE.md/AGENTS.md) are NOT in the
+   genome on purpose — `bootstrap`/`describe` write them fresh for the child (`beacons.py`
+   is the template source). Run the `bootstrap` skill next.
+4. **Record lineage** as the first line of the child's `docs/state/log.md`: "spawned
+   from <parent> @ <commit> on <date>." From that moment the copies are detached — the
+   child evolves alone. Divergence is the design.
+
+`initc absorb` as a command comes later; until then the absorb half of this reference IS
+the procedure, executed by hand.

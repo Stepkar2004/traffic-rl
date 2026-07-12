@@ -2,8 +2,9 @@
 
 > Distilled 2026-07-11 from the Anthropic `skill-creator` skill (its SKILL.md and
 > validation scripts), embedded here so ANY coding agent operating this repo has the
-> standards without a plugin dependency. Dated observation — re-verify against current
-> Anthropic guidance if this is more than ~6 months old.
+> standards without a plugin dependency.
+> Dated observation — re-verify against current Anthropic guidance if this is more
+> than ~6 months old.
 
 A skill is a packet of instructions an AI agent loads on demand — a title, a trigger
 description, and a body of guidance (plus optional bundled files) that teach the agent

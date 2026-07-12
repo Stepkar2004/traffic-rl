@@ -1,7 +1,7 @@
 # evolve — lesson → procedure → reviewed diff
 
-> Moved intact from the standalone `evolve` skill into `skill-manager/references/` on
-> 2026-07-11 (nested-skill consolidation, Stepan's decision).
+> Consolidated from the standalone `evolve` skill on 2026-07-11 (nested-skill
+> architecture).
 
 Self-evolution is the point of this whole system, and it is also its worst failure mode:
 a system that silently rewrites its own instructions fossilizes its own mistakes, and no
@@ -23,9 +23,13 @@ test will fail. So evolution has exactly one door, and this is it.
    - Procedure (applied): "write generated files with `newline='\n'` — `write_text`
      translates newlines to `os.linesep`."
 2. **Pick the altitude** — where does it belong?
-   - This repo only → the `project-base` Lessons section.
+   - This repo's SWE loop, or a lesson with no more specific home → the `workflow` skill
+     body (or the relevant reference). Lessons land in a skill; that is the point of the
+     genome — even in the base, where the mirror then ships the lesson to every child.
    - A task-shape's procedure changed → that skill's body (or the relevant reference).
    - Stack-specific knowledge → the stack reference under `bootstrap/references/`.
+   - A rule EVERY session must obey → propose a `CLAUDE.md` edit, but the constitution
+     grows only on explicit user confirmation — never append to it silently.
    - No home exists → one line in `docs/state/miss-log.md`; the skill-manager pass
      decides if it has earned a new skill (mind the cap).
    Altitude smells: the same diff recurs after your fix → you patched too low; your edit

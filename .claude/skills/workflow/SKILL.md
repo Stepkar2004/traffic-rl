@@ -4,31 +4,31 @@ description: The SWE loop binding every implementation session in this repo - fi
 ---
 # workflow — the loop every implementation session runs
 
-One skill fires for all SWE work; the less-common parts load lazily from `references/`
-when their trigger row matches. Do not rely on separate skills auto-triggering for
-scale or rot-check — this file is their front door.
+> One skill fires for all SWE work; the less-common parts load lazily from `references/`
+> when their trigger row matches. Do not rely on separate sibling skills auto-triggering
+> for scale or rot-check — this file is their front door.
 
 ## The loop
 
-0. **Orient.** Read `docs/state/now.md`, then the active plan (`docs/plans/`). Know the
+0. **Orient.** Read `docs/state/now.md`, then the active plan (`docs/plans/` when the
+   repo keeps phase plans, else the current chunk in `docs/state/roadmap.md`). Know the
    chunk's goal and acceptance criteria before touching code. If no chunk is defined,
    defining one IS the first task.
 1. **Plan the chunk.** Smallest end-to-end slice; name the files to touch and the tests
    that will prove it. If scope grows mid-chunk beyond the plan, stop — re-plan or
    split; never "just keep going".
-2. **Implement.** Follow project-base conventions and the architecture rules in the
-   active plan (they are constraints, not suggestions — e.g. phase 1: SoA arrays, pure
-   kernels, core never imports viewer).
+2. **Implement.** Follow the constitution (CLAUDE.md) and the architecture rules in the
+   active plan — they are constraints, not suggestions.
 3. **Verify — the forgettable steps, in order:**
    - New behavior ⇒ new test; changed behavior ⇒ changed test. Same chunk, no IOUs.
-   - Run the gates: `initc run test / lint / format / typecheck`, `initc lint-paths`.
-   - User-visible behavior ⇒ actually run it (CLI, viewer) — a green unit test is not
-     a seen behavior.
-4. **Document in the same chunk.** Update whatever the change made stale: README,
-   the plan doc, an ADR for any new decision (`docs/decisions/`), docstrings. The test:
+   - Run the repo's gates: `project.yaml` declares them as tasks; the constitution
+     (CLAUDE.md) and the pre-commit / CI configs are the full set.
+   - User-visible behavior ⇒ actually run it — a green unit test is not a seen behavior.
+4. **Document in the same chunk.** Update whatever the change made stale: README, the
+   plan doc, an ADR for any new decision (`docs/decisions/`), docstrings. The test:
    "would a fresh session mis-learn anything if it read the docs right now?"
 5. **Commit at the chunk boundary.** Gates green → `docs/state/now.md` + `log.md`
-   updated → commit. **NEVER push. Stepan pushes, or explicitly says push** — this repo
+   updated → commit. **NEVER push. The user pushes, or explicitly says push** — this repo
    is public; an unpushed mistake is free, a pushed one is not.
 6. **Reflect.** A lesson landed (root cause found, default overridden, mistake repeated)?
    → run the evolve procedure: `skill-manager/references/evolve.md`. Task matched no
@@ -36,7 +36,7 @@ scale or rot-check — this file is their front door.
 
 ## When to stop and ask
 
-Stepan is available and asking is free: scope changes, tradeoffs with product impact,
+The user is available and asking is free: scope changes, tradeoffs with product impact,
 anything irreversible or public-facing, or two defensible designs with different
 long-term costs. Blocked beats wrong.
 
@@ -46,3 +46,12 @@ long-term costs. Blocked beats wrong.
 |---|---|
 | Work outgrows one context window: massive task or refactor, flood of small tasks, mass research, quality degrading with context size | [references/scale.md](references/scale.md) |
 | Before a release; after a long gap in the repo; "rot check" / "is anything stale"; a gate that has not been seen failing lately | [references/rot-check.md](references/rot-check.md) |
+
+## Lessons (repo-local; append one line per real session: date · lesson; prune when stale)
+
+> Migrated here from the retired `project-base` skill on 2026-07-11 (ADR 0003): repo
+> lessons now live in the workflow body, per the evolve procedure.
+
+- 2026-07-10 · GitHub Actions: `releases/latest` lies about usable refs — setup-uv's
+  latest is v8.3.2 but no floating `v8` tag exists. Check `repos/<owner>/<repo>/tags`
+  and exact-pin when the major tag is absent.

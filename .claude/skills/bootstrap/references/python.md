@@ -52,3 +52,19 @@ tasks:
 gets CRLF, and formatters (ruff format, biome) then fail on files nobody edited. Write
 generated files with `newline="\n"` explicitly, and put `* text=auto eol=lf` in
 `.gitattributes` so git cannot undo it on checkout.
+
+## GitHub Actions pinning (verified 2026-07)
+
+An action's `releases/latest` lies about usable refs: astral-sh/setup-uv's latest was
+v8.x with NO floating `v8` major tag published. Before pinning any action, check
+`https://api.github.com/repos/<owner>/<repo>/tags` — use the major tag when it exists,
+exact-pin (with a dated comment) when it does not.
+
+## Machine-local tooling: the `local` dependency group (verified 2026-07)
+
+A dependency that exists only on one machine (e.g. an editable install from a sibling
+checkout) goes in its own PEP 735 group named `local`, listed in
+`tool.uv.default-groups` so plain `uv sync` includes it locally. CI then syncs
+`--no-group local` and runs every later step with `uv run --no-sync` — an implicit
+re-sync would pull default groups back in and fail on the missing path. Prefer a
+published source (`pkg @ git+https://...`) the moment one exists.

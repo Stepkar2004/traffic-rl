@@ -1,4 +1,4 @@
-# project.yaml - the single source of truth for setup (see .claude/skills/project-base).
+# project.yaml - the single source of truth for setup (see CLAUDE.md, the constitution).
 # Drafted by `initc describe` on 2026-07-10, reviewed and completed the same day.
 schema_version: 1
 
@@ -20,7 +20,7 @@ stacks:
       format: "uv run ruff format --check src tests"
       typecheck: "uv run mypy src tests"
 
-# No env vars yet - the env rule (project-base convention 5) adds them the same
+# No env vars yet - the env rule (see CLAUDE.md, the constitution) adds them the same
 # turn code first reads one.
 
 path_lint:

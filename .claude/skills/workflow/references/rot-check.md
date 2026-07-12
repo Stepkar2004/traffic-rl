@@ -1,7 +1,7 @@
 # rot-check — a check you have never watched fail is not a check
 
-> Moved intact from the standalone `rot-check` skill into `workflow/references/` on
-> 2026-07-11 (nested-skill consolidation, Stepan's decision).
+> Consolidated from the standalone `rot-check` skill on 2026-07-11 (nested-skill
+> architecture).
 
 Everything in this system rots: pinned versions, skill claims, docs, and — worst,
 because it is invisible — the gates themselves. A gate that silently passes everything
