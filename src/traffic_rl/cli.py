@@ -63,6 +63,51 @@ def run(
 
 
 @app.command()
+def view(
+    scenario: Annotated[Path, typer.Argument(help="Path to a scenario YAML.")],
+    seed: Annotated[int | None, typer.Option(help="Root seed (omit for fresh entropy).")] = None,
+    speed: Annotated[float, typer.Option(help="Playback speed multiplier.")] = 1.0,
+) -> None:
+    """Watch a scenario live (SPACE pause, RIGHT step, UP/DOWN speed, Q quit)."""
+    from traffic_rl.viewer.app import view_live
+
+    cfg = load_scenario(scenario)
+    view_live(World(cfg, seed=seed), speed=speed)
+
+
+@app.command()
+def replay(
+    trace_path: Annotated[Path, typer.Argument(help="Path to an npz trace (from run --record).")],
+    speed: Annotated[float, typer.Option(help="Playback speed multiplier.")] = 1.0,
+) -> None:
+    """Replay a recorded trace (R restarts)."""
+    from traffic_rl.core.recorder import Trace
+    from traffic_rl.viewer.app import view_replay
+
+    view_replay(Trace(trace_path), speed=speed)
+
+
+@app.command()
+def gif(
+    trace_path: Annotated[Path, typer.Argument(help="Path to an npz trace.")],
+    out: Annotated[Path, typer.Argument(help="Output .gif path.")],
+    start: Annotated[float | None, typer.Option(help="Start time (s).")] = None,
+    end: Annotated[float | None, typer.Option(help="End time (s).")] = None,
+    every: Annotated[int, typer.Option(help="Take every N-th frame.")] = 1,
+    fps: Annotated[int, typer.Option(help="GIF frames per second.")] = 20,
+    size: Annotated[int, typer.Option(help="GIF width/height in pixels.")] = 560,
+) -> None:
+    """Export a looping GIF from a recorded trace."""
+    from traffic_rl.core.recorder import Trace
+    from traffic_rl.viewer.gif import export_gif
+
+    n = export_gif(
+        Trace(trace_path), out, start_s=start, end_s=end, every=every, fps=fps, size_px=size
+    )
+    typer.echo(f"gif: {n} frames -> {out}")
+
+
+@app.command()
 def calibrate(
     n_queue: Annotated[int, typer.Option(help="Standing-queue size (>= 15).")] = 16,
     n_seeds: Annotated[int, typer.Option(help="Seeds to average over.")] = 10,

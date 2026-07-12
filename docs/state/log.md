@@ -2,6 +2,14 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-12 · Chunk 6 (Viewer) landed; GIFs exported for the async visual gate.**
+  One render path (draw.py consumes recorder Frames) serves live view, replay, and
+  GIF export; geometry travels inside traces so replay needs no scenario file.
+  Vehicles color by speed, zebras tint by WALK/clearance, signal heads per approach.
+  Recorder gained per-crosswalk ped indication. Balanced + rush GIFs exported to
+  runs/gifs/ (2-min 10x clips) and self-verified frame-by-frame against the ADR
+  concurrency map before handing to Stepan. Headless smoke tests (SDL dummy) cover
+  render content, GIF round-trip, and frame windowing. 97 tests.
 - **2026-07-12 · Chunk 5 (Peds + metrics + recorder + calibration) landed,
   Opus-reviewed.** Pedestrians wait for call-served WALK and cross under clearance
   protection; metrics implement ADR 0002 exactly (demand-event trip clock, boundary

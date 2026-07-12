@@ -3,7 +3,17 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-12 (phase 1 implementation running, chunks 1-5 done):**
+**As of 2026-07-12 (phase 1 implementation running, chunks 1-6 done):**
+
+Chunk 6 (viewer) landed: `viewer/{draw,app,replay,gif}.py` — pygame-ce live view
+(`traffic-rl view`, pause/step/speed), trace replay, GIF export; draw.py renders a
+recorder Frame so live/replay/GIF share one path; render smoke tests run headless
+(SDL dummy). **GIFs for Stepan's async sign-off are at `runs/gifs/balanced-s42.gif`
+and `runs/gifs/rush-ns-s42.gif`** (2-min clips at 10x, from full recorded episodes;
+`traffic-rl view scenarios/single-rush-ns.yaml` for live). Self-checked frame-by-frame
+against the ADR 0002 concurrency map (clearance tint on the correct legs, right-hand
+traffic, heads match phases) — his sign-off still pending, work continues per the
+agreed async-gate mode.
 
 Chunk 5 landed: pedestrian kernel (call-driven WALK service, clearance-protected
 crossings, per-agent compliance seam pinned), ADR 0002 metrics (demand-event trip
@@ -83,6 +93,7 @@ brain note; the phase plan lives in `docs/plans/`. Teach-me protocol kept as a r
 `workflow/references/teach-me.md` (base retired it as too personal). Migration is
 committed and **pushed** through `c06af9f`.
 
-**Next action:** chunk 6 (viewer: draw/app/replay/gif; export balanced + rush GIFs for
-Stepan's async visual sign-off, then continue to chunk 7 without blocking). Commit at
-each green chunk; never push (Stepan pushes).
+**Next action:** chunk 7 (Webster from measured saturation flow, ActuatedGapOut at dt
+cadence, MaxPressure; PLUS the recorded obligation: cap active-phase ped starvation in
+the signal machine; Opus review before commit). Commit at each green chunk; never push
+(Stepan pushes).

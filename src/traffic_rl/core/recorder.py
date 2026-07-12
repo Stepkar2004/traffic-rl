@@ -38,6 +38,7 @@ class TraceWriter:
         self._ped_progress: list[np.ndarray] = []
         self._active: list[int] = []
         self._indication: list[int] = []
+        self._ped_ind: list[np.ndarray] = []  # per-crosswalk PedIndication
 
     def maybe_snapshot(self) -> None:
         w = self._world
@@ -56,6 +57,7 @@ class TraceWriter:
         self._ped_progress.append(w.peds.progress_m[:m].copy())
         self._active.append(int(w.signals.active[0]))
         self._indication.append(int(w.signals.indication[0]))
+        self._ped_ind.append(w.signals.ped_ind.astype(np.int8).copy())
 
     def save(self, path: Path) -> None:
         w = self._world
@@ -94,6 +96,11 @@ class TraceWriter:
             ped_progress=_cat(self._ped_progress, np.float32),
             active=np.asarray(self._active, dtype=np.int8),
             indication=np.asarray(self._indication, dtype=np.int8),
+            ped_ind=(
+                np.stack(self._ped_ind)
+                if self._ped_ind
+                else np.empty((0, len(topo.crosswalks)), dtype=np.int8)
+            ),
         )
 
 
@@ -108,6 +115,7 @@ class Frame:
     ped_progress: F32
     active: int
     indication: int
+    ped_ind: np.ndarray  # per-crosswalk PedIndication values
 
 
 class Trace:
@@ -136,6 +144,7 @@ class Trace:
         self._ped_progress: F32 = data["ped_progress"]
         self._active = data["active"]
         self._indication = data["indication"]
+        self._ped_ind = data["ped_ind"]
 
     @property
     def n_frames(self) -> int:
@@ -154,4 +163,5 @@ class Trace:
             ped_progress=self._ped_progress[p0:p1],
             active=int(self._active[k]),
             indication=int(self._indication[k]),
+            ped_ind=self._ped_ind[k],
         )

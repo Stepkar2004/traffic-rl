@@ -35,6 +35,15 @@ CROSSWALK_BAND_M = 3.0
 #: Gap between the stop line and the near edge of the crosswalk band.
 STOP_LINE_SETBACK_M = 0.5
 
+#: Unit direction of travel per approach (arriving FROM north means heading
+#: south). Shared by the builder and the viewer.
+HEADINGS: dict[str, tuple[float, float]] = {
+    "north": (0.0, -1.0),
+    "south": (0.0, 1.0),
+    "east": (-1.0, 0.0),
+    "west": (1.0, 0.0),
+}
+
 
 @dataclass(frozen=True)
 class Node:
@@ -128,8 +137,7 @@ def four_way_intersection(cfg: TopologyConfig) -> Topology:
     length = cfg.approach_length_m
     far = b + length
 
-    # Unit direction of travel per approach (arriving FROM north means heading south).
-    heading = {"north": (0.0, -1.0), "south": (0.0, 1.0), "east": (-1.0, 0.0), "west": (1.0, 0.0)}
+    heading = HEADINGS
 
     nodes = [Node(id=0, kind="signal", x=0.0, y=0.0)]
     lanes: list[Lane] = []
