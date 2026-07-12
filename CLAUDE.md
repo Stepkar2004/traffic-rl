@@ -29,8 +29,8 @@ choice defensible.
 - **`project.yaml` is the single source of truth** — stacks, tasks, env vars, and data
   paths are declared there. Read it before changing setup; change IT, not around it.
 - **Gates green before every commit; commit at chunk boundaries; NEVER push.** The user
-  pushes, or explicitly says push. Run the declared gates (tasks below); `initc doctor`
-  diagnoses the machine, and every problem it prints comes with its fix.
+  pushes, or explicitly says push. Run a declared gate with `initc run <task>`; `initc
+  doctor` diagnoses the machine, and every problem it prints comes with its fix.
 - **Root-relative paths only** (`initc lint-paths` enforces it); **no global installs**
   (deps live in ./.venv). The env rule: the same turn code first reads a new var, declare
   it in `project.yaml` and re-run `initc env`.
@@ -39,14 +39,10 @@ choice defensible.
   user confirms it.
 - Post drafts live in `docs/posts/` (gitignored). No em dashes in post text.
 
-## Tasks (from project.yaml — run from any subfolder)
+## Where things live
 
-- `initc run install` — `uv sync`
-- `initc run test` — `uv run pytest`
-- `initc run lint` — `uv run ruff check src tests`
-- `initc run format` — `uv run ruff format --check src tests`
-- `initc run typecheck` — `uv run mypy src tests`
-
-Brain note (machine-local): `G:\PythonProjects\_for_me\The Brain v2\knowledge\projects\traffic-rl.md`
-— read on session start; it holds the 5-phase plan (world + classical baselines ->
-omniscient RL -> partial observability -> humans -> beyond the grid).
+- `project.yaml` — WHAT: stacks, tasks, env contract, and data paths. It is the source of
+  truth for the runnable gates; don't copy them here (this file is human-gated and would
+  rot). Run one from anywhere with `initc run <task>`; `initc doctor` checks the machine.
+- `docs/state/` — `now.md` (where the project is) → `roadmap.md` (next) → `log.md` (was).
+- `docs/vision.md` — the human-owned WHY; only the user edits it.
