@@ -3,7 +3,18 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-12 (phase 1 implementation running, chunks 1-6 done):**
+**As of 2026-07-12 (phase 1 implementation running, chunks 1-7 done):**
+
+Chunk 7 (controllers) landed: Webster (measured sat flow via params or
+runs/calibration.json; greens ANCHORED to green onsets, not a drifting wall clock —
+review catch), ActuatedGapOut (dt cadence; stop-line loop + 50 m advance detector,
+honestly bounded — review catch: it was secretly omniscient), MaxPressure (queue
+pressure, tie-rests; machine fairness covers its ped-blindness). Signal machine gained
+the WALK RE-ARM (chunk-5 obligation closed): a resting green re-serves its own
+crosswalk after max_red_s, same cross-starving gate; adversarial resting-controller
+tests prove nobody starves. Rush head-to-head (seed 42, full episodes): p95 wait
+fixed_time 260.8 s / webster 34.7 / actuated 23.1 / max_pressure 32.4; throughput
+~1255 all (unsaturated); zero refusals everywhere.
 
 Chunk 6 (viewer) landed: `viewer/{draw,app,replay,gif}.py` — pygame-ce live view
 (`traffic-rl view`, pause/step/speed), trace replay, GIF export; draw.py renders a
@@ -93,7 +104,6 @@ brain note; the phase plan lives in `docs/plans/`. Teach-me protocol kept as a r
 `workflow/references/teach-me.md` (base retired it as too personal). Migration is
 committed and **pushed** through `c06af9f`.
 
-**Next action:** chunk 7 (Webster from measured saturation flow, ActuatedGapOut at dt
-cadence, MaxPressure; PLUS the recorded obligation: cap active-phase ped starvation in
-the signal machine; Opus review before commit). Commit at each green chunk; never push
-(Stepan pushes).
+**Next action:** chunk 8 (leaderboard: matrix runner controllers x scenarios x >=20
+seeds, bootstrap CIs, report + README + post #1 draft), then the final full-phase Opus
+review. Commit at each green chunk; never push (Stepan pushes).

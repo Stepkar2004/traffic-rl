@@ -56,6 +56,11 @@ class Observation:
     earliest_switch_s: float
     #: Pedestrian calls (push-button model): waiting peds per crosswalk.
     ped_waiting: tuple[int, ...]
+    #: Static plan constants a real controller knows about its own hardware
+    #: (Webster needs them for lost time; they never change within a run).
+    yellow_s: float
+    all_red_s: float
+    min_green_s: tuple[float, ...]  # per phase, the machine's enforced floor
 
 
 class Controller(Protocol):

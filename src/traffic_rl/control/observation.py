@@ -117,4 +117,7 @@ class PerfectObservation:
             red_elapsed_s=tuple(float(sig.red_t[0, p]) for p in range(N_PHASES)),
             earliest_switch_s=sig.earliest_switch_wait(0),
             ped_waiting=tuple(int(c) for c in ped_counts),
+            yellow_s=sig.yellow_s,
+            all_red_s=sig.all_red_s,
+            min_green_s=tuple(float(g) for g in sig.min_green_s),
         )

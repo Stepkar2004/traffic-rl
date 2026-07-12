@@ -2,6 +2,20 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-12 · Chunk 7 (Controllers) landed, Opus-reviewed (FIX-FIRST, both MAJORs
+  fixed pre-commit).** Webster computes plans from Observation flows + MEASURED
+  saturation values and now anchors each green to its onset via green_elapsed_s — the
+  review proved the original `t % cycle` clock never executed its own plan (realized
+  NS greens swung 10-51 s around a 19 s plan). ActuatedGapOut was quietly reading
+  every vehicle on a 300 m approach while claiming detector-only operation — now
+  honestly bounded to a stop-line loop + 50 m advance detector (a 250 m-out night car
+  is invisible until it trips the loop, and a test pins that). MaxPressure rests on
+  ties; its ped-blindness is covered by the machine, whose new WALK RE-ARM (since_walk
+  >= max_red on a resting green, cross-starving-gated) closes the chunk-5 obligation —
+  proven end to end by adversarial resting-controller tests, including a
+  re-arm-is-the-only-service variant. Phase maps now derive from topology at reset.
+  Rush head-to-head: p95 wait 260.8 (fixed) / 34.7 (webster) / 23.1 (actuated) / 32.4
+  (max-pressure), zero refusals. 122 tests.
 - **2026-07-12 · Chunk 6 (Viewer) landed; GIFs exported for the async visual gate.**
   One render path (draw.py consumes recorder Frames) serves live view, replay, and
   GIF export; geometry travels inside traces so replay needs no scenario file.

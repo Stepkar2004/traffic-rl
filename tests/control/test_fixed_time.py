@@ -23,6 +23,9 @@ DUMMY_OBS = Observation(
     red_elapsed_s=(0.0, 0.0),
     earliest_switch_s=0.0,
     ped_waiting=(),
+    yellow_s=3.2,
+    all_red_s=1.5,
+    min_green_s=(10.0, 10.0),
 )
 
 

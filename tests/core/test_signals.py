@@ -166,6 +166,26 @@ def test_late_call_deferred_while_cross_street_starving(topo: Topology) -> None:
     assert sig.forced == 1
 
 
+def test_walk_rearms_on_resting_green_after_cap(topo: Topology) -> None:
+    """Chunk-7 obligation: a resting green must not starve its OWN peds."""
+    sig = _machine(topo)
+    calls = (sig.cw_phase == int(Phase.NS)).astype(np.bool_)
+    sig.advance(DT, NO_DEMAND, calls)  # first WALK served
+    _advance(sig, 16.0, NO_DEMAND, calls)  # WALK + clearance run out; call persists
+    ns_heads = sig.cw_phase == int(Phase.NS)
+    assert (sig.ped_ind[ns_heads] == int(PedIndication.DONT_WALK)).all()
+    # rest in green: the re-arm must fire once the since-WALK clock passes
+    # max_red (and its WALK then runs its own course)
+    rearmed_at = None
+    for k in range(round((sig.max_red_s + 5.0) / DT)):
+        sig.advance(DT, NO_DEMAND, calls)
+        if (sig.ped_ind[ns_heads] == int(PedIndication.WALK)).all():
+            rearmed_at = 16.0 + (k + 1) * DT  # time since the FIRST walk onset
+            break
+    assert rearmed_at is not None
+    assert abs(rearmed_at - sig.max_red_s) < 1.0  # fires right at the cap
+
+
 def test_invalid_phase_refused(topo: Topology) -> None:
     sig = _machine(topo)
     assert not sig.request(7)

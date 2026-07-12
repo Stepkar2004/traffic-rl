@@ -84,6 +84,11 @@ class SignalState:
         self.ped_t: F64 = np.zeros(n_cw, dtype=np.float64)
         self.cw_phase: I32 = np.array([int(cw.walk_phase) for cw in topo.crosswalks], np.int32)
         self.walk_served: BOOL = np.zeros(n_cw, dtype=np.bool_)  # this green
+        #: Time since each crosswalk's last WALK onset — the pedestrian
+        #: analogue of red_t. Drives the resting-green re-arm (chunk-7
+        #: obligation): a controller resting in one phase forever must not
+        #: starve a late-arriving ped on its OWN crosswalks.
+        self.since_walk: F64 = np.zeros(n_cw, dtype=np.float64)
 
         # Lane → phase map for walls (-1: outbound, no signal faces it).
         self.lane_phase: I32 = np.full(topo.n_lanes, -1, dtype=np.int32)
@@ -159,6 +164,7 @@ class SignalState:
 
         # Pedestrian heads run on their own timers, within the green that started them.
         self.ped_t += dt
+        self.since_walk += dt
         walk_done = (self.ped_ind == int(PedIndication.WALK)) & (self.ped_t >= self.walk_s)
         self.ped_ind[walk_done] = int(PedIndication.CLEARANCE)
         self.ped_t[walk_done] = 0.0
@@ -188,18 +194,22 @@ class SignalState:
             if onset.any():
                 self.ped_ind[onset] = int(PedIndication.WALK)
                 self.ped_t[onset] = 0.0
+                self.since_walk[onset] = 0.0
                 self.walk_served[onset] = True
 
         # A LATE call (first in this green, after onset) is served mid-green —
         # but not while a cross phase with demand is close enough to its
         # max-red cap that the WALK would push the forced switch past it.
+        # A RE-ARM (chunk-7 obligation) serves a call under a RESTING green
+        # whose crosswalk hasn't seen WALK for max_red_s — the pedestrian
+        # analogue of the vehicle starvation cap, same cross-street gate.
         if int(self.indication[i]) == Indication.GREEN:
-            serve = (
+            eligible = (
                 (self.cw_phase == int(self.active[i]))
                 & ped_call
                 & (self.ped_ind == int(PedIndication.DONT_WALK))
-                & ~self.walk_served
             )
+            serve = eligible & (~self.walk_served | (self.since_walk >= self.max_red_s))
             if serve.any():
                 horizon = self.walk_s + float(self.ped_clear_s[serve].max())
                 cross_starving = any(
@@ -210,6 +220,7 @@ class SignalState:
                 if not cross_starving:
                     self.ped_ind[serve] = int(PedIndication.WALK)
                     self.ped_t[serve] = 0.0
+                    self.since_walk[serve] = 0.0
                     self.walk_served[serve] = True
 
         # Max-red: the machine forces service to a starving phase (ADR 0002 §3).
