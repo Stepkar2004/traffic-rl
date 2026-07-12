@@ -3,7 +3,22 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-11 (phase 0 direction lock drafted):**
+**As of 2026-07-12 (phase 1 implementation running, chunk 1 done):**
+
+Stepan approved the phase-1 plan; agreed run mode: **async gates** (ADR 0002 + chunk-6
+GIFs reviewed by him in parallel, work never blocks, phase only DECLARED done after his
+review) and **Opus adversarial review before the commits of chunks 3/4/5/7 + one final
+end-of-phase review**. Chunk 1 landed: [ADR 0002](../decisions/0002-metrics-and-realism-constraints.md)
+(metric definitions incl. trip-clock-starts-at-demand-event, p95-wait fairness
+headline, hysteresis stops; ITE/MUTCD constraint table; crosswalk concurrency map;
+measured saturation-flow calibration procedure; measurement protocol) + the three
+scenario sketches in `scenarios/`. **Awaiting Stepan's async review of ADR 0002** —
+edits are cheap until metric code lands (chunk 5). After phase 1: draft phase-2 plan,
+restructure phases-2-5 draft into 3-5.
+
+---
+
+**Phase-0 state (context, still true):**
 
 The phase-1 plan is written and adversarially reviewed: [docs/plans/phase-1.md](../plans/phase-1.md)
 (single 4-way intersection, NumPy SoA lane-segmented core, detection-level Observation
@@ -27,7 +42,5 @@ brain note; the phase plan lives in `docs/plans/`. Teach-me protocol kept as a r
 `workflow/references/teach-me.md` (base retired it as too personal). Migration is
 committed and **pushed** through `c06af9f`.
 
-**Next action:** Stepan reviews [docs/plans/phase-1.md](../plans/phase-1.md) (and the
-vision draft). On his approval, implementation starts at chunk 1 (metrics &
-realism-constraints ADR 0002) — possibly on a cheaper model, with the `workflow` skill
-binding every session. Commit at each green chunk; never push (Stepan pushes).
+**Next action:** chunk 2 (core skeleton: config, units, rng, topology, arrays; empty
+World steps deterministically). Commit at each green chunk; never push (Stepan pushes).

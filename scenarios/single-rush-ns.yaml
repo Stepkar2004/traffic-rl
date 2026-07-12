@@ -1,0 +1,35 @@
+# Scenario: NS-heavy rush hour with a ramp-peak-ramp profile; EW stays light.
+# Sketched in chunk 1 (ADR 0002); the loader (core/config.py) lands in chunk 2.
+# The asymmetry is the point: fixed 50/50 timing wastes EW green, and a controller
+# that serves NS greedily starves EW pedestrians - p95 wait catches it (ADR 0002).
+name: single-rush-ns
+description: "4-way, NS ramps 400/600/400 veh/h, EW steady 150; asymmetric peds."
+
+episode:
+  warmup_s: 300
+  measure_s: 3600
+  dt_s: 0.1
+
+topology:
+  kind: four_way
+  speed_limit_mph: 30
+  approach_length_m: 300
+  lanes_per_approach: 1
+  lane_width_m: 3.5
+  crosswalk_length_m: 14.0
+
+demand:
+  vehicles:
+    profile:   # rush builds, peaks, eases; EW light throughout
+      - {t0_s: 0,    rate_veh_h: {north: 400, south: 400, east: 150, west: 150}}
+      - {t0_s: 1500, rate_veh_h: {north: 600, south: 600, east: 150, west: 150}}
+      - {t0_s: 2700, rate_veh_h: {north: 400, south: 400, east: 150, west: 150}}
+  pedestrians:
+    profile:
+      - {t0_s: 0, rate_ped_h: {north: 40, south: 40, east: 100, west: 100}}
+
+controller:
+  kind: fixed_time
+  params:
+    cycle_s: 60
+    split_ns: 0.5    # deliberately naive here; Webster/actuated should beat this

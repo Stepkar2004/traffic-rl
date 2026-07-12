@@ -1,6 +1,9 @@
 # Phase 1 plan — the world and the honest floor
 
-> Status: **draft, awaiting Stepan's approval. No implementation before sign-off.**
+> Status: **approved by Stepan 2026-07-12 — implementation running.** Agreed run mode:
+> async gates (ADR 0002 + chunk-6 visuals reviewed by Stepan in parallel, work never
+> blocks; phase only DECLARED done after his review), Opus adversarial review before
+> the commits of chunks 3/4/5/7 plus one full end-of-phase review.
 > Written 2026-07-11. Grounded by [docs/research/sim-architecture-notes-2026-07.md](../research/sim-architecture-notes-2026-07.md).
 > Written to be implementable chunk-by-chunk by a well-briefed session (possibly a
 > cheaper model): every chunk has acceptance criteria.

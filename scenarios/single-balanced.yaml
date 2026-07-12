@@ -1,0 +1,35 @@
+# Scenario: single 4-way intersection, balanced demand on all approaches.
+# Sketched in chunk 1 (ADR 0002); the loader (core/config.py) lands in chunk 2.
+# Rates are moderate (v/c well under 1) so every controller can serve the load and
+# differences show up in delay/fairness, not in raw survival.
+name: single-balanced
+description: "4-way, 300 veh/h on every approach, steady; 60 ped/h per crosswalk."
+
+episode:
+  warmup_s: 300        # excluded from metrics (ADR 0002 section 6)
+  measure_s: 3600
+  dt_s: 0.1
+
+topology:
+  kind: four_way
+  speed_limit_mph: 30   # converted at the edge (core/units.py); also the v85 proxy
+  approach_length_m: 300
+  lanes_per_approach: 1
+  lane_width_m: 3.5
+  crosswalk_length_m: 14.0   # 4 lanes' worth of road to cross (2 lanes + margins)
+
+demand:
+  vehicles:
+    # piecewise-constant Poisson rates, veh/h per origin approach; t0_s = segment start
+    profile:
+      - {t0_s: 0, rate_veh_h: {north: 300, south: 300, east: 300, west: 300}}
+  pedestrians:
+    profile:
+      - {t0_s: 0, rate_ped_h: {north: 60, south: 60, east: 60, west: 60}}
+
+controller:
+  # default for `run` / `view`; `bench` crosses all controllers over all scenarios
+  kind: fixed_time
+  params:
+    cycle_s: 60
+    split_ns: 0.5

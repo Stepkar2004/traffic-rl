@@ -2,6 +2,15 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-12 · Phase 1 approved; chunk 1 (Frame) landed.** Stepan green-lit
+  implementation with async gates + Opus review at chunks 3/4/5/7 and end-of-phase.
+  ADR 0002 written (metrics locked before any sim code: demand-event trip clock, p95
+  wait as the fairness headline, hysteresis stop counting, unserved-demand and
+  refused-command diagnostics; ITE yellow / all-red / MUTCD ped timing / 120 s max-red
+  as hard signal-machine rules; crosswalk concurrency map; measured saturation-flow
+  calibration replacing textbook constants; 20-seed bootstrap-CI protocol). Three
+  scenario YAML sketches added. Awaiting his async ADR review; cheap to edit until
+  chunk 5.
 - **2026-07-11 · Kept teach-me as a repo-local reference.** Base retired the teach-me
   protocol upstream as too personal (and made the Stepan→user / brain-note-drop generic
   fixes, landed here as `63502e3`, `c06af9f`, pushed). Ported the protocol into

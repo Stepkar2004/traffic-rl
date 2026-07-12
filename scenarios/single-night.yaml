@@ -1,0 +1,34 @@
+# Scenario: night - sparse arrivals everywhere.
+# Sketched in chunk 1 (ADR 0002); the loader (core/config.py) lands in chunk 2.
+# At 60 veh/h a fixed 60 s cycle mostly shows red to nobody: actuated control should
+# dominate here, and stops/vehicle exposes controllers that halt lone cars at empty
+# intersections.
+name: single-night
+description: "4-way, 60 veh/h per approach, 10 ped/h per crosswalk."
+
+episode:
+  warmup_s: 300
+  measure_s: 3600
+  dt_s: 0.1
+
+topology:
+  kind: four_way
+  speed_limit_mph: 30
+  approach_length_m: 300
+  lanes_per_approach: 1
+  lane_width_m: 3.5
+  crosswalk_length_m: 14.0
+
+demand:
+  vehicles:
+    profile:
+      - {t0_s: 0, rate_veh_h: {north: 60, south: 60, east: 60, west: 60}}
+  pedestrians:
+    profile:
+      - {t0_s: 0, rate_ped_h: {north: 10, south: 10, east: 10, west: 10}}
+
+controller:
+  kind: fixed_time
+  params:
+    cycle_s: 60
+    split_ns: 0.5
