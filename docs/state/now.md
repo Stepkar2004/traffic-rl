@@ -110,7 +110,8 @@ restructure phases-2-5 draft into 3-5.
 The phase-1 plan is written and adversarially reviewed: [docs/plans/phase-1.md](../plans/phase-1.md)
 (single 4-way intersection, NumPy SoA lane-segmented core, detection-level Observation
 contract, headless + viewer/GIF modes, four calibrated classical controllers, 8 gated
-chunks). Draft directions for phases 2-5: [docs/plans/phases-2-5-draft.md](../plans/phases-2-5-draft.md).
+chunks). Draft directions now live in [phase-2.md](../plans/phase-2.md) +
+[phases-3-5-draft.md](../plans/phases-3-5-draft.md).
 Research grounding: [docs/research/sim-architecture-notes-2026-07.md](../research/sim-architecture-notes-2026-07.md).
 `docs/vision.md` drafted from Stepan's words — **provisional until he edits or blesses
 it**. Roadmap + brain note amended: grid and coordinated-offset baseline moved to
@@ -129,6 +130,12 @@ brain note; the phase plan lives in `docs/plans/`. Teach-me protocol kept as a r
 `workflow/references/teach-me.md` (base retired it as too personal). Migration is
 committed and **pushed** through `c06af9f`.
 
-**Next action:** phase-2 plan drafting + phases 2-5 draft restructured to 3-5 (per
-Stepan's instruction, happens now, before his gate review lands). Never push (Stepan
-pushes).
+**Also done (per Stepan's instruction):** [phase-2.md](../plans/phase-2.md) drafted at
+plan-shape (seams verified against real code, the turns/gap-acceptance scope decision
+flagged for him + realism-scan, chunk sketch, risks); phases-2-5 draft restructured to
+[phases-3-5-draft.md](../plans/phases-3-5-draft.md) with each phase re-grounded in
+what phase 1 actually shipped (live seams, pinned tests, recorded debts). Roadmap
+updated.
+
+**Next action:** Stepan's phase-1 gate review (list above), then realism-scan +
+phase-2 plan review. Never push (Stepan pushes).

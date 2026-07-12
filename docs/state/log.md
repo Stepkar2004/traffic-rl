@@ -2,6 +2,17 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-12 · Phase-2 plan drafted; phases 2-5 draft restructured to 3-5.**
+  phase-2.md written at plan-shape while the seams were fresh: what phase 1 hands
+  over (verified file-by-file), the turns/gap-acceptance scope decision explicitly
+  flagged for Stepan + realism-scan (permissive turns need the deferred yield kernel;
+  recommendation: grid through-only, green wave first), 7-chunk sketch with the DQN
+  sanity gate, risks incl. sample-budget throughput and reward-hacking-inside-legal-
+  space. phases-3-5-draft.md re-grounded in shipped code: NoisyDetection's live seam,
+  phase-4 hooks that already have pinned tests (jaywalking, dilemma-zone latch,
+  mid-lane walls for stalls), the tripwire→crash-detection replacement, phase-5's
+  gap-acceptance debt and N_PHASES generalization points. Roadmap updated; stale
+  brain-note authority line dropped.
 - **2026-07-12 · Final phase-1 Opus review: PHASE-GATE-READY, zero blockers.** The
   cross-cutting pass reproduced docs/leaderboard.md byte-for-byte from stored rows,
   re-ran cells to <1e-9, re-verified calibration/bench/ADR-vs-config, audited every
