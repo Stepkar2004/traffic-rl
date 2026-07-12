@@ -105,8 +105,8 @@ def test_queue_discharges_when_wall_lifts() -> None:
     wall = np.array([np.inf], dtype=np.float32)  # green
     completed = 0
     for _ in range(3000):
-        _i, c = step_vehicles(veh, lane_length, next_lane, wall, None, DELTA, DT)
-        completed += c
+        _i, trips = step_vehicles(veh, lane_length, next_lane, wall, None, DELTA, DT)
+        completed += len(trips)
     assert completed == 10  # everyone cleared the lane end
     assert veh.n == 0
 

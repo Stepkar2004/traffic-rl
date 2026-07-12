@@ -2,6 +2,20 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-12 · Chunk 5 (Peds + metrics + recorder + calibration) landed,
+  Opus-reviewed.** Pedestrians wait for call-served WALK and cross under clearance
+  protection; metrics implement ADR 0002 exactly (demand-event trip clock, boundary
+  wait folded in at completion, hysteresis stops, p95 fairness headline; review fixed
+  throughput to the completions-in-window cohort — the demand cohort understates
+  discharge ~3x under saturation — and added `unserved_peds`, since p95-over-
+  completions is structurally blind to TOTAL starvation). npz recorder round-trips
+  traces with geometry for the viewer. Calibration bench measured the sim's own
+  saturation flow (1440 veh/h, h_sat 2.50 s, startup lost 1.60 s; sd=0, homogeneous
+  IDM — honest note in module) for Webster. Golden determinism fixture committed.
+  FixedTime made refusal-proof via the new `pending_phase` Observation channel (its
+  old "patience" was unwittingly requesting yellow aborts). Chunk-7 obligation
+  recorded: the machine cannot yet cap active-phase ped waits under a resting green.
+  94 tests.
 - **2026-07-12 · Chunk 4 (Signals + FixedTime) landed, Opus-reviewed.** Timing formulas
   (ITE yellow 3.2 s at 30 mph, all-red from geometry, MUTCD ped clearance, Webster
   cycle) feed a signal machine whose interlocks refuse-and-count illegal commands:

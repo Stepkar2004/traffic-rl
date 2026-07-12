@@ -3,7 +3,20 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-12 (phase 1 implementation running, chunks 1-4 done):**
+**As of 2026-07-12 (phase 1 implementation running, chunks 1-5 done):**
+
+Chunk 5 landed: pedestrian kernel (call-driven WALK service, clearance-protected
+crossings, per-agent compliance seam pinned), ADR 0002 metrics (demand-event trip
+clock, hysteresis stops, p95 fairness, ped waits first-class, throughput as a
+COMPLETIONS-in-window rate, `unserved_peds` total-starvation diagnostic), npz
+recorder + Trace replay, queue-discharge calibration (measured: sat flow 1440 veh/h,
+h_sat 2.50 s, startup lost 1.60 s → `runs/calibration.json`), golden determinism
+fixture (2 Hz digests, tolerance-based, regen via TRAFFIC_RL_REGEN_GOLDEN=1).
+Observation gained `pending_phase`; FixedTime is refusal-proof by construction. Opus
+review: FIX-FIRST → both MAJORs folded (throughput cohort, unserved_peds); chunk-7
+obligation recorded (active-phase ped starvation cap) in phase-1.md §7. Full rush
+run: p95 wait 260.8 s under naive 50/50 FixedTime — the story chunk 7's controllers
+must beat.
 
 Chunk 4 (signals) landed: `core/timing.py` (ITE yellow / all-red / MUTCD ped clearance /
 Webster cycle as named formulas), `core/signals.py` (state machine with refusal-counted
@@ -70,6 +83,6 @@ brain note; the phase plan lives in `docs/plans/`. Teach-me protocol kept as a r
 `workflow/references/teach-me.md` (base retired it as too personal). Migration is
 committed and **pushed** through `c06af9f`.
 
-**Next action:** chunk 5 (pedestrian kernel + concurrency map, metric suite with
-hysteresis stops, npz recorder, queue-discharge calibration bench; Opus review before
-commit). Commit at each green chunk; never push (Stepan pushes).
+**Next action:** chunk 6 (viewer: draw/app/replay/gif; export balanced + rush GIFs for
+Stepan's async visual sign-off, then continue to chunk 7 without blocking). Commit at
+each green chunk; never push (Stepan pushes).

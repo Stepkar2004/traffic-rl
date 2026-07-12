@@ -11,9 +11,11 @@ gap to the leader is ``s_lead - length_lead - s``; gap to a stop-line wall is
 ``wall - s``.
 """
 
+from dataclasses import dataclass
+
 import numpy as np
 
-from traffic_rl.core.arrays import BOOL, F32, I32, I64, VehicleArrays
+from traffic_rl.core.arrays import BOOL, F32, F64, I32, I64, VehicleArrays
 
 #: Effectively-infinite gap for vehicles with nothing ahead (float32-safe).
 BIG_GAP = np.float32(1.0e9)
@@ -158,31 +160,62 @@ def enforce_no_overlap(s_new: F32, length: F32, offsets: I64, min_gap: float = 0
     return count
 
 
-def transfer_and_despawn(veh: VehicleArrays, lane_length_m: F32, next_lane: I32) -> int:
+@dataclass(frozen=True)
+class CompletedTrips:
+    """Snapshot of vehicles that finished this step (metrics feed, ADR 0002 §1)."""
+
+    demand_t: F64
+    entered_t: F64
+    wait_s: F32
+    stops: I32
+    origin: I32
+
+    def __len__(self) -> int:
+        return int(self.demand_t.shape[0])
+
+
+_NO_TRIPS = CompletedTrips(
+    demand_t=np.empty(0, dtype=np.float64),
+    entered_t=np.empty(0, dtype=np.float64),
+    wait_s=np.empty(0, dtype=np.float32),
+    stops=np.empty(0, dtype=np.int32),
+    origin=np.empty(0, dtype=np.int32),
+)
+
+
+def transfer_and_despawn(veh: VehicleArrays, lane_length_m: F32, next_lane: I32) -> CompletedTrips:
     """Move vehicles that crossed their lane end; despawn at dead ends.
 
-    Returns the number of completed (despawned) trips. Positions are
-    continuous across a transfer: the next lane's s=0 IS this lane's end.
+    Returns the finishers' accumulator snapshots (copied before compaction).
+    Positions are continuous across a transfer: the next lane's s=0 IS this
+    lane's end.
 
     Single-hop: assumes one step's ds < any lane length (true in phase 1:
     ~1.5 m/step vs 300 m lanes). Phase-2 short junction links must revisit.
     """
     n = veh.n
     if n == 0:
-        return 0
+        return _NO_TRIPS
     lane = veh.lane[:n]
     crossed = veh.s[:n] >= lane_length_m[lane]
     if not bool(crossed.any()):
-        return 0
+        return _NO_TRIPS
     nxt = next_lane[lane]
     move = crossed & (nxt >= 0)
     finish = crossed & (nxt < 0)
     veh.s[:n][move] -= lane_length_m[lane[move]]
     veh.lane[:n][move] = nxt[move]
-    completed = int(np.count_nonzero(finish))
-    if completed:
-        veh.compact(~finish)
-    return completed
+    if not bool(finish.any()):
+        return _NO_TRIPS
+    trips = CompletedTrips(
+        demand_t=veh.demand_t[:n][finish].copy(),
+        entered_t=veh.entered_t[:n][finish].copy(),
+        wait_s=veh.wait_s[:n][finish].copy(),
+        stops=veh.stops[:n][finish].copy(),
+        origin=veh.origin[:n][finish].copy(),
+    )
+    veh.compact(~finish)
+    return trips
 
 
 def step_vehicles(
@@ -193,8 +226,8 @@ def step_vehicles(
     wall_exempt: BOOL | None,
     delta: float,
     dt: float,
-) -> tuple[int, int]:
-    """One full vehicle sub-step over all lanes. Returns (interventions, completed).
+) -> tuple[int, CompletedTrips]:
+    """One full vehicle sub-step over all lanes. Returns (interventions, finishers).
 
     This is THE hot path: the World calls it every dt, and ``traffic-rl
     bench`` measures exactly this function.
@@ -225,5 +258,5 @@ def step_vehicles(
         interventions = enforce_no_overlap(s_new, len_o, offsets)
         veh.s[:n][order] = s_new
         veh.v[:n][order] = v_new
-    completed = transfer_and_despawn(veh, lane_length_m, next_lane)
-    return interventions, completed
+    trips = transfer_and_despawn(veh, lane_length_m, next_lane)
+    return interventions, trips

@@ -13,6 +13,8 @@ import numpy as np
 from traffic_rl.core.arrays import BOOL, F32, I32, I64, PedArrays, VehicleArrays
 from traffic_rl.core.config import APPROACHES, SimConfig
 from traffic_rl.core.demand import build_arrival_schedule
+from traffic_rl.core.metrics import EpisodeMetrics, MetricsCollector, accumulate_step
+from traffic_rl.core.pedestrians import step_pedestrians
 from traffic_rl.core.rng import RngStreams, spawn_streams
 from traffic_rl.core.signals import Indication, SignalState
 from traffic_rl.core.topology import N_PHASES, Topology, four_way_intersection
@@ -22,6 +24,7 @@ from traffic_rl.core.vehicles import GAP_EPS, step_vehicles
 if TYPE_CHECKING:
     from traffic_rl.control.base import Controller
     from traffic_rl.control.observation import ObservationModel
+    from traffic_rl.core.recorder import TraceWriter
 
 
 @dataclass
@@ -106,10 +109,18 @@ class World:
         self._veh_arrivals = build_arrival_schedule(cfg.demand.vehicle_profile, dur, demand_rng)
         self._ped_arrivals = build_arrival_schedule(cfg.demand.ped_profile, dur, demand_rng)
         self._veh_cursor = [0] * len(APPROACHES)
+        self._ped_cursor = [0] * len(APPROACHES)
         #: FIFO of demand_t for vehicles waiting at each boundary (ADR 0002 §1:
         #: their trip clock is already running).
         self.boundary_queue: list[list[float]] = [[] for _ in APPROACHES]
         self.veh_demanded_by_approach: I64 = np.zeros(len(APPROACHES), dtype=np.int64)
+
+        self._cw_length: F32 = np.array([cw.length_m for cw in topo.crosswalks], dtype=np.float32)
+        self.metrics = MetricsCollector(
+            warmup_s=cfg.episode.warmup_s, measure_s=cfg.episode.measure_s
+        )
+        #: Optional trace recorder (design principle 6): attach, run, save.
+        self.recorder: TraceWriter | None = None
 
     @property
     def t(self) -> float:
@@ -127,10 +138,13 @@ class World:
         self._update_walls()
         self._spawn_vehicles()
         self._advance_vehicles()
-        # 5. pedestrian kernel (chunk 5)
-        # 6. metrics accumulate + recorder snapshot (chunk 5)
+        self._spawn_peds()
+        self._advance_peds()
+        accumulate_step(self.vehicles, self.cfg.episode.dt_s)
         self.counters.forced_switches = self.signals.forced
         self.step_count += 1
+        if self.recorder is not None:
+            self.recorder.maybe_snapshot()
 
     def run(self, duration_s: float | None = None) -> None:
         """Step until ``duration_s`` (default: the configured episode length).
@@ -267,7 +281,7 @@ class World:
         return min(v0, (gap0 - idm.s0_m) / idm.t_headway_s)
 
     def _advance_vehicles(self) -> None:
-        interventions, completed = step_vehicles(
+        interventions, trips = step_vehicles(
             self.vehicles,
             self._lane_length,
             self._next_lane,
@@ -277,7 +291,59 @@ class World:
             self.cfg.episode.dt_s,
         )
         self.counters.safety_interventions += interventions
-        self.counters.veh_completed += completed
+        self.counters.veh_completed += len(trips)
+        if len(trips):
+            self.metrics.on_vehicles_completed(trips, self.t)
+
+    def _spawn_peds(self) -> None:
+        t = self.t
+        ped = self.cfg.ped
+        for a_idx in range(len(APPROACHES)):
+            arrivals = self._ped_arrivals[a_idx]
+            cur = self._ped_cursor[a_idx]
+            while cur < arrivals.size and arrivals[cur] <= t:
+                self.peds.add(
+                    1,
+                    crosswalk=a_idx,  # crosswalk id == leg index (topology builder)
+                    state=PedArrays.STATE_WAITING,
+                    speed=ped.walk_speed_mps,  # per-agent; phase 4 samples this
+                    compliant=True,
+                    demand_t=float(arrivals[cur]),
+                )
+                self.counters.ped_demanded += 1
+                cur += 1
+            self._ped_cursor[a_idx] = cur
+
+    def _advance_peds(self) -> None:
+        crossings = step_pedestrians(
+            self.peds,
+            self.signals.walk_on(),
+            self._cw_length,
+            self.t,
+            self.cfg.episode.dt_s,
+        )
+        self.counters.ped_completed += len(crossings)
+        for k in range(len(crossings)):
+            self.metrics.on_ped_completed(
+                float(crossings.demand_t[k]), float(crossings.entered_t[k])
+            )
+
+    def episode_metrics(self) -> EpisodeMetrics:
+        """Finalize the run's numbers (ADR 0002 §6 window rules)."""
+        lo, hi = self.cfg.episode.warmup_s, self.cfg.episode.duration_s
+        unserved = sum(1 for q in self.boundary_queue for demand_t in q if lo <= demand_t < hi)
+        n_ped = self.peds.n
+        still_waiting = self.peds.state[:n_ped] == PedArrays.STATE_WAITING
+        ped_d = self.peds.demand_t[:n_ped]
+        unserved_peds = int(np.count_nonzero(still_waiting & (ped_d >= lo) & (ped_d < hi)))
+        return self.metrics.finalize(
+            unserved_demand=unserved,
+            unserved_peds=unserved_peds,
+            in_network_at_end=self.vehicles.n,
+            refused_commands=self.counters.refused_commands,
+            forced_switches=self.counters.forced_switches,
+            safety_interventions=self.counters.safety_interventions,
+        )
 
     # -- diagnostics ---------------------------------------------------------
 

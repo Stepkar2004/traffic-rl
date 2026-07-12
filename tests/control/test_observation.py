@@ -83,4 +83,8 @@ def test_signal_state_passthrough() -> None:
     assert obs.indication == int(w.signals.indication[0])
     assert obs.earliest_switch_s == w.signals.earliest_switch_wait(0)
     assert len(obs.red_elapsed_s) == 2
-    assert obs.ped_waiting == (0, 0, 0, 0)  # peds arrive in chunk 5
+    # push-button channel: one entry per crosswalk, counts the curb waiters
+    assert len(obs.ped_waiting) == 4
+    n = w.peds.n
+    waiting_total = int((w.peds.state[:n] == 0).sum())
+    assert sum(obs.ped_waiting) == waiting_total

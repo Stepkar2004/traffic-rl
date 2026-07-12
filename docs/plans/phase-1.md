@@ -319,6 +319,12 @@ push without an explicit instruction).
 - **CI rendering**: viewer tests run under `SDL_VIDEODRIVER=dummy`; if pygame-ce
   misbehaves headless in CI, the render smoke test is skipped-with-reason there and run
   locally instead.
+- **Chunk-7 obligation (from the chunk-5 Opus review):** the signal machine cannot cap
+  a pedestrian's wait on the ACTIVE phase's crosswalk — WALK is once-per-green, and
+  max-red only forces NON-active phases, so a controller that rests in one green
+  (max-pressure/actuated at night) can starve a same-phase late-arriving ped. The
+  `unserved_peds` diagnostic (added chunk 5) makes this visible; chunk 7 must either
+  re-arm WALK on a resting green past a cap or force a phase cycle.
 - **Scope changes**: per Stepan, phases are not fixed; changes land by editing this plan
   (and the roadmap) before or during implementation, through the normal review door.
 

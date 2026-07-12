@@ -45,6 +45,9 @@ class Observation:
     #: Signal head state — a real controller knows its own outputs.
     active_phase: int
     indication: int  # signals.Indication value
+    #: Transition target while indication != GREEN, else -1. Requesting it is
+    #: the only benign command mid-transition (anything else is an abort).
+    pending_phase: int
     time_in_state_s: float
     green_elapsed_s: float
     red_elapsed_s: tuple[float, ...]  # per phase

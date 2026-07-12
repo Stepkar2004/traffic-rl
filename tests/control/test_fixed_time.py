@@ -17,6 +17,7 @@ DUMMY_OBS = Observation(
     approaches=(),
     active_phase=0,
     indication=int(Indication.GREEN),
+    pending_phase=-1,
     time_in_state_s=0.0,
     green_elapsed_s=0.0,
     red_elapsed_s=(0.0, 0.0),
@@ -48,7 +49,8 @@ def test_full_world_cycles_without_refusals() -> None:
         w.step()
         phases_seen.add(int(w.signals.active[0]))
     assert phases_seen == {int(Phase.NS), int(Phase.EW)}
-    # an honest clock controller never asks for anything illegal (no peds yet)
+    # an honest clock controller never asks for anything illegal, even with
+    # pedestrian clearances running (it holds via earliest_switch_s)
     assert w.counters.refused_commands == 0
     assert w.counters.forced_switches == 0
     assert w.counters.safety_interventions == 0

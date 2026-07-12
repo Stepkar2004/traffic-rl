@@ -111,6 +111,7 @@ class PerfectObservation:
             approaches=tuple(channels),
             active_phase=int(sig.active[0]),
             indication=int(sig.indication[0]),
+            pending_phase=int(sig.pending[0]),
             time_in_state_s=float(sig.state_t[0]),
             green_elapsed_s=float(sig.green_t[0]),
             red_elapsed_s=tuple(float(sig.red_t[0, p]) for p in range(N_PHASES)),

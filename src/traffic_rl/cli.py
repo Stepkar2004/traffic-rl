@@ -25,12 +25,22 @@ def main() -> None:
 def run(
     scenario: Annotated[Path, typer.Argument(help="Path to a scenario YAML.")],
     seed: Annotated[int | None, typer.Option(help="Root seed (omit for fresh entropy).")] = None,
+    record: Annotated[
+        Path | None, typer.Option(help="Write an npz trace here (for replay/gif).")
+    ] = None,
 ) -> None:
-    """Run a scenario headless and print a one-line summary."""
+    """Run a scenario headless; print counters + ADR 0002 episode metrics."""
+    from traffic_rl.core.recorder import TraceWriter
+
     cfg = load_scenario(scenario)
     world = World(cfg, seed=seed)
+    if record is not None:
+        world.recorder = TraceWriter(world)
     world.run()
+    if record is not None and world.recorder is not None:
+        world.recorder.save(record)
     c = world.counters
+    m = world.episode_metrics()
     typer.echo(
         f"{cfg.name}: t={world.t:.1f}s steps={world.step_count} "
         f"entropy={world.rng.entropy} vehicles(demanded={c.veh_demanded} "
@@ -38,6 +48,35 @@ def run(
         f"peds(demanded={c.ped_demanded} completed={c.ped_completed}) "
         f"signals(refused={c.refused_commands} forced={c.forced_switches} "
         f"interventions={c.safety_interventions})"
+    )
+    typer.echo(
+        f"  metrics[{world.metrics.warmup_s:.0f}s warmup excluded]: "
+        f"travel={m.mean_travel_time_s:.1f}s wait={m.mean_wait_s:.1f}s "
+        f"p95_wait={m.p95_wait_s:.1f}s throughput={m.throughput_veh_h:.0f}/h "
+        f"stops/veh={m.stops_per_vehicle:.2f} "
+        f"ped_wait={m.mean_ped_wait_s:.1f}s p95_ped_wait={m.p95_ped_wait_s:.1f}s "
+        f"(trips={m.n_trips} crossings={m.n_ped_crossings} "
+        f"unserved={m.unserved_demand} unserved_peds={m.unserved_peds})"
+    )
+    if record is not None:
+        typer.echo(f"  trace: {record}")
+
+
+@app.command()
+def calibrate(
+    n_queue: Annotated[int, typer.Option(help="Standing-queue size (>= 15).")] = 16,
+    n_seeds: Annotated[int, typer.Option(help="Seeds to average over.")] = 10,
+    out: Annotated[Path, typer.Option(help="Output JSON path.")] = Path("runs/calibration.json"),
+) -> None:
+    """Measure saturation flow + startup lost time (ADR 0002 §5); Webster consumes it."""
+    from traffic_rl.experiments.calibrate import run_calibration
+
+    r = run_calibration(n_queue=n_queue, n_seeds=n_seeds, out_path=out)
+    typer.echo(
+        f"calibration: sat_flow={r.saturation_flow_veh_h:.0f} veh/h "
+        f"(h_sat={r.saturation_headway_s:.2f}s, sd={r.sd_saturation_flow:.1f}) "
+        f"startup_lost={r.startup_lost_time_s:.2f}s "
+        f"[{r.n_seeds} seeds x {r.n_vehicles_measured} vehicles] -> {out}"
     )
 
 
