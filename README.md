@@ -64,3 +64,12 @@ Sim core: NumPy structure-of-arrays over CSR lane segments, IDM car-following,
 ballistic integration with exact-stop correction, dt = 0.1 s — ~800x realtime for
 the vehicle kernel at 1k vehicles (synthetic bench, one CPU core), and the same
 layout batches many worlds in phase 2.
+
+### Docs
+
+- [docs/map.md](docs/map.md) — the codebase map: what every folder and file does.
+- [docs/experiments.md](docs/experiments.md) — every command, its outputs, and which
+  phase it is current with.
+- [docs/results/phase-1.md](docs/results/phase-1.md) — what the phase-1 experiments
+  actually showed, beyond the tables.
+- [docs/decisions/](docs/decisions/) — ADRs; 0002 is the locked metrics spec.

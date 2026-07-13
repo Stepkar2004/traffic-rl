@@ -3,7 +3,15 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-12 (phase 1 COMPLETE pending Stepan's gate review):**
+**As of 2026-07-12 (phase 1 COMPLETE pending Stepan's gate review; phase 1.1 docs landed):**
+
+Phase 1.1 (Stepan-requested) landed: permanent documentation surfaces per
+[ADR 0003](../decisions/0003-permanent-docs.md) — [map.md](../map.md) (the one-file
+codebase summary, progressive disclosure), [experiments.md](../experiments.md)
+(commands + outputs + phase currency + reproduction recipes),
+[results/phase-1.md](../results/phase-1.md) (what the phase-1 runs meant). The
+workflow skill's orient step now points at the map, and its document step names all
+three surfaces as per-chunk staleness checks. README gained a Docs section.
 
 Final full-phase Opus review: **PHASE-GATE-READY, zero blockers.** It reproduced the
 leaderboard byte-for-byte from stored rows, re-ran cells to <1e-9 determinism,

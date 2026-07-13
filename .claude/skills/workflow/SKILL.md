@@ -11,7 +11,8 @@ description: The SWE loop binding every implementation session in this repo - fi
 ## The loop
 
 0. **Orient.** Read `docs/state/now.md`, then the active plan (`docs/plans/` when the
-   repo keeps phase plans, else the current chunk in `docs/state/roadmap.md`). Know the
+   repo keeps phase plans, else the current chunk in `docs/state/roadmap.md`); for
+   code orientation, `docs/map.md` is the one-file codebase summary. Know the
    chunk's goal and acceptance criteria before touching code. If no chunk is defined,
    defining one IS the first task.
 1. **Plan the chunk.** Smallest end-to-end slice; name the files to touch and the tests
@@ -25,8 +26,14 @@ description: The SWE loop binding every implementation session in this repo - fi
      (CLAUDE.md) and the pre-commit / CI configs are the full set.
    - User-visible behavior ⇒ actually run it — a green unit test is not a seen behavior.
 4. **Document in the same chunk.** Update whatever the change made stale: README, the
-   plan doc, an ADR for any new decision (`docs/decisions/`), docstrings. The test:
-   "would a fresh session mis-learn anything if it read the docs right now?"
+   plan doc, an ADR for any new decision (`docs/decisions/`), docstrings — **and the
+   three permanent surfaces (repo ADR 0003), checked by name at every chunk boundary:**
+   - `docs/map.md` — files/folders added, moved, or removed? Update the map.
+   - `docs/experiments.md` — a command, default, or output changed? Update it and
+     its phase-currency line.
+   - `docs/results/<phase>.md` — a protocol experiment ran? Interpret it there
+     (numbers transcribed from committed artifacts, never re-computed for prose).
+   The test: "would a fresh session mis-learn anything if it read the docs right now?"
 5. **Commit at the chunk boundary.** Gates green → `docs/state/now.md` + `log.md`
    updated → commit. **NEVER push. The user pushes, or explicitly says push** — this repo
    is public; an unpushed mistake is free, a pushed one is not.
@@ -50,8 +57,9 @@ long-term costs. Blocked beats wrong.
 
 ## Lessons (repo-local; append one line per real session: date · lesson; prune when stale)
 
-> Migrated here from the retired `project-base` skill on 2026-07-11 (ADR 0003): repo
-> lessons now live in the workflow body, per the evolve procedure.
+> Migrated here from the retired `project-base` skill on 2026-07-11 (init-configurator
+> ADR 0003 — not this repo's): repo lessons now live in the workflow body, per the
+> evolve procedure.
 
 - 2026-07-10 · GitHub Actions: `releases/latest` lies about usable refs — setup-uv's
   latest is v8.3.2 but no floating `v8` tag exists. Check `repos/<owner>/<repo>/tags`

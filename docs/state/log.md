@@ -2,6 +2,17 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-12 · Phase 1.1 (Stepan-requested): permanent docs + ADR 0003.** Plans are
+  history, not documentation — the repo gained three living surfaces: `docs/map.md`
+  (progressive codebase map: glance tree → folder responsibilities → full tree with
+  per-file one-liners drawn from the modules' own docstrings), `docs/experiments.md`
+  (every command, its outputs, and which phase it is current with, plus the
+  reproduction recipe for each committed artifact), and `docs/results/phase-1.md`
+  (what the runs MEANT, assuming code correct: calibration/bench takeaways, the
+  balanced near-tie, the rush mean-vs-p95 reveal, night actuation dominance +
+  max-pressure ped-blindness, and the explicit phase-2 bar). Workflow skill updated
+  (reviewed diff): orient points at the map; document step names all three surfaces
+  as per-chunk staleness checks. README gained a Docs section.
 - **2026-07-12 · Phase-2 plan drafted; phases 2-5 draft restructured to 3-5.**
   phase-2.md written at plan-shape while the seams were fresh: what phase 1 hands
   over (verified file-by-file), the turns/gap-acceptance scope decision explicitly
