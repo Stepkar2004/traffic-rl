@@ -2,6 +2,19 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-14 · Phase 2 chunk 4: the hand-built green wave + phase-2 scenarios.**
+  CoordinatedFixedTime (FixedTime + travel-time offsets computed from the topology
+  at reset; axis auto-inferred: corridor→ew, grid→diag compromise, single→offset 0);
+  max-pressure gained its network form (`downstream=True` subtracts exit-link
+  occupancy via the Observation — spillback awareness); three scenarios landed
+  (corridor-rush / grid-balanced / grid-rush-diag, flat profiles so the emergence
+  probe stays interpretable); the leaderboard runner now builds topology-appropriate
+  controller sets per scenario (singles keep the phase-1 four; networks add
+  coordinated + downstream max-pressure) and cells go through the World's
+  per-intersection controller path. Seen behavior: on corridor-rush (seed 7,
+  900 s preview) coordination cut p95 wait 41.8→31.3 s and stops/veh 0.92→0.69 vs
+  independent fixed-time, and the frames show platoons riding successive greens —
+  preview numbers, NOT results; the protocol run happens in the run session.
 - **2026-07-14 · Phase 2 chunk 3: batched worlds + TrafficEnv (VectorEnv).** New
   `envs/` package: `replicate_topology` (B disjoint topology copies, ids offset) +
   `BatchedWorlds` (World's exact sub-step order over merged arrays — one vectorized

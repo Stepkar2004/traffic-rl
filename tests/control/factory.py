@@ -14,6 +14,7 @@ def make_obs(
     detected: tuple[int, int, int, int] | None = None,
     occupied: tuple[bool, bool, bool, bool] = (False, False, False, False),
     recency: tuple[float, float, float, float] = (1e9, 1e9, 1e9, 1e9),
+    downstream: tuple[int, int, int, int] = (0, 0, 0, 0),
     active: int = 0,
     indication: int = int(Indication.GREEN),
     pending: int = -1,
@@ -34,6 +35,8 @@ def make_obs(
             time_since_actuation_s=recency[a],
             flow_veh_h=flows[a],
             queue_len=queues[a],
+            downstream_count=downstream[a],
+            downstream_capacity=40,
         )
         for a in range(4)
     )

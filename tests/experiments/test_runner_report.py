@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from traffic_rl.experiments.report import aggregate, ci_bar_chart, leaderboard_markdown
-from traffic_rl.experiments.runner import run_cell, run_matrix
+from traffic_rl.experiments.runner import controllers_for, run_cell, run_matrix
 
 SCENARIOS = Path(__file__).parents[2] / "scenarios"
 CAL = {"saturation_flow_veh_h": 1440.0, "startup_lost_time_s": 1.6}
@@ -44,3 +44,33 @@ def test_tiny_matrix_and_report_render(tmp_path: Path) -> None:
     chart = tmp_path / "chart.png"
     ci_bar_chart(rows, chart)
     assert chart.exists() and chart.stat().st_size > 10_000
+
+
+def test_controller_sets_depend_on_topology() -> None:
+    single = dict(controllers_for(SCENARIOS / "single-rush-ns.yaml", CAL))
+    multi = dict(controllers_for(SCENARIOS / "corridor-rush.yaml", CAL))
+    assert "coordinated" not in single  # offsets need more than one signal
+    assert single["max_pressure"] == {}  # phase-1 sink form, comparable forever
+    assert "coordinated" in multi
+    assert multi["max_pressure"] == {"downstream": True}  # network form
+
+
+def test_corridor_cell_runs_coordinated_end_to_end() -> None:
+    row = run_cell(str(SCENARIOS / "corridor-rush.yaml"), "coordinated", {}, 3, measure_s=120.0)
+    assert row["scenario"] == "corridor-rush"
+    assert row["safety_interventions"] == 0
+    assert row["refused_commands"] == 0  # coordinated is interlock-honest
+    assert row["n_trips"] > 0
+
+
+def test_report_renders_multi_intersection_rows() -> None:
+    kinds: list[tuple[str, dict[str, object]]] = [("fixed_time", {}), ("coordinated", {})]
+    rows = [
+        run_cell(str(SCENARIOS / "corridor-rush.yaml"), kind, params, seed, measure_s=60.0)
+        for kind, params in kinds
+        for seed in (0, 1)
+    ]
+    md = leaderboard_markdown(rows, CAL)
+    assert "## corridor-rush" in md
+    assert "coordinated" in md
+    assert "green wave" in md  # the honesty note ships with the row

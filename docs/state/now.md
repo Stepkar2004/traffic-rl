@@ -3,7 +3,13 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-14 (phase 2 IN PROGRESS — chunks 1-3 of 7 done):**
+**As of 2026-07-14 (phase 2 IN PROGRESS — chunks 1-4 of 7 done; Opus review #1 next):**
+
+Chunk 4 landed: CoordinatedFixedTime (travel-time offsets, the emergence foil),
+max-pressure network form, scenarios corridor-rush / grid-balanced /
+grid-rush-diag, leaderboard runner v2 (topology-appropriate controller sets).
+Green wave verified visually + preview numbers (p95 41.8→31.3 s vs independent
+fixed-time on corridor-rush).
 
 Chunk 3 landed: `envs/` — BatchedWorlds (B worlds, one process, same kernels;
 B=1 pinned step-for-step against World) + TrafficEnv (batched VectorEnv per

@@ -24,6 +24,16 @@ def test_ties_rest_in_place() -> None:
     assert mp.decide(obs, 10.0) == NS  # no flapping between equal queues
 
 
+def test_downstream_form_subtracts_exit_occupancy() -> None:
+    """The network form must not dump traffic into a full downstream block."""
+    obs = make_obs(active=NS, queues=(1, 0, 4, 3), downstream=(0, 0, 5, 4))
+    assert MaxPressure(downstream=False).pressures(obs) == [1, 7]
+    assert MaxPressure(downstream=True).pressures(obs) == [1, -2]
+    # spillback flips the decision the sink form would have made
+    assert MaxPressure(downstream=False).decide(obs, 10.0) == EW
+    assert MaxPressure(downstream=True).decide(obs, 10.0) == NS
+
+
 def test_holds_while_interlock_runs() -> None:
     obs = make_obs(active=NS, queues=(0, 0, 5, 5), earliest=6.0)
     assert MaxPressure().decide(obs, 10.0) == NS

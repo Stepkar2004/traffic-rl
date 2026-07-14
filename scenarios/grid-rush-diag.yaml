@@ -1,0 +1,49 @@
+# Scenario: 3x3 grid with a DIAGONAL rush - heavy southbound (from the north
+# edge) AND heavy eastbound (from the west edge) at once. The two waves fight
+# for the same cycles: a single offset cannot serve both perfectly (the
+# coordinated baseline runs its compromise "diag" wave), which is exactly the
+# tension a learned policy could resolve better - or not. PPO's headline
+# scenario.
+name: grid-rush-diag
+description: "3x3 grid, southbound+eastbound heavy (450), counter-directions light."
+
+episode:
+  warmup_s: 300
+  measure_s: 3600
+  dt_s: 0.1
+
+topology:
+  kind: grid
+  grid_n: 3
+  block_length_m: 150
+  speed_limit_mph: 30
+  approach_length_m: 300
+  lanes_per_approach: 1
+  lane_width_m: 3.5
+  crosswalk_length_m: 9.0
+
+demand:
+  vehicles:
+    profile:
+      - t0_s: 0
+        rate_veh_h:
+          north_c0: 450   # southbound wave
+          north_c1: 450
+          north_c2: 450
+          south_c0: 150
+          south_c1: 150
+          south_c2: 150
+          west_r0: 450    # eastbound wave
+          west_r1: 450
+          west_r2: 450
+          east_r0: 150
+          east_r1: 150
+          east_r2: 150
+  pedestrians:
+    profile:   # per LEG, applied at every intersection's crosswalk on that leg
+      - {t0_s: 0, rate_ped_h: {north: 40, south: 40, east: 40, west: 40}}
+
+controller:
+  kind: max_pressure
+  params:
+    downstream: true

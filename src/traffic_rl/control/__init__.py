@@ -6,12 +6,13 @@ controller sees only the Observation, never the World (design principle 7).
 
 from traffic_rl.control.actuated import ActuatedGapOut
 from traffic_rl.control.base import Controller
+from traffic_rl.control.coordinated import CoordinatedFixedTime
 from traffic_rl.control.fixed_time import FixedTime
 from traffic_rl.control.max_pressure import MaxPressure
 from traffic_rl.control.webster import Webster
 from traffic_rl.core.config import ControllerConfig
 
-CONTROLLER_KINDS = ("fixed_time", "webster", "actuated", "max_pressure")
+CONTROLLER_KINDS = ("fixed_time", "webster", "actuated", "max_pressure", "coordinated")
 
 
 def make_controller(cfg: ControllerConfig) -> Controller:
@@ -24,4 +25,6 @@ def make_controller(cfg: ControllerConfig) -> Controller:
         return ActuatedGapOut(**cfg.params)
     if cfg.kind == "max_pressure":
         return MaxPressure(**cfg.params)
+    if cfg.kind == "coordinated":
+        return CoordinatedFixedTime(**cfg.params)
     raise ValueError(f"unknown controller kind {cfg.kind!r} (known: {CONTROLLER_KINDS})")

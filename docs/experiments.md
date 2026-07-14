@@ -25,7 +25,10 @@ machine. Gates must be green before every commit.
 ## The commands
 
 All are subcommands of `traffic-rl` (entry point installed by `uv sync`); every one
-of them is **current as of phase 1** and reproduces phase-1 behavior.
+is **current as of phase 2, chunk 4**. Scenarios now cover both phases: the three
+phase-1 singles (`single-balanced`, `single-rush-ns`, `single-night`) plus the
+phase-2 networks (`corridor-rush` — 1x3 arterial, the green-wave scenario;
+`grid-balanced` and `grid-rush-diag` — 3x3 grids). Any command takes any of them.
 
 ### `traffic-rl run <scenario.yaml> [--seed N] [--record path.npz]`
 
@@ -58,8 +61,13 @@ never textbook constants. Defaults: 16-vehicle queue, 10 seeds.
 
 ### `traffic-rl leaderboard` → `docs/leaderboard.md` + chart + raw rows
 
-**The protocol run** (ADR 0002 §6): 4 controllers x 3 scenarios x 20 seeds, 300 s
-warmup + 3600 s measurement per cell, process pool, ~4 min wall on a desktop.
+**The protocol run** (ADR 0002 §6): 20 seeds per cell, 300 s warmup + 3600 s
+measurement, process pool. As of phase-2 chunk 4 the default matrix is **6
+scenarios with topology-appropriate controller sets**: single-intersection
+scenarios run the phase-1 four (rows stay comparable forever); corridors/grids
+add `coordinated` (the hand-built green wave) and give max-pressure its network
+form (`downstream: true`). Expect substantially more wall time than phase 1's
+~4 min — the full v2 run is scheduled for the training/run session.
 Auto-calibrates first if `runs/calibration.json` is missing. Outputs:
 
 - `docs/leaderboard.md` — the committed results table (bootstrap CIs; the
@@ -67,9 +75,11 @@ Auto-calibrates first if `runs/calibration.json` is missing. Outputs:
 - `docs/assets/leaderboard-p95-wait.png` — the CI bar chart
 - `runs/leaderboard/results.json` — raw per-run rows (gitignored)
 
-Re-running on the same machine reproduces the committed phase-1 table (the final
-phase review verified byte-for-byte). This is THE command to re-check any number
-quoted in README, the leaderboard, or a post.
+The committed table currently holds the CORRECTED phase-1 single-intersection
+results (re-run 2026-07-14 after the SoA slot-reuse fix). This is THE command to
+re-check any number quoted in README, the leaderboard, or a post.
+Restrict a run: `run_matrix` accepts `scenarios`/`controllers` (used by tests);
+the CLI always runs the full default matrix.
 
 ### `traffic-rl bench`
 

@@ -1,0 +1,48 @@
+# Scenario: 3-intersection east-west arterial at rush. Eastbound (from west) is
+# the heavy platoon direction - the green-wave question lives here: coordinated
+# offsets should carry platoons through all three signals; independent
+# controllers make each platoon stop again at every block.
+# Demand is flat (no ramp): phase 2's story is coordination, and a stationary
+# rate keeps the emergence analysis (phase-offset probe) interpretable.
+# Eastbound 600 veh/h vs ~720 veh/h of green-share capacity (sat 1440 at a
+# 50/50 split): near saturation, so wasted green actually hurts.
+name: corridor-rush
+description: "1x3 corridor, eastbound-heavy arterial 600 veh/h, light cross streets."
+
+episode:
+  warmup_s: 300
+  measure_s: 3600
+  dt_s: 0.1
+
+topology:
+  kind: corridor
+  n_intersections: 3
+  block_length_m: 150
+  speed_limit_mph: 30
+  approach_length_m: 300
+  lanes_per_approach: 1
+  lane_width_m: 3.5
+  crosswalk_length_m: 9.0
+
+demand:
+  vehicles:
+    profile:
+      - t0_s: 0
+        rate_veh_h:
+          west: 600      # the eastbound platoon direction
+          east: 250      # counter-direction pays for one-way progression
+          north_0: 120
+          south_0: 120
+          north_1: 120
+          south_1: 120
+          north_2: 120
+          south_2: 120
+  pedestrians:
+    profile:   # per LEG, applied at every intersection's crosswalk on that leg
+      - {t0_s: 0, rate_ped_h: {north: 50, south: 50, east: 60, west: 60}}
+
+controller:
+  kind: coordinated
+  params:
+    cycle_s: 60
+    split_ns: 0.4    # arterial (EW phase) gets the larger share

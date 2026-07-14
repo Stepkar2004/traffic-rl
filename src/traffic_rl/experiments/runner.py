@@ -15,12 +15,18 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
-from traffic_rl.control import make_controller
 from traffic_rl.core.config import ControllerConfig, load_scenario
 from traffic_rl.core.world import World
 
 DEFAULT_CONTROLLERS = ("fixed_time", "webster", "actuated", "max_pressure")
-DEFAULT_SCENARIOS = ("single-balanced", "single-rush-ns", "single-night")
+DEFAULT_SCENARIOS = (
+    "single-balanced",
+    "single-rush-ns",
+    "single-night",
+    "corridor-rush",
+    "grid-balanced",
+    "grid-rush-diag",
+)
 
 
 def run_cell(
@@ -36,8 +42,11 @@ def run_cell(
         cfg = dataclasses.replace(
             cfg, episode=dataclasses.replace(cfg.episode, measure_s=measure_s)
         )
-    controller = make_controller(ControllerConfig(kind=controller_kind, params=controller_params))
-    world = World(cfg, seed=seed, controller=controller)
+    # swap the controller config in; the World builds one copy per intersection
+    cfg = dataclasses.replace(
+        cfg, controller=ControllerConfig(kind=controller_kind, params=controller_params)
+    )
+    world = World(cfg, seed=seed)
     world.run()
     row: dict[str, Any] = {
         "scenario": cfg.name,
@@ -51,29 +60,54 @@ def run_cell(
     return row
 
 
+def controllers_for(
+    scenario_path: Path, calibration: dict[str, float]
+) -> list[tuple[str, dict[str, Any]]]:
+    """The controller set a scenario competes under.
+
+    Single intersections run the phase-1 four (comparable rows forever);
+    corridors/grids add CoordinatedFixedTime (offsets only exist with more
+    than one signal) and give max-pressure its network form (true downstream
+    occupancy through the Observation).
+    """
+    multi = load_scenario(scenario_path).topology.kind != "four_way"
+    webster = {
+        "sat_flow_veh_h": calibration["saturation_flow_veh_h"],
+        "startup_lost_s": calibration["startup_lost_time_s"],
+    }
+    out: list[tuple[str, dict[str, Any]]] = [
+        ("fixed_time", {}),
+        ("webster", webster),
+        ("actuated", {}),
+        ("max_pressure", {"downstream": True} if multi else {}),
+    ]
+    if multi:
+        out.append(("coordinated", {}))
+    return out
+
+
 def run_matrix(
     scenario_dir: Path,
     calibration: dict[str, float],
-    controllers: tuple[str, ...] = DEFAULT_CONTROLLERS,
+    controllers: tuple[str, ...] | None = None,
     scenarios: tuple[str, ...] = DEFAULT_SCENARIOS,
     n_seeds: int = 20,
     workers: int | None = None,
     measure_s: float | None = None,
     out_path: Path | None = None,
 ) -> list[dict[str, Any]]:
-    """The full leaderboard matrix. Returns rows; writes JSON when asked."""
-    params_by_kind: dict[str, dict[str, Any]] = {kind: {} for kind in controllers}
-    if "webster" in params_by_kind:
-        params_by_kind["webster"] = {
-            "sat_flow_veh_h": calibration["saturation_flow_veh_h"],
-            "startup_lost_s": calibration["startup_lost_time_s"],
-        }
-    cells = [
-        (str(scenario_dir / f"{sc}.yaml"), kind, params_by_kind[kind], seed)
-        for sc in scenarios
-        for kind in controllers
-        for seed in range(n_seeds)
-    ]
+    """The full leaderboard matrix. Returns rows; writes JSON when asked.
+
+    ``controllers`` restricts the sweep to the named kinds (testing); by
+    default each scenario gets ``controllers_for`` (topology-appropriate).
+    """
+    cells = []
+    for sc in scenarios:
+        path = scenario_dir / f"{sc}.yaml"
+        for kind, params in controllers_for(path, calibration):
+            if controllers is not None and kind not in controllers:
+                continue
+            cells += [(str(path), kind, params, seed) for seed in range(n_seeds)]
     rows: list[dict[str, Any]] = []
     t0 = time.perf_counter()
     with ProcessPoolExecutor(max_workers=workers) as pool:

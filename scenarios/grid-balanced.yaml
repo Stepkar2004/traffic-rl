@@ -1,0 +1,48 @@
+# Scenario: 3x3 grid, symmetric demand on all 12 boundary origins. The grid
+# analogue of single-balanced: with demand this even, coordination has no
+# preferred direction and adaptive controllers have little to exploit - the
+# generalization test for policies trained on grid-rush-diag.
+name: grid-balanced
+description: "3x3 grid, uniform 250 veh/h from all 12 origins; uniform peds."
+
+episode:
+  warmup_s: 300
+  measure_s: 3600
+  dt_s: 0.1
+
+topology:
+  kind: grid
+  grid_n: 3
+  block_length_m: 150
+  speed_limit_mph: 30
+  approach_length_m: 300
+  lanes_per_approach: 1
+  lane_width_m: 3.5
+  crosswalk_length_m: 9.0
+
+demand:
+  vehicles:
+    profile:
+      - t0_s: 0
+        rate_veh_h:
+          north_c0: 250
+          south_c0: 250
+          north_c1: 250
+          south_c1: 250
+          north_c2: 250
+          south_c2: 250
+          west_r0: 250
+          east_r0: 250
+          west_r1: 250
+          east_r1: 250
+          west_r2: 250
+          east_r2: 250
+  pedestrians:
+    profile:   # per LEG, applied at every intersection's crosswalk on that leg
+      - {t0_s: 0, rate_ped_h: {north: 40, south: 40, east: 40, west: 40}}
+
+controller:
+  kind: fixed_time
+  params:
+    cycle_s: 60
+    split_ns: 0.5

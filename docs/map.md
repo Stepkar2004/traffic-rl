@@ -131,12 +131,15 @@ src/traffic_rl/
 │   │                      (omniscient, per-intersection; phase 3's noise
 │   │                      drops in here)
 │   ├── fixed_time.py      the floor: a clock + legally-required patience
+│   ├── coordinated.py     CoordinatedFixedTime: travel-time offsets = the
+│   │                      hand-built green wave (phase-2 emergence foil)
 │   ├── webster.py         Webster 1958 from MEASURED calibration, greens
 │   │                      anchored to green onsets
 │   ├── actuated.py        gap-out on stop-line loop + 50 m advance detector
 │   │                      only (honestly detection-bounded); dt cadence
 │   └── max_pressure.py    Varaiya 2013 queue pressure; ped-blind by design —
-│                          the signal machine is its fairness floor
+│                          the signal machine is its fairness floor; network
+│                          form (downstream=True) subtracts exit occupancy
 ├── envs/
 │   ├── __init__.py        RL environments (ADR 0004); exports TrafficEnv
 │   ├── batching.py        replicate_topology (B copies, ids offset) +
@@ -193,8 +196,13 @@ tests/
 scenarios/
 ├── single-balanced.yaml   symmetric demand — the tie-everyone scenario
 ├── single-rush-ns.yaml    NS surge — where fixed-time falls over (headline)
-└── single-night.yaml      sparse demand — actuated's home turf, exposes
-                           max-pressure's ped-blindness
+├── single-night.yaml      sparse demand — actuated's home turf, exposes
+│                          max-pressure's ped-blindness
+├── corridor-rush.yaml     1x3 arterial, eastbound-heavy — the green-wave
+│                          scenario (phase 2)
+├── grid-balanced.yaml     3x3, uniform demand — grid generalization test
+└── grid-rush-diag.yaml    3x3, southbound+eastbound heavy — two waves fight
+                           for the same cycles (PPO's headline scenario)
 
 docs/
 ├── map.md                 this file

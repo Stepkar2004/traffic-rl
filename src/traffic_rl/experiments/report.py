@@ -27,7 +27,14 @@ METRIC_COLUMNS = (
     ("p95_ped_wait_s", "p95 ped wait (s)", 1),
 )
 DIAGNOSTICS = ("unserved_demand", "unserved_peds", "refused_commands", "forced_switches")
-CONTROLLER_ORDER = ("fixed_time", "webster", "actuated", "max_pressure")
+CONTROLLER_ORDER = ("fixed_time", "coordinated", "webster", "actuated", "max_pressure")
+
+
+def _row_order(agg_keys: set[tuple[str, str]], scenario: str) -> list[str]:
+    """Known kinds in canonical order, then anything new (RL rows) sorted."""
+    present = [k for _sc, k in agg_keys if _sc == scenario]
+    ordered = [k for k in CONTROLLER_ORDER if k in present]
+    return ordered + sorted(k for k in present if k not in CONTROLLER_ORDER)
 
 
 def aggregate(rows: list[dict[str, Any]]) -> dict[tuple[str, str], dict[str, CI]]:
@@ -57,7 +64,7 @@ def leaderboard_markdown(rows: list[dict[str, Any]], calibration: dict[str, floa
     if len(warmups) != 1 or len(measures) != 1:
         raise ValueError(f"mixed episode timings in rows: {warmups=} {measures=}")
     lines: list[str] = [
-        "# Phase-1 leaderboard: classical controllers",
+        "# Leaderboard: classical controllers",
         "",
         f"Protocol (ADR 0002 §6): {n_seeds} seeds per cell, {warmups.pop():.0f} s "
         f"warmup excluded, {measures.pop():.0f} s measurement window, "
@@ -76,6 +83,12 @@ def leaderboard_markdown(rows: list[dict[str, Any]], calibration: dict[str, floa
         "- ActuatedGapOut sees only a stop-line loop + 50 m advance detector.",
         "- FixedTime runs a deliberately naive 50/50 split - it is the floor, "
         "and losing to it means something is broken.",
+        "- Coordinated (multi-intersection scenarios only) is FixedTime plus "
+        "travel-time offsets - the hand-built green wave. One-way progression: "
+        "the counter-direction pays for the wave, and that is reported, not hidden.",
+        "- max_pressure runs its network form on corridors/grids (subtracts true "
+        "downstream-link occupancy via the Observation); single-intersection rows "
+        "keep the phase-1 sink form for comparability.",
         "- refusals > 0 would mean a controller tried to break the signal "
         "machine's safety interlocks. forced > 0 means the max-red cap fired: "
         "either a genuinely starved road user (night max-pressure: blind to "
@@ -94,9 +107,7 @@ def leaderboard_markdown(rows: list[dict[str, Any]], calibration: dict[str, floa
         )
         lines.append(header)
         lines.append("|" + "---|" * (len(METRIC_COLUMNS) + 4))
-        for kind in CONTROLLER_ORDER:
-            if (sc, kind) not in agg:
-                continue
+        for kind in _row_order(set(agg), sc):
             m = agg[(sc, kind)]
             cells = [m[metric].fmt(d) for metric, _h, d in METRIC_COLUMNS]
             unserved = f"{m['unserved_demand'].mean:.1f}/{m['unserved_peds'].mean:.1f}"
@@ -114,7 +125,9 @@ def ci_bar_chart(rows: list[dict[str, Any]], out_path: Path, metric: str = "p95_
     """Grouped bars with CI whiskers - the one-look version of the leaderboard."""
     agg = aggregate(rows)
     scenarios = sorted({sc for sc, _ in agg})
-    kinds = [k for k in CONTROLLER_ORDER if any((sc, k) in agg for sc in scenarios)]
+    present = {k for _sc, k in agg}
+    kinds = [k for k in CONTROLLER_ORDER if k in present]
+    kinds += sorted(present - set(kinds))
     width = 0.8 / len(kinds)
     fig, ax = plt.subplots(figsize=(9, 4.6), dpi=150)
     for j, kind in enumerate(kinds):
