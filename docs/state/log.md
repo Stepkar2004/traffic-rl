@@ -2,6 +2,23 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-14 · Phase 2 chunk 6: parameter-shared PPO + the comm ablation.**
+  `rl/ppo.py`: one Actor and one Critic applied to every intersection's local
+  48-channel row (parameter sharing by reshape, decentralized execution); the
+  reward is the world's TEAM scalar repeated per intersection (pure for the
+  emergence question, recorded trade-off in ADR 0004); GAE cuts at truncation
+  boundaries and bootstraps from the FINAL observation's value (time limits are
+  never terminals; the autoreset step is consumed, never stored); clipped
+  surrogate + entropy bonus, 4 epochs x 8 minibatches, advantage normalization —
+  all ADR-locked. The comm ablation is one flag writing to `comm/` vs `nocomm/`
+  arm directories; nocomm zeroes channels 40-47 in training AND eval so the two
+  arms differ by information only. `traffic-rl train-ppo` CLI. Smoke: tiny
+  corridor run trains end to end, artifacts land, the checkpoint drives a
+  3-intersection World through 3 RLController copies with 0 refusals. GPU
+  throughput measured: corridor ~1,100 env-steps/s (~75 min / 5M-step seed),
+  grid ~770 (~3.6 h / 10M-step seed). 177 tests. NOTE: the chunks-1-4 Opus
+  review task was stopped mid-run; the post-chunk-6 review covers the whole
+  phase-2 diff instead.
 - **2026-07-14 · Phase 2 chunk 5: Double DQN (the sanity gate) + the RL layer.**
   New `rl/` package, hand-rolled per the constitution: `features.py` (THE 48-channel
   ADR 0004 vector built from a Controller Observation + the action-mask rules —

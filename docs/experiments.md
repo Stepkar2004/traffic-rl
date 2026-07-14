@@ -93,6 +93,23 @@ box (RTX 4070, 8 envs): ~1,100 env-steps/s → ~15 min per 1M-step seed.
 Evaluate a checkpoint on the leaderboard protocol via controller kind `rl`:
 `run_cell(scenario, "rl", {"checkpoint": ..., "algo": "dqn"}, seed)`.
 
+### `traffic-rl train-ppo <scenario.yaml> [--seed N] [--steps N] [--comm/--no-comm] [--out dir] [--device auto|cuda|cpu]`
+
+**Current as of phase 2, chunk 6.** Parameter-shared PPO on a corridor or grid
+(ADR 0004 §5): one Actor/Critic applied to every intersection's 48-channel row,
+team reward per world, GAE cut at truncation boundaries. Defaults are the locked
+hyperparameters (5M steps — pass `--steps 10000000` for grids per the ADR budget
+table; 16 batched worlds; 900 s training episodes). `--comm/--no-comm` is the
+communication ablation: the nocomm arm zeroes neighbor channels 40-47 in
+training AND eval, and writes to its own directory. Artifacts land in
+`<out>/<comm|nocomm>/seed<k>/`: `config.json`, `curves.csv` (env_steps, wall_s,
+train_return, eval_return, eval_p95_wait, policy_loss, value_loss, entropy),
+`ckpt_best/final.pt` + `critic_best/final.pt`. Measured throughput on the dev
+box (RTX 4070, 16 envs): corridor ~1,100 env-steps/s → ~75 min per 5M-step
+seed; 3x3 grid ~770 env-steps/s → ~3.6 h per 10M-step seed. Evaluate on the
+leaderboard protocol via controller kind `rl` with `{"algo": "ppo"}` (one
+RLController per intersection; the runner does this per-node cloning itself).
+
 ### `traffic-rl bench`
 
 Vehicle-kernel throughput on a synthetic ring of lanes (default 1000 vehicles):

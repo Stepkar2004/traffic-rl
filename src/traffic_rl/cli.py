@@ -176,6 +176,38 @@ def train_dqn(
 
 
 @app.command()
+def train_ppo(
+    scenario: Annotated[Path, typer.Argument(help="Corridor or grid scenario YAML.")],
+    out: Annotated[Path, typer.Option(help="Run directory root.")] = Path("runs/rl/ppo"),
+    seed: Annotated[int, typer.Option(help="Training seed (ADR 0004: 0,1,2).")] = 0,
+    steps: Annotated[
+        int, typer.Option(help="Total env steps (ADR 0004: corridor 5M, grid 10M).")
+    ] = 5_000_000,
+    num_envs: Annotated[int, typer.Option(help="Batched worlds in the vector env.")] = 16,
+    comm: Annotated[
+        bool, typer.Option("--comm/--no-comm", help="Neighbor channels on/off (the ablation).")
+    ] = True,
+    device: Annotated[str, typer.Option(help="auto | cuda | cpu")] = "auto",
+) -> None:
+    """Parameter-shared PPO on a corridor/grid (ADR 0004 §5)."""
+    from traffic_rl.rl.ppo import PPOConfig
+    from traffic_rl.rl.ppo import train_ppo as _train
+
+    run_dir = _train(
+        PPOConfig(
+            scenario=scenario,
+            out_dir=out,
+            seed=seed,
+            total_steps=steps,
+            num_envs=num_envs,
+            comm=comm,
+            device=device,
+        )
+    )
+    typer.echo(f"ppo: artifacts in {run_dir}")
+
+
+@app.command()
 def calibrate(
     n_queue: Annotated[int, typer.Option(help="Standing-queue size (>= 15).")] = 16,
     n_seeds: Annotated[int, typer.Option(help="Seeds to average over.")] = 10,

@@ -5,11 +5,13 @@
 > Scope is the code layer — `src/`, `tests/`, `scenarios/`, `docs/`, `runs/`, configs.
 > The `.claude/` skills layer sits above the code and documents itself.
 >
-> **Current as of: phase 2, chunk 2** — multi-intersection core landed on top of
-> the complete phase 1 (single 4-way + four classical controllers + leaderboard):
-> corridor + grid builders, vectorized signal machines, per-intersection
-> controllers. Sibling docs: [experiments.md](experiments.md) (how to run
-> things), [results/phase-1.md](results/phase-1.md) (what the runs meant).
+> **Current as of: phase 2, chunk 6** — the full RL stack is code-complete on top
+> of the complete phase 1 (single 4-way + four classical controllers + leaderboard):
+> corridor + grid builders, vectorized signal machines, batched VectorEnv,
+> coordinated green-wave baseline, hand-rolled Double DQN and parameter-shared
+> PPO (comm ablation). Training runs happen in the phase-2 run session. Sibling
+> docs: [experiments.md](experiments.md) (how to run things),
+> [results/phase-1.md](results/phase-1.md) (what the runs meant).
 
 ## At a glance
 
@@ -99,7 +101,8 @@ src/traffic_rl/
 ├── __init__.py            package docstring: the layout in four lines
 ├── py.typed               PEP 561 marker (package ships types; mypy strict)
 ├── cli.py                 Typer commands: run, view, replay, gif, calibrate,
-│                          leaderboard, bench (see docs/experiments.md)
+│                          leaderboard, bench, train-dqn, train-ppo
+│                          (see docs/experiments.md)
 ├── core/
 │   ├── __init__.py        core = pure kernels + one orchestrator; render-free
 │   ├── units.py           SI everywhere inside; imperial↔SI at the edges only
@@ -162,6 +165,8 @@ src/traffic_rl/
 │   ├── buffer.py          uniform replay; Double-DQN stores next-state masks
 │   ├── dqn.py             Double DQN train loop (the sanity gate) + artifacts
 │   │                      (config.json, curves.csv, ckpt_best/final.pt)
+│   ├── ppo.py             parameter-shared PPO: team reward, GAE cut at
+│   │                      truncations, comm/nocomm ablation arm directories
 │   └── controller.py      RLController: checkpoint -> Controller protocol;
 │                          quick_episode_metrics for training-time p95 evals
 ├── viewer/
@@ -207,8 +212,10 @@ tests/
 ├── rl/
 │   ├── test_features.py   the anti-drift pin: controller features == env
 │   │                      observation, channel by channel, same sim state
-│   └── test_dqn_smoke.py  tiny end-to-end train run; artifacts; checkpoint
-│                          drives a World with zero refusals
+│   ├── test_dqn_smoke.py  tiny end-to-end train run; artifacts; checkpoint
+│   │                      drives a World with zero refusals
+│   └── test_ppo_smoke.py  same machinery pin for PPO: arm dirs, curves,
+│                          checkpoint drives a 3-intersection World legally
 ├── experiments/
 │   └── test_{calibrate,stats,runner_report}.py
 └── viewer/
@@ -247,7 +254,8 @@ runs/                      (gitignored)
 
 project.yaml               single source of truth: stacks, tasks/gates, paths
 pyproject.toml             deps: numpy, pyyaml, typer, pygame-ce, imageio,
-                           matplotlib; entry point `traffic-rl`
+                           matplotlib, gymnasium, torch (cu128 index, explicit);
+                           entry point `traffic-rl`
 uv.lock                    locked resolution
 .github/workflows/ci.yml   CI gates: ruff check + format, mypy, pytest
 .pre-commit-config.yaml    local gates incl. initc validate / lint-paths

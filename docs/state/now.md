@@ -3,7 +3,18 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-14 (phase 2 IN PROGRESS — chunks 1-5 of 7 done; Opus review #1 running):**
+**As of 2026-07-14 (phase 2 IN PROGRESS — chunks 1-6 of 7 done; code-complete, runs pending):**
+
+Chunk 6 landed: parameter-shared PPO (`rl/ppo.py`, `traffic-rl train-ppo`) —
+one Actor/Critic over every intersection's 48-channel row, team reward per
+world, GAE cut at truncation boundaries (bootstraps from the final observation,
+never treats time limits as terminals), comm/nocomm ablation arms in separate
+run directories. Smoke-verified end to end (checkpoint drives a 3-intersection
+World with zero refusals). Measured: corridor ~1,100 env-steps/s (~75 min per
+5M-step seed), grid ~770 (~3.6 h per 10M-step seed). Note: the Opus review #1
+task (chunks 1-4) was stopped before completing; review #2 after this chunk
+covers the whole phase-2 diff instead. Next: chunk 7 (emergence-probe tooling +
+the handoff runbook for the run session).
 
 Chunk 5 landed: the `rl/` layer — hand-rolled Double DQN (locked ADR 0004
 hyperparameters), the canonical feature builder pinned against the env,
