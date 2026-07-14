@@ -77,3 +77,15 @@ long-term costs. Blocked beats wrong.
   (A "Webster" that never executed its own plan and a "detector-only" controller
   that was silently omniscient both sat behind fully green test suites; only
   run-and-measure reviews caught them.) raw (2026-07)
+- 2026-07-14 · Differential testing audits code the suite already blesses: when adding
+  a second implementation path over the same state (a batched/vectorized twin of an
+  existing path), write the exact-equivalence pin FIRST and treat any divergence as a
+  possible bug in the ORIGINAL, not just the new path. (The batched-vs-sequential env
+  test caught a phase-1 SoA slot-reuse bug — stale wait/stops/exemption on spawn —
+  that ~170 green tests had missed.) raw (2026-07)
+- 2026-07-14 · A locked protocol must be EXECUTABLE at lock time: (a) every input it
+  names exists as an artifact — ADR 0004 named a corridor-balanced eval profile whose
+  scenario file didn't exist until two chunks later; (b) the budget arithmetic
+  (steps × seeds × arms ÷ measured throughput) fits the compute window — the locked
+  budgets multiplied out to ~30 h sequential and the run session needed a triage
+  order bolted on afterward. raw (2026-07)
