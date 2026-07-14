@@ -244,7 +244,8 @@ docs/
 ├── vision.md              human-owned WHY
 ├── decisions/             ADRs 0001 (stack), 0002 (metrics — THE spec), 0003 (docs), 0004 (RL env)
 ├── plans/                 phase-1.md (done), phase-2.md, phase-2-runbook.md
-│                          (the run-session handoff), phases-3-5-draft.md
+│                          (the run-session handoff), phase-3.md (draft),
+│                          phases-4-5-draft.md
 ├── results/               phase-1.md — what the runs meant
 ├── state/                 now.md / roadmap.md / log.md / miss-log.md /
 │                          watchout-later.md

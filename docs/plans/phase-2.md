@@ -109,6 +109,62 @@ The realism-scan pass before this plan is approved should rank this explicitly.
   shaping can still trade p95 for mean inside legal space — ADR 0003 must decide
   the weighting BEFORE training, or the leaderboard becomes tuning-by-results.
 - **Multi-agent nonstationarity** (parameter-shared PPO mitigates, not solves).
+
+---
+
+## 6. What the code session actually changed (appended 2026-07-15, code-complete)
+
+All seven chunks landed 2026-07-14 (commits `c934c6e..aa28532`, 70 files,
++6,007/-504); trainings + experiments run next from
+[phase-2-runbook.md](phase-2-runbook.md). One unplanned event: the
+batched-vs-sequential equivalence test caught a latent **phase-1 SoA
+slot-reuse bug** (stale wait/stops/dilemma-exemption on spawn into a reused
+row) — fixed, both goldens regenerated, the phase-1 leaderboard re-run and
+its committed artifacts corrected (rankings survived; stops/veh and night
+waits had been inflated). See the correction note in
+[results/phase-1.md](../results/phase-1.md).
+
+New files:
+
+```
+docs/decisions/0004-rl-env-and-reward.md   the locked env/reward contract (chunk 1)
+docs/plans/phase-2-runbook.md              run-session handoff (chunk 7)
+scenarios/corridor-rush.yaml               1x3 eastbound-heavy (the green-wave scenario)
+scenarios/corridor-balanced.yaml           1x3 symmetric (ADR §5 generalization profile)
+scenarios/grid-balanced.yaml               3x3 uniform
+scenarios/grid-rush-diag.yaml              3x3 south+east heavy (PPO headline)
+src/traffic_rl/control/coordinated.py      CoordinatedFixedTime (the encoded green wave)
+src/traffic_rl/envs/{__init__,batching,traffic_env}.py
+                                           replicate_topology + BatchedWorlds (B worlds,
+                                           one process) + TrafficEnv (batched VectorEnv,
+                                           ADR 0004 verbatim) + SingleTrafficEnv
+src/traffic_rl/experiments/emergence.py    the ADR §6 emergence probe (offset_score)
+src/traffic_rl/rl/{__init__,features,nets,buffer,dqn,controller,ppo}.py
+                                           hand-rolled Double DQN + parameter-shared PPO
+                                           (torch enters here only), 48-channel feature
+                                           builder pinned against the env, RLController
+                                           (checkpoints eval via the classical path)
+tests/core/test_multi_intersection.py      builders, chains, corridor golden
+tests/core/data/golden-corridor-60s.npz    corridor determinism fixture
+tests/envs/test_{batching,traffic_env}.py  equivalence pins + ADR contract tests
+tests/rl/test_{features,dqn_smoke,ppo_smoke}.py
+tests/control/test_coordinated.py
+tests/experiments/test_emergence.py
+```
+
+Rewritten/extended (the multi-intersection generalization): `core/topology.py`
+(corridor + grid builders over the same tables), `core/signals.py` (vectorized
+over n_i), `core/world.py` (per-intersection controllers/observation models,
+per-origin demand), `core/arrays.py` (**the slot-reuse fix**), `core/vehicles.py`
+(multi-hop transfer), `core/{config,demand,recorder}.py`, `viewer/draw.py`
+(junction-framed camera, per-intersection heads), `control/{base,observation,
+max_pressure,__init__}.py` (downstream + comm channels, network max-pressure,
+lazy `rl` kind), `experiments/{runner,report}.py` (leaderboard v2: 7 scenarios,
+topology-appropriate controller sets), `cli.py` (train-dqn, train-ppo,
+emergence-probe). Tests: 129 → 183. Deps: gymnasium, torch 2.11+cu128 (explicit
+index). CLI throughputs measured on the dev box are in
+[experiments.md](../experiments.md).
+
 - **NEXT_STEP autoreset off-by-ones** in return calculation — pinned by env tests.
 - **Comparability**: phase-1 leaderboard numbers must remain reproducible from the
   same commit that adds phase-2 code (regression cell in CI or a pinned rerun).

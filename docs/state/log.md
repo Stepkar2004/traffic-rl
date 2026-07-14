@@ -2,7 +2,19 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
-- **2026-07-14 · Phase 2 chunk 7: the emergence probe + the run-session runbook.**
+- **2026-07-15 · Phase 2 wrap: lessons, phase-3 draft, plan restructure, review status.**
+  Two lessons through the evolve door into the workflow skill (differential
+  testing audits code the suite already blesses; a locked protocol must be
+  executable at lock time — inputs materialized + budget arithmetic done).
+  phase-3.md drafted (partial observability; leads with the phase-2-created
+  constraint that there are now TWO observation paths pinned by a parity test,
+  so noise must be injected where both share or the pin must grow).
+  phases-3-5-draft.md → phases-4-5-draft.md (multi-hop debt marked closed).
+  Files-changed summary appended to phase-2.md §6. Review record: review #1
+  stopped mid-run; review #2 (full-diff, probe-not-read) verified probes 1-4
+  (batching, env-vs-ADR, DQN targets, PPO arms/nocomm zeroing) with no findings,
+  then died on the session quota limit — probes 5-8 handed to the run session
+  via the runbook's binding-rules section.
   `experiments/emergence.py`: adjacent signal pairs (ew rows west→east, ns
   columns north→south — the coordinated baseline's own conventions), green-
   indicator series sampled every dt, Pearson cross-correlation over lags, and

@@ -19,9 +19,17 @@
 - Losing RL rows ship. If DQN can't beat fixed-time, that's a finding, not a bug
   to fix by tuning (the hyperparameters are locked).
 - Post drafts in `docs/posts/` (gitignored), **no em dashes in post text**.
-- Both Opus review slots are spent. Check docs/state/now.md for whether review #2's
-  findings were folded; if any BLOCKER is recorded there unresolved, fix it before
-  training.
+- **The adversarial probe-review is half-done.** Review #2 (full phase-2 diff,
+  probe-not-read) ran probes 1-4 clean — batching fidelity, env contract vs the
+  ADR, Double-DQN targets, PPO arms + nocomm zeroing — then died on the session
+  limit; no findings were reported before it died. **Probes 5-8 are outstanding:
+  (5) CoordinatedFixedTime offsets = travel-time arithmetic + beats independent
+  fixed-time, (6) max-pressure downstream term = real exit occupancy, (7) feature
+  parity on a grid corner / after WALK, (8) RLController through run_cell produces
+  the standard metrics pipeline.** Run them (subagent or inline, ~30 min) BEFORE
+  trusting multi-hour trainings; existing tests cover these components, so the
+  residual risk is moderate, but the phase-1 lesson stands: green suites hide
+  name-vs-behavior gaps.
 
 ## 0. Preflight (~5 min)
 

@@ -1,35 +1,12 @@
-# Phases 3-5 — draft directions (not plans)
+# Phases 4-5 — draft directions (not plans)
 
 > Drafts only: rich enough to keep the architecture honest, loose enough to change.
 > Per Stepan: no phase is fixed except what is completed; each phase gets its own real
 > plan (like [phase-1.md](phase-1.md)) after a realism-scan pass and his approval.
-> Restructured 2026-07-12 at phase-1 completion: phase 2 graduated to its own draft
-> plan ([phase-2.md](phase-2.md)); the 3-5 sections below are updated with what
-> phase 1 ACTUALLY built (file-level seams, recorded debts), not just intentions.
-
-## Phase 3 — partial observability (the perception gap)
-
-- `NoisyDetection` drops in at `control/observation.py`, where `PerfectObservation`
-  sits behind the `ObservationModel` protocol — the seam is live code now, not a
-  diagram. Detection-level noise (per-object detection probability, range limit,
-  occlusion by leaders, position/speed noise, false positives); every derived
-  aggregate (queue_len, flows) recomputes automatically because phase 1 kept
-  aggregates DERIVED. Controllers do not change — that was the whole point of the
-  detection-level Observation contract (phase-1 plan §1.7).
-- One "camera quality" dial from 1.0 (= phase 2 exactly) downward. Stepan's framing
-  to preserve: the light sees the world through an object detector with confidence,
-  occasionally missing cars and pedestrians.
-- The `sensors` rng stream was reserved in `core/rng.py::STREAM_NAMES` on day 1 —
-  noise is reproducible per seed with no golden-trace churn in other subsystems.
-- Fair fight, already partly real: phase-1 actuated ALREADY runs on a stop-line
-  loop + 50 m advance detector only (chunk-7 review forced the honesty). Phase 3
-  extends that norm: max-pressure gets noisy queue estimates, Webster estimates
-  flows from the same noisy channel (its `flow_veh_h` plumbing needs zero changes —
-  recorded in its docstring).
-- POMDP tooling for RL: frame-stacking first, recurrent policy only if needed;
-  filtered (EMA/Bayes) queue estimates as a classical-hybrid baseline.
-- Money plot: every controller's p95 wait vs detection rate on one chart — where
-  does RL's edge evaporate?
+> Restructured 2026-07-15 at phase-2 code-completion: phase 3 graduated to its own
+> draft plan ([phase-3.md](phase-3.md)); the 4-5 sections below are unchanged from
+> the 2026-07-12 grounding pass (file-level seams verified against what phase 1
+> actually built) — they get re-grounded against phases 2-3 when their turn comes.
 
 ## Phase 4 — humans (heterogeneity + chaos)
 
@@ -72,14 +49,16 @@
 - **The one named deferred kernel comes due: gap acceptance.** Roundabout entry
   yields to the circulating stream at cross-lane conflict points; the topology
   schema reserved the conflict-point concept in phase 1 so it has somewhere to
-  attach. (If phase 2's scope decision pulled it forward for turns, phase 5 only
-  generalizes it.) When does NO controller win? RL-metered entry as the twist.
+  attach. (Phase 2's scope decision — option A, through-only — kept turns out, so
+  phase 5 owns the full kernel.) When does NO controller win? RL-metered entry as
+  the twist.
 - **Signal-head types** (Stepan's red-arrow note): protected left arrows — phase
   tables as data; the machine grows head types, controllers grow the action space.
   `N_PHASES = 2` assumptions are localized (controllers' `1 - active` shortcuts
   are commented as two-phase; the machine's arrays are already N-phase).
-- Multi-hop transfers: `transfer_and_despawn` is single-hop by documented
-  assumption — short junction links in dense topologies must revisit it.
+- Multi-hop transfers: ~~single-hop by documented assumption~~ **closed in phase 2**
+  (`transfer_and_despawn` is multi-hop with a 16-hop tripwire) — dense topologies
+  inherit it for free.
 - Zero-shot transfer of the phase-4 policy; per-approach/graph-style encoding so
   one policy runs on any intersection shape; train on a topology distribution,
   test held-out.

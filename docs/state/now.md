@@ -3,7 +3,28 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-14 (phase 2 code COMPLETE — chunks 1-7 done; trainings + experiments run next session):**
+**As of 2026-07-15 (phase 2 code COMPLETE + wrapped — the run session is next):**
+
+Wrap done (2026-07-15): two lessons entered the workflow skill via the evolve
+procedure (differential testing audits blessed code; a locked protocol must be
+executable at lock time) — commit 706aab4, flagged for Stepan's review like any
+code change. [plans/phase-3.md](../plans/phase-3.md) drafted (partial
+observability, grounded in phase-2 seams incl. the two-observation-paths
+constraint; stays a draft until phase-2 results + realism-scan + approval);
+phases-3-5-draft.md restructured to
+[phases-4-5-draft.md](../plans/phases-4-5-draft.md); a files-changed summary
+appended to [plans/phase-2.md](../plans/phase-2.md) §6 (70 files, +6,007/-504,
+tests 129 → 183).
+
+**Adversarial review status (honest):** review #1 (chunks 1-4) was stopped
+mid-run; review #2 (relaunched over the FULL phase-2 diff, probe-not-read) ran
+probes 1-4 clean — batching fidelity, env contract vs ADR 0004, Double-DQN
+targets, PPO arms + nocomm zeroing — then **died on the session quota limit
+with no findings reported**. Probes 5-8 (coordinated offsets, max-pressure
+downstream term, feature parity on a grid corner, RLController eval path) are
+outstanding and handed to the run session as its first step (runbook, Binding
+rules). Residual risk moderate: those components have direct tests, but the
+phase-1 lesson (green suites hide name-vs-behavior gaps) stands until probed.
 
 Chunk 7 landed: the emergence probe (`experiments/emergence.py`,
 `traffic-rl emergence-probe`) — green-indicator cross-correlation of adjacent
