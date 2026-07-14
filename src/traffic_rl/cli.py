@@ -1,11 +1,12 @@
-"""Command-line entry points. Commands land with their chunks:
+"""Command-line entry points for the `traffic-rl` tool.
 
-run (chunk 2) | bench (chunk 3) | view, replay, gif (chunk 6).
+The command reference (usage, defaults, artifacts, measured wall-times) lives
+in docs/experiments.md; this module stays a thin Typer layer.
 """
 
 import time
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import numpy as np
 import typer
@@ -205,6 +206,60 @@ def train_ppo(
         )
     )
     typer.echo(f"ppo: artifacts in {run_dir}")
+
+
+@app.command()
+def emergence_probe(
+    scenario: Annotated[Path, typer.Argument(help="Corridor or grid scenario YAML.")],
+    controller: Annotated[
+        str | None,
+        typer.Option(help="Controller kind (default: the scenario's own)."),
+    ] = None,
+    params: Annotated[str, typer.Option(help="Controller params as a JSON object.")] = "{}",
+    checkpoint: Annotated[
+        Path | None, typer.Option(help="RL checkpoint (implies --controller rl).")
+    ] = None,
+    algo: Annotated[str, typer.Option(help="Checkpoint algo: dqn | ppo.")] = "ppo",
+    comm: Annotated[
+        bool, typer.Option("--comm/--no-comm", help="Neighbor channels for RL eval.")
+    ] = True,
+    seeds: Annotated[int, typer.Option(help="Episodes to average the probe over.")] = 5,
+    duration: Annotated[float, typer.Option(help="Episode length (s).")] = 900.0,
+    max_lag: Annotated[float, typer.Option(help="Correlation lag range (s).")] = 90.0,
+    out: Annotated[
+        Path | None,
+        typer.Option(help="JSON rows path (default runs/emergence/<name>-<kind>.json)."),
+    ] = None,
+) -> None:
+    """The ADR 0004 §6 probe: green-onset alignment vs the travel-time lag.
+
+    offset_score 1.0 = the pair's greens are offset by exactly the platoon's
+    travel time. Run it on (a) fixed_time, (b) coordinated, (c) an RL
+    checkpoint; the three-way comparison IS the phase-2 headline.
+    """
+    import json
+
+    from traffic_rl.experiments.emergence import run_probe, summarize
+
+    kind = controller
+    kind_params: dict[str, Any] = json.loads(params)
+    if checkpoint is not None:
+        kind = "rl"
+        kind_params = {"checkpoint": str(checkpoint), "algo": algo, "comm": comm}
+    label = kind or "scenario-default"
+    out = out or Path("runs/emergence") / f"{scenario.stem}-{label}.json"
+    rows = run_probe(
+        scenario,
+        kind,
+        kind_params,
+        seeds=tuple(range(seeds)),
+        duration_s=duration,
+        max_lag_s=max_lag,
+        out_path=out,
+    )
+    typer.echo(f"emergence probe: {scenario.stem} x {label} ({seeds} seeds)")
+    typer.echo(summarize(rows))
+    typer.echo(f"  rows: {out}")
 
 
 @app.command()

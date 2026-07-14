@@ -1,0 +1,46 @@
+# Scenario: the corridor generalization profile (ADR 0004 §5). Same 1x3
+# arterial as corridor-rush, but demand is symmetric and moderate - no heavy
+# platoon direction, so a one-way green wave buys much less here. Policies
+# TRAIN on corridor-rush and are ALSO evaluated here (train-one-profile /
+# test-others); classical rows give the comparison band. Flat profile for the
+# same reason as corridor-rush: stationary rates keep the probe interpretable.
+name: corridor-balanced
+description: "1x3 corridor, symmetric 250 veh/h everywhere - the generalization test."
+
+episode:
+  warmup_s: 300
+  measure_s: 3600
+  dt_s: 0.1
+
+topology:
+  kind: corridor
+  n_intersections: 3
+  block_length_m: 150
+  speed_limit_mph: 30
+  approach_length_m: 300
+  lanes_per_approach: 1
+  lane_width_m: 3.5
+  crosswalk_length_m: 9.0
+
+demand:
+  vehicles:
+    profile:
+      - t0_s: 0
+        rate_veh_h:
+          west: 250
+          east: 250
+          north_0: 250
+          south_0: 250
+          north_1: 250
+          south_1: 250
+          north_2: 250
+          south_2: 250
+  pedestrians:
+    profile:   # per LEG, applied at every intersection's crosswalk on that leg
+      - {t0_s: 0, rate_ped_h: {north: 50, south: 50, east: 60, west: 60}}
+
+controller:
+  kind: coordinated
+  params:
+    cycle_s: 60
+    split_ns: 0.5    # symmetric demand, symmetric split

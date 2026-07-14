@@ -5,7 +5,7 @@
 > Scope is the code layer — `src/`, `tests/`, `scenarios/`, `docs/`, `runs/`, configs.
 > The `.claude/` skills layer sits above the code and documents itself.
 >
-> **Current as of: phase 2, chunk 6** — the full RL stack is code-complete on top
+> **Current as of: phase 2, chunk 7** — the full RL stack is code-complete on top
 > of the complete phase 1 (single 4-way + four classical controllers + leaderboard):
 > corridor + grid builders, vectorized signal machines, batched VectorEnv,
 > coordinated green-wave baseline, hand-rolled Double DQN and parameter-shared
@@ -101,8 +101,8 @@ src/traffic_rl/
 ├── __init__.py            package docstring: the layout in four lines
 ├── py.typed               PEP 561 marker (package ships types; mypy strict)
 ├── cli.py                 Typer commands: run, view, replay, gif, calibrate,
-│                          leaderboard, bench, train-dqn, train-ppo
-│                          (see docs/experiments.md)
+│                          leaderboard, bench, train-dqn, train-ppo,
+│                          emergence-probe (see docs/experiments.md)
 ├── core/
 │   ├── __init__.py        core = pure kernels + one orchestrator; render-free
 │   ├── units.py           SI everywhere inside; imperial↔SI at the edges only
@@ -181,7 +181,10 @@ src/traffic_rl/
     │                      lost time (never textbook constants)
     ├── runner.py          matrix: controllers x scenarios x seeds, process pool
     ├── stats.py           percentile bootstrap CIs (10k resamples, seeded)
-    └── report.py          leaderboard markdown + CI bar chart; honesty notes
+    ├── report.py          leaderboard markdown + CI bar chart; honesty notes
+    └── emergence.py       ADR 0004 §6 probe: green-onset cross-correlation of
+                           adjacent signals vs the travel-time lag (offset_score
+                           1.0 = the encoded green wave, by construction)
 
 tests/
 ├── test_smoke.py          package imports + version
@@ -217,7 +220,7 @@ tests/
 │   └── test_ppo_smoke.py  same machinery pin for PPO: arm dirs, curves,
 │                          checkpoint drives a 3-intersection World legally
 ├── experiments/
-│   └── test_{calibrate,stats,runner_report}.py
+│   └── test_{calibrate,stats,runner_report,emergence}.py
 └── viewer/
     └── test_render_smoke.py   headless render smoke (SDL dummy)
 
@@ -228,6 +231,8 @@ scenarios/
 │                          max-pressure's ped-blindness
 ├── corridor-rush.yaml     1x3 arterial, eastbound-heavy — the green-wave
 │                          scenario (phase 2)
+├── corridor-balanced.yaml 1x3, symmetric demand — the corridor generalization
+│                          test (ADR 0004 §5: train on rush, eval here too)
 ├── grid-balanced.yaml     3x3, uniform demand — grid generalization test
 └── grid-rush-diag.yaml    3x3, southbound+eastbound heavy — two waves fight
                            for the same cycles (PPO's headline scenario)
@@ -238,7 +243,8 @@ docs/
 ├── leaderboard.md         committed phase-1 results (20 seeds, CIs)
 ├── vision.md              human-owned WHY
 ├── decisions/             ADRs 0001 (stack), 0002 (metrics — THE spec), 0003 (docs), 0004 (RL env)
-├── plans/                 phase-1.md (done), phase-2.md (draft), phases-3-5-draft.md
+├── plans/                 phase-1.md (done), phase-2.md, phase-2-runbook.md
+│                          (the run-session handoff), phases-3-5-draft.md
 ├── results/               phase-1.md — what the runs meant
 ├── state/                 now.md / roadmap.md / log.md / miss-log.md /
 │                          watchout-later.md

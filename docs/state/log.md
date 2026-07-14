@@ -2,7 +2,24 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
-- **2026-07-14 · Phase 2 chunk 6: parameter-shared PPO + the comm ablation.**
+- **2026-07-14 · Phase 2 chunk 7: the emergence probe + the run-session runbook.**
+  `experiments/emergence.py`: adjacent signal pairs (ew rows west→east, ns
+  columns north→south — the coordinated baseline's own conventions), green-
+  indicator series sampled every dt, Pearson cross-correlation over lags, and
+  `offset_score = r(travel lag) / r(best lag)` — 1.0 means greens offset by
+  exactly the platoon travel time, which CoordinatedFixedTime scores by
+  construction. Synthetic tests recover known offsets; the real-corridor test
+  pins the discrimination (coordinated > fixed_time + 0.1). Seen behavior via
+  the new `traffic-rl emergence-probe` CLI: coordinated 0.868 vs fixed_time
+  0.303 (fixed_time peaks at lag 0/cycle, exactly as predicted).
+  `scenarios/corridor-balanced.yaml` added — ADR 0004 §5's corridor
+  generalization profile had no scenario file, so the locked protocol was
+  unrunnable; matrix now 7 scenarios. `docs/plans/phase-2-runbook.md` is the
+  handoff for the run session: measured throughputs put sequential ADR budgets
+  at ~30 h, so it leads with the wall-clock arithmetic, a concurrency
+  measurement, and the priority order (DQN gate → PPO corridor → leaderboard
+  v2 → PPO grid), plus snippets for RL leaderboard rows, curves figures, RL
+  GIFs, and checkpoint hashing. 183 tests.
   `rl/ppo.py`: one Actor and one Critic applied to every intersection's local
   48-channel row (parameter sharing by reshape, decentralized execution); the
   reward is the world's TEAM scalar repeated per intersection (pure for the

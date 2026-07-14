@@ -3,7 +3,21 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-14 (phase 2 IN PROGRESS — chunks 1-6 of 7 done; code-complete, runs pending):**
+**As of 2026-07-14 (phase 2 code COMPLETE — chunks 1-7 done; trainings + experiments run next session):**
+
+Chunk 7 landed: the emergence probe (`experiments/emergence.py`,
+`traffic-rl emergence-probe`) — green-indicator cross-correlation of adjacent
+signal pairs vs the travel-time lag, per ADR 0004 §6; smoke-measured
+discrimination on corridor-rush: coordinated offset_score 0.868 vs fixed_time
+0.303 (2 seeds, 420 s — preview, not results). `scenarios/corridor-balanced.yaml`
+added (the ADR §5 corridor generalization profile was unrunnable without it;
+leaderboard matrix is now 7 scenarios). **The run-session handoff is
+[plans/phase-2-runbook.md](../plans/phase-2-runbook.md)** — exact commands,
+measured wall-times (sequential ADR budgets ≈ 30 h, so it includes the
+concurrency check + priority order + downward-only amendment rules), RL
+leaderboard-row snippets, figures/GIF recipes, sharp edges. A memory-file
+pointer for the next session exists outside the repo. Full-diff Opus probe
+review running; findings fold here when it returns.
 
 Chunk 6 landed: parameter-shared PPO (`rl/ppo.py`, `traffic-rl train-ppo`) —
 one Actor/Critic over every intersection's 48-channel row, team reward per

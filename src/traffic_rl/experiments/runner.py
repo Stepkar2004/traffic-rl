@@ -24,6 +24,7 @@ DEFAULT_SCENARIOS = (
     "single-rush-ns",
     "single-night",
     "corridor-rush",
+    "corridor-balanced",
     "grid-balanced",
     "grid-rush-diag",
 )

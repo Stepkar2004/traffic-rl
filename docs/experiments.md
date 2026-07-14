@@ -62,11 +62,13 @@ never textbook constants. Defaults: 16-vehicle queue, 10 seeds.
 ### `traffic-rl leaderboard` → `docs/leaderboard.md` + chart + raw rows
 
 **The protocol run** (ADR 0002 §6): 20 seeds per cell, 300 s warmup + 3600 s
-measurement, process pool. As of phase-2 chunk 4 the default matrix is **6
-scenarios with topology-appropriate controller sets**: single-intersection
-scenarios run the phase-1 four (rows stay comparable forever); corridors/grids
-add `coordinated` (the hand-built green wave) and give max-pressure its network
-form (`downstream: true`). Expect substantially more wall time than phase 1's
+measurement, process pool. As of phase-2 chunk 7 the default matrix is **7
+scenarios with topology-appropriate controller sets** (corridor-balanced joined
+in chunk 7 — it is ADR 0004 §5's corridor generalization profile and needs
+classical comparator rows): single-intersection scenarios run the phase-1 four
+(rows stay comparable forever); corridors/grids add `coordinated` (the
+hand-built green wave) and give max-pressure its network form
+(`downstream: true`). Expect substantially more wall time than phase 1's
 ~4 min — the full v2 run is scheduled for the training/run session.
 Auto-calibrates first if `runs/calibration.json` is missing. Outputs:
 
@@ -109,6 +111,22 @@ box (RTX 4070, 16 envs): corridor ~1,100 env-steps/s → ~75 min per 5M-step
 seed; 3x3 grid ~770 env-steps/s → ~3.6 h per 10M-step seed. Evaluate on the
 leaderboard protocol via controller kind `rl` with `{"algo": "ppo"}` (one
 RLController per intersection; the runner does this per-node cloning itself).
+
+### `traffic-rl emergence-probe <scenario.yaml> [--controller kind] [--params JSON] [--checkpoint path --algo ppo --comm/--no-comm] [--seeds N] [--duration S]`
+
+**Current as of phase 2, chunk 7.** The ADR 0004 §6 headline probe: for every
+adjacent signal pair along a corridor axis, cross-correlate the pair's
+green-indicator series and compare the correlation peak to the travel-time lag
+(the same distance/speed arithmetic CoordinatedFixedTime encodes).
+`offset_score` 1.0 = greens offset by exactly the platoon's travel time.
+Default controller is the scenario's own; `--controller fixed_time --params
+'{"cycle_s": 60.0, "split_ns": 0.4}'` gives the no-coordination foil,
+`--checkpoint` evaluates an RL policy (kind `rl`). JSON rows (with full
+correlation curves for figures) land in `runs/emergence/`. Smoke-measured
+discrimination on corridor-rush (2 seeds, 420 s — preview, not results):
+coordinated 0.868 vs fixed_time 0.303. The protocol probe (900 s, 5+ seeds,
+all three arms + comm ablation) runs in the run session —
+see [plans/phase-2-runbook.md](plans/phase-2-runbook.md).
 
 ### `traffic-rl bench`
 
