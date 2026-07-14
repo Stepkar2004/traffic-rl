@@ -3,7 +3,22 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-12 (phase 1 COMPLETE pending Stepan's gate review; phase 1.1 docs landed):**
+**As of 2026-07-14 (phase 2 IN PROGRESS — chunk 1 of 7 done):**
+
+Stepan approved the phase-2 plan (scope option A: through-only grid) and this run
+mode: **all phase-2 code written this session** (chunks 1-6 + analysis tooling,
+smoke-level runs only, two Opus adversarial reviews after chunks 4 and 6), **full
+trainings + experiments in a follow-up session** driven by a handoff runbook.
+Chunk 1 landed: [ADR 0004](../decisions/0004-rl-env-and-reward.md) — the RL env +
+reward contract, locked before any env/training code (batched VectorEnv, 1 s
+decision interval, 48-channel observation, masks from `earliest_switch_s`, reward
+with θ=60 s tail-wait fairness surcharge, greedy 20-seed eval, locked budgets).
+Awaiting Stepan's async review alongside the phase-1 gates below. Next: chunk 2
+(multi-intersection core).
+
+---
+
+**Phase-1 state (as of 2026-07-12, COMPLETE pending Stepan's gate review; phase 1.1 docs landed):**
 
 Phase 1.1 (Stepan-requested) landed: permanent documentation surfaces per
 [ADR 0003](../decisions/0003-permanent-docs.md) — [map.md](../map.md) (the one-file

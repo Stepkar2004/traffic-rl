@@ -60,7 +60,8 @@ surge — the headline scenario), `single-night` (sparse).
 ### `docs/` — decisions, state, results
 
 - `decisions/` — ADRs, append-only: 0001 stack, 0002 **the locked metrics + realism
-  constraints** (the spec everything measures against), 0003 these doc surfaces.
+  constraints** (the spec everything measures against), 0003 these doc surfaces,
+  0004 **the RL env + reward contract** (locked before any phase-2 training code).
 - `plans/` — phase plans; historical records of intent, never retro-edited.
 - `state/` — `now.md` (where the project is) → `roadmap.md` (next) → `log.md` (was);
   `miss-log.md` (skill-gap notes) and `watchout-later.md` (deferred realism concerns to
@@ -167,7 +168,7 @@ docs/
 ├── experiments.md         command/experiment reference + phase currency
 ├── leaderboard.md         committed phase-1 results (20 seeds, CIs)
 ├── vision.md              human-owned WHY
-├── decisions/             ADRs 0001 (stack), 0002 (metrics — THE spec), 0003 (docs)
+├── decisions/             ADRs 0001 (stack), 0002 (metrics — THE spec), 0003 (docs), 0004 (RL env)
 ├── plans/                 phase-1.md (done), phase-2.md (draft), phases-3-5-draft.md
 ├── results/               phase-1.md — what the runs meant
 ├── state/                 now.md / roadmap.md / log.md / miss-log.md /

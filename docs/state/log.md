@@ -2,6 +2,19 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-14 · Phase 2 chunk 1: ADR 0004 (RL env + reward contract) locked.** Stepan
+  approved the phase-2 plan (scope option A: grid through-only) and the session split:
+  all code written now with smoke-level runs + two Opus reviews (after chunks 4 and 6);
+  full trainings run in a follow-up session from a handoff runbook. ADR 0004 locks,
+  before any env code: natively-batched VectorEnv contract (1.0 s decision interval,
+  NEXT_STEP autoreset, 900 s training episodes), the 48-channel per-intersection
+  observation layout with normalization constants, advisory action masks derived from
+  `earliest_switch_s`, reward = -(W_veh + W_ped + 2.0·W_tail)/100 with the p95 term
+  materialized as a θ=60 s tail-wait surcharge (metrics ADDITION per ADR 0002 §7),
+  greedy 20-seed leaderboard eval for RL rows, locked hyperparameters and sample
+  budgets (budgets revisable downward only). Plan's stale "ADR 0003" references fixed
+  to 0004 (0003 = permanent docs). Flagged for Stepan's async review — edits are cheap
+  until training results exist.
 - **2026-07-14 · Phase-1 second-pass teaching; `watchout-later.md` created.** Stepan ran
   a full explain-back pass over the phase-1 design principles before starting phase 2
   (no code changed). Folded the interactive explain-back loop into the teach-me reference

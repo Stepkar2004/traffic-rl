@@ -1,8 +1,13 @@
 # Phase 2 plan — omniscient RL (and the grid)
 
-> Status: **DRAFT — written 2026-07-12 at phase-1 completion, while the seams are
-> fresh. Not approved. Before implementation: a realism-scan pass, Stepan's review,
-> and an adversarial review like phase 1's.** Grounded by
+> Status: **APPROVED 2026-07-14 by Stepan — scope decision resolved as option A
+> (grid through-only).** Session split agreed the same day: this session writes all
+> code (chunks 1-6 + analysis tooling) with smoke-level runs and two Opus
+> adversarial reviews (after chunk 4, after chunk 6); the full trainings and
+> experiments run in a follow-up session from the handoff runbook. Note: the
+> env/reward ADR named "ADR 0003" below landed as **ADR 0004**
+> ([0004-rl-env-and-reward.md](../decisions/0004-rl-env-and-reward.md)) — 0003 was
+> taken by the permanent-docs ADR in phase 1.1. Grounded by
 > [phase-1.md](phase-1.md) (what actually got built) and
 > [research notes §3](../research/sim-architecture-notes-2026-07.md) (Gymnasium
 > decisions recorded at phase 0).
@@ -72,7 +77,7 @@ The realism-scan pass before this plan is approved should rank this explicitly.
   phase; observation = the SAME detection channels, flattened per intersection;
   illegal actions masked via `earliest_switch_s` (and still refused+counted by
   the machine if an agent bypasses the mask). Reward and env contract locked in
-  **ADR 0003 before any training code** — reward = -Σ wait with an explicit p95
+  **ADR 0004 before any training code** — reward = -Σ wait with an explicit p95
   term; reward terms are metrics ADDITIONS (new ADR, never edits, per ADR 0002 §7).
 - **RL:** torch (GPU enters here). DQN on the single intersection as the sanity
   gate — it must land within the classical band on the phase-1 leaderboard before
@@ -86,7 +91,7 @@ The realism-scan pass before this plan is approved should rank this explicitly.
 
 | # | Chunk | Contents | Acceptance sketch |
 |---|---|---|---|
-| 1 | ADR 0003 | reward, env contract, autoreset mode, masking, train/eval protocol, sample budget | reviewed before any env code |
+| 1 | ADR 0004 | reward, env contract, autoreset mode, masking, train/eval protocol, sample budget | reviewed before any env code |
 | 2 | Multi-intersection core | grid/corridor builders; SignalState over n_i; per-intersection walls/demand probes | phase-1 suite still green; interlock tests pass on a 2-chain; golden trace on corridor |
 | 3 | Batched worlds + env | world-id dimension over CSR; VectorEnv; masking | N batched worlds bit-match N sequential runs (tolerance); env passes Gymnasium checkers |
 | 4 | Coordinated baseline + scenarios | offsets, grid scenarios, leaderboard v2 over classics | green wave visible in viewer/GIF; corridor leaderboard with CIs |
