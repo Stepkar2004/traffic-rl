@@ -8,8 +8,9 @@ from traffic_rl.core.signals import Indication, PedIndication, SignalState
 from traffic_rl.core.topology import Phase, Topology, four_way_intersection
 
 DT = 0.1
-NO_DEMAND = np.zeros(2, dtype=np.bool_)
-ALL_DEMAND = np.ones(2, dtype=np.bool_)
+# demand is (n_i, N_PHASES) since the phase-2 multi-intersection machine
+NO_DEMAND = np.zeros((1, 2), dtype=np.bool_)
+ALL_DEMAND = np.ones((1, 2), dtype=np.bool_)
 
 
 @pytest.fixture
@@ -91,7 +92,7 @@ def test_max_red_forces_service_only_with_demand(topo: Topology) -> None:
     _advance(sig, 130.0, NO_DEMAND, _no_calls(sig))
     assert int(sig.active[0]) == Phase.NS  # nobody waiting: rest in green
     assert sig.forced == 0
-    demand_ew = np.array([False, True])
+    demand_ew = np.array([[False, True]])
     _advance(sig, 1.0, demand_ew, _no_calls(sig))  # red_t(EW) already >> cap
     assert sig.forced == 1
     assert int(sig.pending[0]) == Phase.EW
@@ -153,7 +154,7 @@ def test_first_late_call_served_mid_green(topo: Topology) -> None:
 def test_late_call_deferred_while_cross_street_starving(topo: Topology) -> None:
     """ADR 0002 §3 amendment: a discretionary WALK never rides the max-red cap."""
     sig = _machine(topo)
-    demand_ew = np.array([False, True])
+    demand_ew = np.array([[False, True]])
     # rest in NS green while EW demand accumulates red time near the cap
     _advance(sig, 110.0, demand_ew, _no_calls(sig))
     assert sig.forced == 0

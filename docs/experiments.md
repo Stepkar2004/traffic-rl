@@ -44,7 +44,9 @@ Live 2D viewer (pygame). SPACE pause · RIGHT step · UP/DOWN speed · Q quit.
 
 ### `traffic-rl replay <trace.npz> [--speed X]` / `traffic-rl gif <trace.npz> <out.gif>`
 
-Replay a recorded trace (R restarts), or export a looping GIF from one
+Trace format is **v2 since phase-2 chunk 2** (per-intersection signal state);
+v1 traces recorded before that need re-recording — the reader refuses them
+with a version error. Replay a recorded trace (R restarts), or export a looping GIF from one
 (`--start/--end` clip seconds, `--every` frame stride, `--fps`, `--size`). GIFs
 always come from traces: the expensive sim runs once, headless.
 

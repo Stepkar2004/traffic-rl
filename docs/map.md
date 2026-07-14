@@ -5,8 +5,10 @@
 > Scope is the code layer — `src/`, `tests/`, `scenarios/`, `docs/`, `runs/`, configs.
 > The `.claude/` skills layer sits above the code and documents itself.
 >
-> **Current as of: phase 1** (single 4-way intersection, four classical controllers,
-> leaderboard shipped). Sibling docs: [experiments.md](experiments.md) (how to run
+> **Current as of: phase 2, chunk 2** — multi-intersection core landed on top of
+> the complete phase 1 (single 4-way + four classical controllers + leaderboard):
+> corridor + grid builders, vectorized signal machines, per-intersection
+> controllers. Sibling docs: [experiments.md](experiments.md) (how to run
 > things), [results/phase-1.md](results/phase-1.md) (what the runs meant).
 
 ## At a glance
@@ -94,27 +96,35 @@ src/traffic_rl/
 │   │                      sensors); entropy always logged; determinism per seed
 │   ├── config.py          frozen dataclasses + strict YAML scenario loader
 │   ├── topology.py        graph tables: nodes/edges/lanes/movements/crosswalks +
-│   │                      movement-conflict matrix; 4-way builder (phase 1)
+│   │                      movement-conflict matrix; builders: 4-way, corridor
+│   │                      (1xN arterial), NxN grid — through-only chains
 │   ├── arrays.py          SoA state: VehicleArrays/PedArrays, CSR lane_order
 │   ├── vehicles.py        vehicle kernels: leader gaps (cross-junction aware),
 │   │                      per-vehicle walls, IDM, ballistic step + exact-stop,
-│   │                      never-fires overlap tripwire, transfer/despawn
-│   ├── signals.py         signal state machine: ADR 0002 §3 enforced HERE —
-│   │                      refuses illegal requests, WALK service + re-arm,
-│   │                      max-red forcing; controllers only ever REQUEST
+│   │                      never-fires overlap tripwire, multi-hop transfer
+│   ├── signals.py         signal state machines, VECTORIZED over n_i
+│   │                      intersections: ADR 0002 §3 enforced HERE — refuses
+│   │                      illegal requests, WALK service + re-arm, max-red
+│   │                      forcing; controllers only ever REQUEST
 │   ├── timing.py          published formulas as named functions: ITE yellow /
 │   │                      all-red, MUTCD ped clearance, Webster cycle
-│   ├── demand.py          Poisson arrivals pre-generated at build; boundary queues
+│   ├── demand.py          Poisson arrivals pre-generated at build, keyed per
+│   │                      origin (vehicles) / crosswalk (peds); boundary queues
 │   ├── pedestrians.py     ped kernels: curb wait, WALK-gated crossing, compliance
 │   ├── metrics.py         ADR 0002 metrics: demand-event trip clock, hysteresis
 │   │                      stops, p95 fairness, completions-window throughput
-│   ├── recorder.py        npz trace writer + Trace reader (downsampled Frames)
-│   └── world.py           THE orchestrator: step() sub-step order is the model
+│   ├── recorder.py        npz trace writer + Trace reader (downsampled Frames;
+│   │                      format v2: per-intersection signal state)
+│   └── world.py           THE orchestrator: step() sub-step order is the model;
+│                          one controller + observation model per intersection
 ├── control/
 │   ├── __init__.py        registry: controller.kind string -> factory
-│   ├── base.py            Controller protocol + the Observation contract
+│   ├── base.py            Controller protocol (per-intersection; reset(topo,
+│   │                      node)) + the Observation contract incl. downstream
+│   │                      channel
 │   ├── observation.py     ObservationModel protocol + PerfectObservation
-│   │                      (phase 1 omniscient; phase 3's noise drops in here)
+│   │                      (omniscient, per-intersection; phase 3's noise
+│   │                      drops in here)
 │   ├── fixed_time.py      the floor: a clock + legally-required patience
 │   ├── webster.py         Webster 1958 from MEASURED calibration, greens
 │   │                      anchored to green onsets
@@ -143,8 +153,12 @@ tests/
 │   ├── data/golden-balanced-60s.npz   stored golden fixture (2 Hz digests)
 │   ├── test_determinism.py   fixed seed -> stored digest; regen via
 │   │                         TRAFFIC_RL_REGEN_GOLDEN=1
+│   ├── data/golden-corridor-60s.npz   corridor golden fixture (phase 2)
 │   ├── test_vehicles.py      kernel property tests; overlap guard NEVER fires
 │   ├── test_signals.py       interlock tests: the machine refuses violations
+│   ├── test_multi_intersection.py   phase-2 core: corridor/grid builders,
+│   │                         per-intersection machine independence, corridor
+│   │                         conservation + golden, multi-hop transfer
 │   ├── test_timing.py        formulas vs published worked examples
 │   ├── test_metrics.py       metric definitions vs hand-computed values
 │   └── test_{units,rng,config,topology,arrays,demand,

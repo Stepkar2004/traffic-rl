@@ -30,15 +30,24 @@ class ApproachChannel:
     detector_occupied: bool
     #: Seconds since the detector was last occupied (actuation recency).
     time_since_actuation_s: float
-    #: Rolling arrival-rate estimate, veh/h (omniscient in phase 1).
+    #: Rolling arrival-rate estimate, veh/h (omniscient in phases 1-2).
     flow_veh_h: float
     #: DERIVED from the detections: vehicles slower than V_WAIT.
     queue_len: int
+    #: Vehicles on this movement's exit link (to the next stop line or the
+    #: boundary). The downstream term grid max-pressure needs, and ADR 0004's
+    #: spillback channel; sink links make it harmless on a single intersection.
+    downstream_count: int = 0
+    #: How many vehicles the exit link holds bumper-to-bumper (jam capacity).
+    downstream_capacity: int = 1
 
 
 @dataclass(frozen=True)
 class Observation:
-    """Everything a controller may know. Approaches in canonical order."""
+    """Everything ONE intersection's controller may know. Approaches are in
+    canonical arrival order (north, south, east, west) at THAT intersection —
+    every controller runs as an independent per-intersection copy and sees
+    only its own junction (plus the downstream channel above)."""
 
     t: float
     approaches: tuple[ApproachChannel, ...]
@@ -64,16 +73,20 @@ class Observation:
 
 
 class Controller(Protocol):
-    """A signal controller. ``decide`` returns the phase it WANTS green.
+    """A signal controller for ONE intersection. ``decide`` returns the phase
+    it WANTS green.
 
     The signal machine enforces legality — a controller cannot break
     min-green, clearance, or max-red, only request. ``cadence_s`` declares
     how often decide() runs (the actuated controller declares dt itself:
     a 2-3 s passage gap cannot be measured by sampling at 1 Hz).
+    ``reset(topo, node)`` binds the copy to its intersection: sensor→phase
+    maps must come from ``topo.movements_of(node)`` / ``topo.crosswalks_of
+    (node)``, never from an assumed global ordering (chunk-7 lesson).
     """
 
     cadence_s: float
 
-    def reset(self, topo: Topology) -> None: ...
+    def reset(self, topo: Topology, node: int) -> None: ...
 
     def decide(self, obs: Observation, t: float) -> int: ...

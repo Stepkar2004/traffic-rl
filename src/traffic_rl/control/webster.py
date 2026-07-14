@@ -64,9 +64,9 @@ class Webster:
         self._greens: list[float] = [20.0, 20.0]  # placeholder until first recalc
         self._plan_computed_t = float("-inf")
 
-    def reset(self, topo: Topology) -> None:
-        # phase map from the actual topology, not an assumed ordering
-        self._approach_phase = tuple(topo.movements[a].phase for a in range(len(topo.movements)))
+    def reset(self, topo: Topology, node: int) -> None:
+        # phase map from THIS intersection's movements, not an assumed ordering
+        self._approach_phase = tuple(m.phase for m in topo.movements_of(node))
         self._greens = [20.0, 20.0]
         self._plan_computed_t = float("-inf")
 

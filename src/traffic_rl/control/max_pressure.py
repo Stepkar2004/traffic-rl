@@ -25,9 +25,9 @@ class MaxPressure:
     def __init__(self) -> None:
         self._approach_phase: tuple[Phase, ...] = _DEFAULT_APPROACH_PHASE
 
-    def reset(self, topo: Topology) -> None:
-        # phase map from the actual topology, not an assumed ordering
-        self._approach_phase = tuple(topo.movements[a].phase for a in range(len(topo.movements)))
+    def reset(self, topo: Topology, node: int) -> None:
+        # phase map from THIS intersection's movements, not an assumed ordering
+        self._approach_phase = tuple(m.phase for m in topo.movements_of(node))
 
     def pressures(self, obs: Observation) -> list[int]:
         p = [0] * N_PHASES

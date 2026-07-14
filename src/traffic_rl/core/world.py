@@ -1,10 +1,15 @@
 """World: the ONLY mutable orchestrator (phase-1 plan §4).
 
 Owns topology + arrays + signals + rng streams + the controller loop;
-``step()`` advances one dt in a fixed sub-step order. The order is the model —
-chunk 5 fills the remaining stubs WITHOUT reordering.
+``step()`` advances one dt in a fixed sub-step order. The order is the model.
+
+Phase 2: the same World runs one intersection, a corridor, or a grid — the
+topology decides. Controllers run as INDEPENDENT PER-INTERSECTION copies (one
+instance + one observation model per signalized node); coordination exists
+only where a controller class encodes it (offsets) or an RL policy learns it.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -16,8 +21,8 @@ from traffic_rl.core.demand import build_arrival_schedule
 from traffic_rl.core.metrics import EpisodeMetrics, MetricsCollector, accumulate_step
 from traffic_rl.core.pedestrians import step_pedestrians
 from traffic_rl.core.rng import RngStreams, spawn_streams
-from traffic_rl.core.signals import Indication, SignalState
-from traffic_rl.core.topology import N_PHASES, Topology, four_way_intersection
+from traffic_rl.core.signals import SignalState
+from traffic_rl.core.topology import N_PHASES, Topology, build_topology
 from traffic_rl.core.units import ftps_to_mps
 from traffic_rl.core.vehicles import GAP_EPS, step_vehicles
 
@@ -46,11 +51,11 @@ class World:
         self,
         cfg: SimConfig,
         seed: int | None = None,
-        controller: "Controller | None" = None,
-        observation: "ObservationModel | None" = None,
+        controller: "Controller | Sequence[Controller] | None" = None,
+        observation: "ObservationModel | Sequence[ObservationModel] | None" = None,
     ) -> None:
         self.cfg = cfg
-        self.topology: Topology = four_way_intersection(cfg.topology)
+        self.topology: Topology = build_topology(cfg.topology)
         self.rng: RngStreams = spawn_streams(seed)
         self.vehicles = VehicleArrays()
         self.peds = PedArrays()
@@ -59,61 +64,99 @@ class World:
         self.step_count = 0
 
         topo = self.topology
+        n_i = topo.n_signals
+        self.n_signals = n_i
         self._lane_length: F32 = np.array([ln.length_m for ln in topo.lanes], dtype=np.float32)
         self._next_lane: I32 = np.array([ln.next_lane for ln in topo.lanes], dtype=np.int32)
-        self._inbound_lane: list[int] = [topo.inbound_lane_of(a).id for a in range(len(APPROACHES))]
-        #: inbound lane ids grouped by the phase serving them (demand probe).
-        self._lanes_of_phase: list[I32] = [
-            np.array([m.in_lane for m in topo.movements if int(m.phase) == p], dtype=np.int32)
-            for p in range(N_PHASES)
-        ]
-        #: approach INDICES grouped by phase (for boundary-queue demand probes).
-        self._approach_ids_of_phase: list[list[int]] = [
-            [
-                a
-                for a in range(len(APPROACHES))
-                if topo.inbound_lane_of(a).id in self._lanes_of_phase[p]
-            ]
-            for p in range(N_PHASES)
-        ]
+        #: Cumulative count of vehicles that ever ENTERED each lane (spawns +
+        #: transfers). Interior approaches derive their omniscient flow channel
+        #: from this; origin approaches keep the phase-1 demand-event count.
+        self.lane_entered: I64 = np.zeros(topo.n_lanes, dtype=np.int64)
+
+        #: Per-origin wiring: entry lane, the intersection/phase its queue
+        #: presses on, and the terminal lane of its through route.
+        self._origin_entry: list[int] = list(topo.origin_lane)
+        self._origin_node: I32 = np.array(
+            [topo.lanes[entry].signal_node for entry in topo.origin_lane], dtype=np.int32
+        )
+        self._origin_phase: I32 = np.array(
+            [self.signals.lane_phase[entry] for entry in topo.origin_lane], dtype=np.int32
+        )
+        self._origin_dest: list[int] = []
+        for entry in topo.origin_lane:
+            lane = entry
+            while topo.lanes[lane].next_lane >= 0:
+                lane = topo.lanes[lane].next_lane
+            self._origin_dest.append(lane)
+
         #: Per-lane virtual-leader position (red stop line); +inf = no wall.
         self.wall_s: F32 = np.full(topo.n_lanes, np.inf, dtype=np.float32)
         #: Comfortable-stop threshold for dilemma-zone exemptions — the SAME
         #: deceleration the ITE yellow formula assumes (ADR 0002 §3).
         self._comfort_brake_mps2 = ftps_to_mps(cfg.signal.decel_rate_ftps2)
 
-        # Controller wiring (lazy imports keep core import-clean at module level).
+        # Controller wiring: one controller + one observation model per
+        # intersection (lazy imports keep core import-clean at module level).
+        controllers: list[Controller]
         if controller is None:
             from traffic_rl.control import make_controller
 
-            controller = make_controller(cfg.controller)
+            controllers = [make_controller(cfg.controller) for _ in range(n_i)]
+        elif isinstance(controller, Sequence):
+            controllers = list(controller)
+        else:
+            controllers = [controller]
+        if len(controllers) != n_i:
+            raise ValueError(f"got {len(controllers)} controllers for {n_i} intersections")
+        observations: list[ObservationModel]
         if observation is None:
             from traffic_rl.control.observation import PerfectObservation
 
-            observation = PerfectObservation()
-        self.controller = controller
-        self.obs_model = observation
-        self.controller.reset(topo)
-        self.obs_model.reset(topo)
+            observations = [PerfectObservation() for _ in range(n_i)]
+        elif isinstance(observation, Sequence):
+            observations = list(observation)
+        else:
+            observations = [observation]
+        if len(observations) != n_i:
+            raise ValueError(f"got {len(observations)} observation models for {n_i} intersections")
+        self.controllers = controllers
+        self.obs_models = observations
         dt = cfg.episode.dt_s
-        self._ctrl_every = max(1, round(self.controller.cadence_s / dt))
-        if abs(self._ctrl_every * dt - self.controller.cadence_s) > 1e-9:
-            raise ValueError(
-                f"controller cadence {self.controller.cadence_s}s is not a multiple of dt={dt}s"
-            )
+        self._ctrl_every: list[int] = []
+        for i in range(n_i):
+            self.controllers[i].reset(topo, i)
+            self.obs_models[i].reset(topo, i)
+            every = max(1, round(self.controllers[i].cadence_s / dt))
+            if abs(every * dt - self.controllers[i].cadence_s) > 1e-9:
+                raise ValueError(
+                    f"controller cadence {self.controllers[i].cadence_s}s is not a "
+                    f"multiple of dt={dt}s"
+                )
+            self._ctrl_every.append(every)
 
         # Both schedules are drawn at build time, vehicles first, so the
-        # demand stream's draw order never changes between chunks.
+        # demand stream's draw order never changes between chunks. Vehicle
+        # streams are per ORIGIN; pedestrian streams per CROSSWALK (keyed by
+        # its leg name — one per-leg rate, independent at every intersection).
         dur = cfg.episode.duration_s
         demand_rng = self.rng["demand"]
-        self._veh_arrivals = build_arrival_schedule(cfg.demand.vehicle_profile, dur, demand_rng)
-        self._ped_arrivals = build_arrival_schedule(cfg.demand.ped_profile, dur, demand_rng)
-        self._veh_cursor = [0] * len(APPROACHES)
-        self._ped_cursor = [0] * len(APPROACHES)
-        #: FIFO of demand_t for vehicles waiting at each boundary (ADR 0002 §1:
-        #: their trip clock is already running).
-        self.boundary_queue: list[list[float]] = [[] for _ in APPROACHES]
-        self.veh_demanded_by_approach: I64 = np.zeros(len(APPROACHES), dtype=np.int64)
+        self._veh_arrivals = build_arrival_schedule(
+            cfg.demand.vehicle_profile, dur, demand_rng, topo.origins
+        )
+        self._ped_arrivals = build_arrival_schedule(
+            cfg.demand.ped_profile,
+            dur,
+            demand_rng,
+            [APPROACHES[cw.leg] for cw in topo.crosswalks],
+        )
+        n_origins = len(topo.origins)
+        n_cw = len(topo.crosswalks)
+        self._veh_cursor = [0] * n_origins
+        self._ped_cursor = [0] * n_cw
+        #: FIFO of demand_t for vehicles waiting at each boundary origin
+        #: (ADR 0002 §1: their trip clock is already running).
+        self.boundary_queue: list[list[float]] = [[] for _ in range(n_origins)]
+        self.veh_demanded_by_origin: I64 = np.zeros(n_origins, dtype=np.int64)
 
         self._cw_length: F32 = np.array([cw.length_m for cw in topo.crosswalks], dtype=np.float32)
         self.metrics = MetricsCollector(
@@ -130,11 +173,12 @@ class World:
     def step(self) -> None:
         """Advance one dt. Sub-step order per phase-1 plan §4 — do not reorder."""
         self.signals.advance(self.cfg.episode.dt_s, self._demand_by_phase(), self._ped_calls())
-        if self.step_count % self._ctrl_every == 0:
-            obs = self.obs_model.observe(self)
-            wanted = self.controller.decide(obs, self.t)
-            if not self.signals.request(wanted):
-                self.counters.refused_commands += 1
+        for i in range(self.n_signals):
+            if self.step_count % self._ctrl_every[i] == 0:
+                obs = self.obs_models[i].observe(self)
+                wanted = self.controllers[i].decide(obs, self.t)
+                if not self.signals.request(wanted, i):
+                    self.counters.refused_commands += 1
         self._update_walls()
         self._spawn_vehicles()
         self._advance_vehicles()
@@ -163,18 +207,28 @@ class World:
     # -- signal plumbing -----------------------------------------------------
 
     def _demand_by_phase(self) -> BOOL:
-        """Per phase: is anyone waiting for it (vehicle on approach, queued at
-        the boundary, or a pedestrian call on a concurrent crosswalk)?"""
+        """(n_i, N_PHASES): per intersection and phase, is anyone waiting for
+        it (vehicle on an approach, queued at a boundary feeding it, or a
+        pedestrian call on a concurrent crosswalk)?"""
         veh = self.vehicles
         n = veh.n
-        counts = np.bincount(veh.lane[:n], minlength=self.topology.n_lanes)
+        sig = self.signals
+        demand = np.zeros((self.n_signals, N_PHASES), dtype=np.bool_)
+
+        if n:
+            counts = np.bincount(veh.lane[:n], minlength=self.topology.n_lanes)
+            lane_sig = sig.lane_node >= 0
+            acc = np.zeros((self.n_signals, N_PHASES), dtype=np.int64)
+            np.add.at(acc, (sig.lane_node[lane_sig], sig.lane_phase[lane_sig]), counts[lane_sig])
+            demand |= acc > 0
+
+        for o_idx, queue in enumerate(self.boundary_queue):
+            if queue:
+                demand[self._origin_node[o_idx], self._origin_phase[o_idx]] = True
+
         ped_call = self._ped_calls()
-        demand = np.zeros(N_PHASES, dtype=np.bool_)
-        for p in range(N_PHASES):
-            has_veh = bool(counts[self._lanes_of_phase[p]].sum() > 0)
-            has_queued = any(self.boundary_queue[a] for a in self._approach_ids_of_phase[p])
-            has_ped = bool(ped_call[self.signals.cw_phase == p].any())
-            demand[p] = has_veh or has_queued or has_ped
+        if ped_call.any():
+            np.logical_or.at(demand, (sig.cw_node, sig.cw_phase), ped_call)
         return demand
 
     def _ped_calls(self) -> BOOL:
@@ -198,7 +252,8 @@ class World:
         (nearly) stopped anyway — a blocked "runner" that has come to rest
         obeys the red in front of it.
         """
-        active = self.signals.wall_active()
+        sig = self.signals
+        active = sig.wall_active()
         self.wall_s = np.where(active, self._lane_length, np.inf).astype(np.float32)
         veh = self.vehicles
         n = veh.n
@@ -206,15 +261,15 @@ class World:
             return
         lane = veh.lane[:n]
         walled = active[lane]
-        yellow = self.signals.yellow_lane_mask()[lane]
+        yellow = sig.yellow_lane_mask()[lane]
         # clear latches wherever no wall faces the lane (green / outbound)
         veh.yellow_exempt[:n][~walled] = False
         # structural guard: once the CROSS phase is green, any still-upstream
         # latch is stale — a straggler that hasn't cleared by now must not
         # ride through the conflicting green. (Unreachable under phase-1
         # kinematics, but the invariant should not rest on parameters.)
-        if int(self.signals.indication[0]) == Indication.GREEN:
-            veh.yellow_exempt[:n][walled] = False
+        lane_green = sig.green_lane_mask()
+        veh.yellow_exempt[:n][walled & lane_green[lane]] = False
         if bool(yellow.any()):
             dist = self._lane_length[lane] - veh.s[:n]
             v = veh.v[:n]
@@ -229,26 +284,27 @@ class World:
 
     def _spawn_vehicles(self) -> None:
         t = self.t
-        for a_idx in range(len(APPROACHES)):
-            arrivals = self._veh_arrivals[a_idx]
-            cur = self._veh_cursor[a_idx]
-            queue = self.boundary_queue[a_idx]
+        for o_idx in range(len(self.topology.origins)):
+            arrivals = self._veh_arrivals[o_idx]
+            cur = self._veh_cursor[o_idx]
+            queue = self.boundary_queue[o_idx]
             while cur < arrivals.size and arrivals[cur] <= t:
                 queue.append(float(arrivals[cur]))
                 self.counters.veh_demanded += 1
-                self.veh_demanded_by_approach[a_idx] += 1
+                self.veh_demanded_by_origin[o_idx] += 1
                 cur += 1
-            self._veh_cursor[a_idx] = cur
+            self._veh_cursor[o_idx] = cur
             if not queue:
                 continue
-            v_in = self._entry_speed(self._inbound_lane[a_idx])
+            entry_lane = self._origin_entry[o_idx]
+            v_in = self._entry_speed(entry_lane)
             if v_in is None:
                 continue  # no safe headway: stays queued, clock running
             demand_t = queue.pop(0)
             idm = self.cfg.idm
             self.vehicles.add(
                 1,
-                lane=self._inbound_lane[a_idx],
+                lane=entry_lane,
                 s=0.0,
                 v=v_in,
                 length=idm.length_m,
@@ -257,12 +313,13 @@ class World:
                 a_max=idm.a_max_mps2,
                 b_comfort=idm.b_comfort_mps2,
                 s0=idm.s0_m,
-                origin=a_idx,
-                dest_edge=self.topology.movements[a_idx].out_lane,
+                origin=o_idx,
+                dest_edge=self._origin_dest[o_idx],
                 demand_t=demand_t,
                 entered_t=t,
                 compliant=True,
             )
+            self.lane_entered[entry_lane] += 1
             self.counters.veh_entered += 1
 
     def _entry_speed(self, lane_id: int) -> float | None:
@@ -289,6 +346,7 @@ class World:
             self.vehicles.yellow_exempt,
             self.cfg.idm.delta,
             self.cfg.episode.dt_s,
+            lane_entered=self.lane_entered,
         )
         self.counters.safety_interventions += interventions
         self.counters.veh_completed += len(trips)
@@ -298,13 +356,13 @@ class World:
     def _spawn_peds(self) -> None:
         t = self.t
         ped = self.cfg.ped
-        for a_idx in range(len(APPROACHES)):
-            arrivals = self._ped_arrivals[a_idx]
-            cur = self._ped_cursor[a_idx]
+        for c_idx in range(len(self.topology.crosswalks)):
+            arrivals = self._ped_arrivals[c_idx]
+            cur = self._ped_cursor[c_idx]
             while cur < arrivals.size and arrivals[cur] <= t:
                 self.peds.add(
                     1,
-                    crosswalk=a_idx,  # crosswalk id == leg index (topology builder)
+                    crosswalk=c_idx,
                     state=PedArrays.STATE_WAITING,
                     speed=ped.walk_speed_mps,  # per-agent; phase 4 samples this
                     compliant=True,
@@ -312,7 +370,7 @@ class World:
                 )
                 self.counters.ped_demanded += 1
                 cur += 1
-            self._ped_cursor[a_idx] = cur
+            self._ped_cursor[c_idx] = cur
 
     def _advance_peds(self) -> None:
         crossings = step_pedestrians(

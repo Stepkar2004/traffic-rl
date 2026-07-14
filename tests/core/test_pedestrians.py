@@ -65,7 +65,7 @@ class _RestInNS:
 
     cadence_s = 1.0
 
-    def reset(self, topo: object) -> None:
+    def reset(self, topo: object, node: int) -> None:
         pass
 
     def decide(self, obs: object, t: float) -> int:

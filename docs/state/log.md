@@ -2,6 +2,23 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-14 · Phase 2 chunk 2: multi-intersection core.** Corridor (1xN arterial +
+  cross streets) and NxN grid builders over the SAME topology tables (through-only,
+  scope A) with locked conventions (4 inbound lanes / movements 4i..4i+3 / crosswalks
+  4i..4i+3 per intersection, chains continuous, origins named). SignalState fully
+  VECTORIZED over n_i (timers, transitions, WALK service + re-arm, max-red forcing,
+  `earliest_switch_wait_all`) — the phase-1 goldens pin that n_i=1 behavior is
+  bit-identical. World runs one controller + one observation model per intersection
+  (`reset(topo, node)` — sensor maps from `movements_of(node)`, killing the
+  assumed-ordering fragility); demand keyed per origin (vehicles) / per crosswalk
+  (peds), draw order unchanged for four_way. Two recorded debts closed:
+  `transfer_and_despawn` is now multi-hop (test: 2 lanes in one dt), and the flow
+  channel got an honest interior definition (lane-entry rate; origin lanes keep the
+  phase-1 demand-event rate). Observation gained the downstream channel (ADR 0004 /
+  grid max-pressure). Recorder format v2 (per-intersection signal state, geometry
+  with node/phase tags); renderer generalized (junction-framed camera, per-lane
+  strips) — corridor/grid/four-way all render correctly (checked visually). 143
+  tests green incl. new corridor golden + machine-independence suite.
 - **2026-07-14 · Phase 2 chunk 1: ADR 0004 (RL env + reward contract) locked.** Stepan
   approved the phase-2 plan (scope option A: grid through-only) and the session split:
   all code written now with smoke-level runs + two Opus reviews (after chunks 4 and 6);

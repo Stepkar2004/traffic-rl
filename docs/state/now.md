@@ -3,18 +3,26 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-14 (phase 2 IN PROGRESS — chunk 1 of 7 done):**
+**As of 2026-07-14 (phase 2 IN PROGRESS — chunks 1-2 of 7 done):**
 
 Stepan approved the phase-2 plan (scope option A: through-only grid) and this run
 mode: **all phase-2 code written this session** (chunks 1-6 + analysis tooling,
 smoke-level runs only, two Opus adversarial reviews after chunks 4 and 6), **full
 trainings + experiments in a follow-up session** driven by a handoff runbook.
+
+Chunk 2 landed: multi-intersection core — corridor + grid topology builders over
+the phase-1 tables, SignalState vectorized over n_i (goldens prove n_i=1
+unchanged), per-intersection controllers/observation models (`reset(topo, node)`),
+demand per origin/crosswalk, multi-hop transfer (debt closed), downstream
+observation channel, recorder v2 + generalized renderer (corridor/grid verified
+visually). 143 tests.
+
 Chunk 1 landed: [ADR 0004](../decisions/0004-rl-env-and-reward.md) — the RL env +
 reward contract, locked before any env/training code (batched VectorEnv, 1 s
 decision interval, 48-channel observation, masks from `earliest_switch_s`, reward
 with θ=60 s tail-wait fairness surcharge, greedy 20-seed eval, locked budgets).
-Awaiting Stepan's async review alongside the phase-1 gates below. Next: chunk 2
-(multi-intersection core).
+Awaiting Stepan's async review alongside the phase-1 gates below. Next: chunk 3
+(batched worlds + VectorEnv).
 
 ---
 

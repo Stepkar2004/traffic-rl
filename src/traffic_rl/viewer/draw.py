@@ -4,8 +4,11 @@ Everything here draws ONE Frame (recorder format) onto ONE surface, given a
 Geometry — no World access, no pygame display assumptions (offscreen surfaces
 work headless, which is how GIFs render in CI-less environments).
 
-Phase-1 simplification, used on purpose: all lanes are axis-aligned, so
-vehicles are plain rects. Rotated sprites arrive with curved roads (phase 5).
+Phase-2 generalization: geometry is a set of axis-aligned lane strips with
+per-lane (signal_node, phase) tags and per-crosswalk junction centers, so one
+renderer draws a single intersection, a corridor, or a grid. The camera
+frames the lane bounding box. Rotated sprites arrive with curved roads
+(phase 5).
 """
 
 from dataclasses import dataclass
@@ -15,7 +18,7 @@ import pygame
 
 from traffic_rl.core.arrays import F64
 from traffic_rl.core.config import APPROACHES
-from traffic_rl.core.recorder import Frame, Trace
+from traffic_rl.core.recorder import Frame, Trace, crosswalks_geometry, lanes_geometry
 from traffic_rl.core.signals import Indication, PedIndication
 from traffic_rl.core.topology import (
     CROSSWALK_BAND_M,
@@ -42,24 +45,18 @@ VEHICLE_LEN_M = 4.5  # drawing default; per-vehicle lengths render in phase 4
 class Geometry:
     """Static drawing data, identical whether it came from a World or a Trace."""
 
-    lanes: F64  # (n_lanes, 6): x0, y0, x1, y1, length_m, approach(-1 outbound)
-    crosswalks: F64  # (n_cw, 3): leg, length_m, walk_phase
+    #: (n_lanes, 8): x0, y0, x1, y1, length_m, approach, signal_node, phase
+    lanes: F64
+    #: (n_cw, 5): leg, length_m, walk_phase, junction center x, y
+    crosswalks: F64
     stop_line_offset_m: float
     lane_width_m: float
 
 
 def geometry_from_world_topology(topo: Topology, lane_width_m: float) -> Geometry:
-    lanes = np.array(
-        [[ln.x0, ln.y0, ln.x1, ln.y1, ln.length_m, ln.approach] for ln in topo.lanes],
-        dtype=np.float64,
-    )
-    cws = np.array(
-        [[cw.leg, cw.length_m, int(cw.walk_phase)] for cw in topo.crosswalks],
-        dtype=np.float64,
-    )
     return Geometry(
-        lanes=lanes,
-        crosswalks=cws,
+        lanes=lanes_geometry(topo),
+        crosswalks=crosswalks_geometry(topo),
         stop_line_offset_m=topo.stop_line_offset_m,
         lane_width_m=lane_width_m,
     )
@@ -76,9 +73,11 @@ def geometry_from_trace(trace: Trace) -> Geometry:
 
 @dataclass(frozen=True)
 class Camera:
-    """Meters → pixels, centered on the intersection, y flipped for screens."""
+    """Meters → pixels, centered on the network, y flipped for screens."""
 
     size_px: int
+    center_x_m: float
+    center_y_m: float
     half_extent_m: float  # world half-width shown
 
     @property
@@ -87,8 +86,8 @@ class Camera:
 
     def to_px(self, x_m: float, y_m: float) -> tuple[int, int]:
         return (
-            round(self.size_px / 2.0 + x_m * self.scale),
-            round(self.size_px / 2.0 - y_m * self.scale),
+            round(self.size_px / 2.0 + (x_m - self.center_x_m) * self.scale),
+            round(self.size_px / 2.0 - (y_m - self.center_y_m) * self.scale),
         )
 
     def rect(self, cx_m: float, cy_m: float, w_m: float, h_m: float) -> pygame.Rect:
@@ -98,74 +97,94 @@ class Camera:
         )
 
 
+def camera_for(geom: Geometry, size_px: int) -> Camera:
+    """Frame the junction centers (plus margin) in a square viewport.
+
+    Framing the junctions, not the full lane extent, keeps a single
+    intersection at phase-1's zoom (~60 m half-extent) while a corridor or
+    grid widens just enough to show every signal; long empty approach tails
+    get cropped — the queues near the stop lines are the story.
+    """
+    if geom.crosswalks.shape[0]:
+        xs, ys = geom.crosswalks[:, 3], geom.crosswalks[:, 4]
+    else:  # no junctions: fall back to the lane bounding box
+        xs = np.concatenate([geom.lanes[:, 0], geom.lanes[:, 2]])
+        ys = np.concatenate([geom.lanes[:, 1], geom.lanes[:, 3]])
+    cx, cy = float(xs.min() + xs.max()) / 2.0, float(ys.min() + ys.max()) / 2.0
+    span = max(float(xs.max() - xs.min()), float(ys.max() - ys.min()))
+    half = max(60.0, span / 2.0 + 60.0)
+    return Camera(size_px=size_px, center_x_m=cx, center_y_m=cy, half_extent_m=half)
+
+
 def _speed_color(v: float, v_max: float = 13.4) -> tuple[int, int, int]:
     """Red (stopped) → green (free flow)."""
     f = min(max(v / v_max, 0.0), 1.0)
     return (round(230 * (1.0 - f) + 40 * f), round(60 * (1.0 - f) + 200 * f), 60)
 
 
-def _crosswalk_segment(geom: Geometry, leg: int) -> tuple[float, float, float, float]:
-    """(cx, cy, dx, dy): band center + unit crossing direction for one leg."""
+def _crosswalk_segment(geom: Geometry, c: int) -> tuple[float, float, float, float]:
+    """(cx, cy, dx, dy): band center + unit crossing direction for crosswalk c."""
+    leg = int(geom.crosswalks[c, 0])
+    jx, jy = float(geom.crosswalks[c, 3]), float(geom.crosswalks[c, 4])
     dx, dy = HEADINGS[APPROACHES[leg]]
     band_center = geom.stop_line_offset_m - STOP_LINE_SETBACK_M - CROSSWALK_BAND_M / 2.0
-    return (-dx * band_center, -dy * band_center, dy, -dx)
+    return (jx - dx * band_center, jy - dy * band_center, dy, -dx)
+
+
+def _lane_strip(
+    surface: pygame.Surface,
+    cam: Camera,
+    geom: Geometry,
+    k: int,
+    w_m: float,
+    color: tuple[int, int, int],
+) -> None:
+    x0, y0, x1, y1 = geom.lanes[k, 0], geom.lanes[k, 1], geom.lanes[k, 2], geom.lanes[k, 3]
+    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    if abs(x1 - x0) > abs(y1 - y0):  # along x
+        surface.fill(color, cam.rect(cx, cy, abs(x1 - x0), w_m))
+    else:
+        surface.fill(color, cam.rect(cx, cy, w_m, abs(y1 - y0)))
 
 
 def render(surface: pygame.Surface, geom: Geometry, frame: Frame, hud: str = "") -> None:
     """Draw one frame. Pure function of its inputs; no display required."""
     size = surface.get_width()
-    half_extent = max(60.0, geom.stop_line_offset_m + 55.0)  # the interesting region
-    cam = Camera(size_px=size, half_extent_m=half_extent)
+    cam = camera_for(geom, size)
     lw = geom.lane_width_m
+    b = geom.stop_line_offset_m
     surface.fill(BG)
 
-    # roads: two crossing strips, one lane each way
-    span = 4.0 * half_extent
-    surface.fill(ROAD, cam.rect(0.0, 0.0, 2.0 * lw, span))
-    surface.fill(ROAD, cam.rect(0.0, 0.0, span, 2.0 * lw))
-    # center lines
-    pygame.draw.line(
-        surface,
-        LANE_LINE,
-        cam.to_px(0.0, -half_extent * 2),
-        cam.to_px(0.0, -geom.stop_line_offset_m),
-        1,
-    )
-    pygame.draw.line(
-        surface,
-        LANE_LINE,
-        cam.to_px(0.0, geom.stop_line_offset_m),
-        cam.to_px(0.0, half_extent * 2),
-        1,
-    )
-    pygame.draw.line(
-        surface,
-        LANE_LINE,
-        cam.to_px(-half_extent * 2, 0.0),
-        cam.to_px(-geom.stop_line_offset_m, 0.0),
-        1,
-    )
-    pygame.draw.line(
-        surface,
-        LANE_LINE,
-        cam.to_px(geom.stop_line_offset_m, 0.0),
-        cam.to_px(half_extent * 2, 0.0),
-        1,
-    )
+    # roads: one strip per lane (opposing lanes touch into a road ribbon)
+    for k in range(geom.lanes.shape[0]):
+        _lane_strip(surface, cam, geom, k, lw, ROAD)
+    # center dividers: along each lane's left edge, skipping junction boxes
+    # (a lane that starts mid-network starts at a stop line, so its first 2b
+    # meters cross the upstream junction).
+    for k in range(geom.lanes.shape[0]):
+        x0, y0, x1, y1, length = geom.lanes[k, :5]
+        ux, uy = (x1 - x0) / length, (y1 - y0) / length
+        lx, ly = -uy * lw / 2.0, ux * lw / 2.0  # left offset = road center
+        s0 = 0.0 if _starts_at_boundary(geom, k) else 2.0 * b
+        s1 = length
+        if s1 - s0 < 1.0:
+            continue
+        p0 = cam.to_px(x0 + ux * s0 + lx, y0 + uy * s0 + ly)
+        p1 = cam.to_px(x0 + ux * s1 + lx, y0 + uy * s1 + ly)
+        pygame.draw.line(surface, LANE_LINE, p0, p1, 1)
 
     # crosswalk zebras, tinted by pedestrian indication
     for c in range(geom.crosswalks.shape[0]):
-        leg = int(geom.crosswalks[c, 0])
         length = float(geom.crosswalks[c, 1])
         ped_ind = int(frame.ped_ind[c]) if frame.ped_ind.size else int(PedIndication.DONT_WALK)
         color = {
             int(PedIndication.WALK): WALK_BRIGHT,
             int(PedIndication.CLEARANCE): WALK_CLEAR,
         }.get(ped_ind, WALK_OFF)
-        cx, cy, ux, uy = _crosswalk_segment(geom, leg)
+        cx, cy, ux, uy = _crosswalk_segment(geom, c)
         n_bars = 6
-        for b in range(n_bars):
-            f = (b + 0.5) / n_bars - 0.5
+        for bar in range(n_bars):
+            f = (bar + 0.5) / n_bars - 0.5
             bx, by = cx + ux * f * length, cy + uy * f * length
             surface.fill(
                 color,
@@ -182,31 +201,33 @@ def render(surface: pygame.Surface, geom: Geometry, frame: Frame, hud: str = "")
 
     # stop lines + signal heads per inbound lane
     for k in range(geom.lanes.shape[0]):
-        x0, y0, x1, y1, _length, approach = geom.lanes[k]
-        if approach < 0:
+        approach = int(geom.lanes[k, 5])
+        node = int(geom.lanes[k, 6])
+        lane_phase = int(geom.lanes[k, 7])
+        if approach < 0 or node < 0:
             continue
-        dxn, dyn = HEADINGS[APPROACHES[int(approach)]]
-        px, py = x1, y1  # lane end = stop line, half a lane off-axis already
+        x1, y1 = geom.lanes[k, 2], geom.lanes[k, 3]
+        dxn, dyn = HEADINGS[APPROACHES[approach]]
         # stop line: perpendicular bar across the lane
         w, h = (lw * 0.9, 0.6) if abs(dxn) < 0.5 else (0.6, lw * 0.9)
-        surface.fill(STOP_LINE, cam.rect(px, py, w, h))
+        surface.fill(STOP_LINE, cam.rect(x1, y1, w, h))
         # signal head: on the right-hand curb at the stop line
         ox, oy = dyn * lw * 1.1, -dxn * lw * 1.1
-        lane_phase = 0 if APPROACHES[int(approach)] in ("north", "south") else 1
-        if frame.active == lane_phase and frame.indication == int(Indication.GREEN):
+        active = int(frame.active[node])
+        indication = int(frame.indication[node])
+        if active == lane_phase and indication == int(Indication.GREEN):
             head = (60, 200, 80)
-        elif frame.active == lane_phase and frame.indication == int(Indication.YELLOW):
+        elif active == lane_phase and indication == int(Indication.YELLOW):
             head = (240, 200, 50)
         else:
             head = (225, 60, 60)
-        pygame.draw.circle(
-            surface, head, cam.to_px(px + ox, py + oy), max(3, round(0.9 * cam.scale))
-        )
+        radius = max(2, round(0.9 * cam.scale))
+        pygame.draw.circle(surface, head, cam.to_px(x1 + ox, y1 + oy), radius)
 
     # vehicles: axis-aligned rects positioned along their lane, colored by speed
     for i in range(frame.veh_lane.shape[0]):
         k = int(frame.veh_lane[i])
-        x0, y0, x1, y1, length_m, _approach = geom.lanes[k]
+        x0, y0, x1, y1, length_m = geom.lanes[k, :5]
         f = float(frame.veh_s[i]) / length_m
         vx, vy = x0 + (x1 - x0) * f, y0 + (y1 - y0) * f
         along_x = abs(x1 - x0) > abs(y1 - y0)
@@ -229,3 +250,15 @@ def render(surface: pygame.Surface, geom: Geometry, frame: Frame, hud: str = "")
         font = pygame.font.Font(None, max(14, size // 42))
         for row, line in enumerate(hud.splitlines()):
             surface.blit(font.render(line, True, HUD_COLOR), (8, 8 + row * (size // 40)))
+
+
+def _starts_at_boundary(geom: Geometry, k: int) -> bool:
+    """Does lane k's s=0 sit at the network edge (vs at an upstream junction)?
+
+    A lane starting at another lane's end starts at a stop line; nothing else
+    does. Detected geometrically: no other lane ends where this one starts.
+    """
+    x0, y0 = geom.lanes[k, 0], geom.lanes[k, 1]
+    ends_x, ends_y = geom.lanes[:, 2], geom.lanes[:, 3]
+    joined = (np.abs(ends_x - x0) < 1e-6) & (np.abs(ends_y - y0) < 1e-6)
+    return not bool(joined.any())

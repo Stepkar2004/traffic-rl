@@ -22,8 +22,8 @@ def test_trace_round_trip(tmp_path: Path) -> None:
     assert tr.entropy == 8
     assert tr.dt_s == 0.1
     assert tr.n_frames == 120  # 60 s at 2 Hz
-    assert tr.lanes_geom.shape == (8, 6)
-    assert tr.crosswalks_geom.shape == (4, 3)
+    assert tr.lanes_geom.shape == (8, 8)
+    assert tr.crosswalks_geom.shape == (4, 5)
 
     last = tr.frame(tr.n_frames - 1)
     assert last.t == w.t  # step 600 is a snapshot step

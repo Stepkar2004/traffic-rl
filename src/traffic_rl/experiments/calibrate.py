@@ -42,7 +42,7 @@ class _HoldThenServe:
     def __init__(self, t_switch: float) -> None:
         self.t_switch = t_switch
 
-    def reset(self, topo: object) -> None:
+    def reset(self, topo: object, node: int) -> None:
         pass
 
     def decide(self, obs: Observation, t: float) -> int:

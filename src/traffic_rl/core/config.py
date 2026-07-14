@@ -59,24 +59,68 @@ class TopologyConfig:
     lanes_per_approach: int
     lane_width_m: float
     crosswalk_length_m: float
+    #: corridor only: number of intersections along the east-west arterial.
+    n_intersections: int = 1
+    #: corridor + grid: intersection-center spacing (m).
+    block_length_m: float = 150.0
+    #: grid only: NxN grid dimension.
+    grid_n: int = 3
 
     @property
     def speed_limit_mps(self) -> float:
         return mph_to_mps(self.speed_limit_mph)
 
     def __post_init__(self) -> None:
-        if self.kind != "four_way":
-            raise ScenarioError(f"unknown topology kind {self.kind!r} (phase 1: four_way)")
+        if self.kind not in ("four_way", "corridor", "grid"):
+            raise ScenarioError(
+                f"unknown topology kind {self.kind!r} (known: four_way, corridor, grid)"
+            )
         for name in ("speed_limit_mph", "approach_length_m", "lane_width_m", "crosswalk_length_m"):
             if getattr(self, name) <= 0:
                 raise ScenarioError(f"topology.{name} must be > 0")
         if self.lanes_per_approach != 1:
-            raise ScenarioError("phase 1 supports exactly 1 lane/approach (multi-lane: phase 2)")
+            raise ScenarioError("phases 1-2 support exactly 1 lane/approach")
+        if self.kind == "corridor" and self.n_intersections < 2:
+            raise ScenarioError("topology.n_intersections must be >= 2 for a corridor")
+        if self.kind == "grid" and self.grid_n < 2:
+            raise ScenarioError("topology.grid_n must be >= 2 for a grid")
+        if self.kind in ("corridor", "grid") and self.block_length_m < 50.0:
+            raise ScenarioError(
+                "topology.block_length_m must be >= 50 m (room for the junction box, "
+                "crosswalks, and a queue between stop lines)"
+            )
+
+
+def origin_names(topo: "TopologyConfig") -> tuple[str, ...]:
+    """Canonical boundary-origin names for a topology config, in build order.
+
+    Vehicle demand profiles are keyed by exactly these names. Pedestrian
+    profiles are always keyed by the 4 leg names (APPROACHES) — the given
+    per-leg rate applies independently at EVERY intersection's crosswalk on
+    that leg.
+    """
+    if topo.kind == "four_way":
+        return APPROACHES
+    if topo.kind == "corridor":
+        names = ["west", "east"]
+        for i in range(topo.n_intersections):
+            names += [f"north_{i}", f"south_{i}"]
+        return tuple(names)
+    names = []
+    for c in range(topo.grid_n):
+        names += [f"north_c{c}", f"south_c{c}"]
+    for r in range(topo.grid_n):
+        names += [f"west_r{r}", f"east_r{r}"]
+    return tuple(names)
 
 
 @dataclass(frozen=True)
 class DemandSegment:
-    """Piecewise-constant Poisson rates (per hour) by approach, from t0_s onward."""
+    """Piecewise-constant Poisson rates (per hour) by key, from t0_s onward.
+
+    Vehicle segments are keyed by boundary-origin names (``origin_names``);
+    pedestrian segments by the 4 leg names, applied at every intersection.
+    """
 
     t0_s: float
     rates_per_h: Mapping[str, float]
@@ -164,7 +208,9 @@ def _check_keys(
         raise ScenarioError(f"{where}: unknown keys {sorted(unknown)}")
 
 
-def _parse_profile(raw: object, where: str, rate_key: str) -> tuple[DemandSegment, ...]:
+def _parse_profile(
+    raw: object, where: str, rate_key: str, keys: tuple[str, ...]
+) -> tuple[DemandSegment, ...]:
     if not isinstance(raw, list) or not raw:
         raise ScenarioError(f"{where}: expected a non-empty list of segments")
     segments: list[DemandSegment] = []
@@ -172,10 +218,9 @@ def _parse_profile(raw: object, where: str, rate_key: str) -> tuple[DemandSegmen
         seg = _require_mapping(seg_raw, f"{where}[{i}]")
         _check_keys(seg, f"{where}[{i}]", required={"t0_s", rate_key}, optional=set())
         rates = _require_mapping(seg[rate_key], f"{where}[{i}].{rate_key}")
-        if set(rates) != set(APPROACHES):
+        if set(rates) != set(keys):
             raise ScenarioError(
-                f"{where}[{i}].{rate_key}: keys must be exactly {sorted(APPROACHES)}, "
-                f"got {sorted(rates)}"
+                f"{where}[{i}].{rate_key}: keys must be exactly {sorted(keys)}, got {sorted(rates)}"
             )
         for k, r in rates.items():
             if not isinstance(r, int | float) or r < 0:
@@ -216,7 +261,7 @@ def load_scenario(path: Path) -> SimConfig:
             "lane_width_m",
             "crosswalk_length_m",
         },
-        optional=set(),
+        optional={"n_intersections", "block_length_m", "grid_n"},
     )
     topology = TopologyConfig(
         kind=str(topo["kind"]),
@@ -225,6 +270,9 @@ def load_scenario(path: Path) -> SimConfig:
         lanes_per_approach=int(topo["lanes_per_approach"]),
         lane_width_m=float(topo["lane_width_m"]),
         crosswalk_length_m=float(topo["crosswalk_length_m"]),
+        n_intersections=int(topo.get("n_intersections", 1)),
+        block_length_m=float(topo.get("block_length_m", 150.0)),
+        grid_n=int(topo.get("grid_n", 3)),
     )
 
     dem = _require_mapping(raw["demand"], "demand")
@@ -234,8 +282,13 @@ def load_scenario(path: Path) -> SimConfig:
     ped = _require_mapping(dem["pedestrians"], "demand.pedestrians")
     _check_keys(ped, "demand.pedestrians", required={"profile"}, optional=set())
     demand = DemandConfig(
-        vehicle_profile=_parse_profile(veh["profile"], "demand.vehicles.profile", "rate_veh_h"),
-        ped_profile=_parse_profile(ped["profile"], "demand.pedestrians.profile", "rate_ped_h"),
+        vehicle_profile=_parse_profile(
+            veh["profile"], "demand.vehicles.profile", "rate_veh_h", origin_names(topology)
+        ),
+        # ped rates are per LEG, applied at every intersection's crosswalk on that leg
+        ped_profile=_parse_profile(
+            ped["profile"], "demand.pedestrians.profile", "rate_ped_h", APPROACHES
+        ),
     )
 
     ctl = _require_mapping(raw["controller"], "controller")

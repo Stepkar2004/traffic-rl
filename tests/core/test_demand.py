@@ -11,7 +11,7 @@ def _flat_profile(rate: float) -> tuple[DemandSegment, ...]:
 
 def test_poisson_rate_within_tolerance() -> None:
     rng = spawn_streams(seed=1)["demand"]
-    schedule = build_arrival_schedule(_flat_profile(300.0), 3600.0, rng)
+    schedule = build_arrival_schedule(_flat_profile(300.0), 3600.0, rng, APPROACHES)
     for arr in schedule:
         # Poisson(300): mean 300, sd ~17.3; 4 sd ≈ 70
         assert 230 <= arr.size <= 370
@@ -21,7 +21,7 @@ def test_poisson_rate_within_tolerance() -> None:
 
 def test_zero_rate_yields_no_arrivals() -> None:
     rng = spawn_streams(seed=1)["demand"]
-    schedule = build_arrival_schedule(_flat_profile(0.0), 3600.0, rng)
+    schedule = build_arrival_schedule(_flat_profile(0.0), 3600.0, rng, APPROACHES)
     assert all(arr.size == 0 for arr in schedule)
 
 
@@ -31,7 +31,7 @@ def test_time_varying_profile_changes_rates() -> None:
         DemandSegment(t0_s=1800.0, rates_per_h=dict.fromkeys(APPROACHES, 600.0)),
     )
     rng = spawn_streams(seed=7)["demand"]
-    schedule = build_arrival_schedule(profile, 3600.0, rng)
+    schedule = build_arrival_schedule(profile, 3600.0, rng, APPROACHES)
     for arr in schedule:
         low = int(np.count_nonzero(arr < 1800.0))
         high = int(np.count_nonzero(arr >= 1800.0))
@@ -41,8 +41,8 @@ def test_time_varying_profile_changes_rates() -> None:
 
 def test_same_seed_same_schedule() -> None:
     p = _flat_profile(250.0)
-    a = build_arrival_schedule(p, 1000.0, spawn_streams(seed=42)["demand"])
-    b = build_arrival_schedule(p, 1000.0, spawn_streams(seed=42)["demand"])
+    a = build_arrival_schedule(p, 1000.0, spawn_streams(seed=42)["demand"], APPROACHES)
+    b = build_arrival_schedule(p, 1000.0, spawn_streams(seed=42)["demand"], APPROACHES)
     for arr_a, arr_b in zip(a, b, strict=True):
         assert np.array_equal(arr_a, arr_b)
 
@@ -53,7 +53,7 @@ def test_segment_boundary_respected() -> None:
         DemandSegment(t0_s=100.0, rates_per_h=dict.fromkeys(APPROACHES, 3600.0)),
     )
     rng = spawn_streams(seed=3)["demand"]
-    schedule = build_arrival_schedule(profile, 200.0, rng)
+    schedule = build_arrival_schedule(profile, 200.0, rng, APPROACHES)
     for arr in schedule:
         assert arr.size > 0
         assert (arr >= 100.0).all() and (arr < 200.0).all()

@@ -27,8 +27,8 @@ def frame_from_world(world: "World") -> Frame:
         ped_cw=world.peds.crosswalk[:m],
         ped_state=world.peds.state[:m],
         ped_progress=world.peds.progress_m[:m],
-        active=int(world.signals.active[0]),
-        indication=int(world.signals.indication[0]),
+        active=world.signals.active,
+        indication=world.signals.indication,
         ped_ind=world.signals.ped_ind.astype(np.int8),
     )
 

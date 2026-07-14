@@ -44,10 +44,10 @@ class ActuatedGapOut:
         self._approach_phase: tuple[Phase, ...] = _DEFAULT_APPROACH_PHASE
         self._cw_walk_phase: tuple[Phase, ...] = _DEFAULT_CW_WALK_PHASE
 
-    def reset(self, topo: Topology) -> None:
-        # sensor→phase maps from the actual topology, not an assumed ordering
-        self._approach_phase = tuple(topo.movements[a].phase for a in range(len(topo.movements)))
-        self._cw_walk_phase = tuple(cw.walk_phase for cw in topo.crosswalks)
+    def reset(self, topo: Topology, node: int) -> None:
+        # sensor→phase maps from THIS intersection, not an assumed ordering
+        self._approach_phase = tuple(m.phase for m in topo.movements_of(node))
+        self._cw_walk_phase = tuple(cw.walk_phase for cw in topo.crosswalks_of(node))
 
     def _phase_demand(self, obs: Observation, phase: int) -> bool:
         """Demand VISIBLE TO THE SENSORS: loops and push-buttons only."""

@@ -183,38 +183,59 @@ _NO_TRIPS = CompletedTrips(
 )
 
 
-def transfer_and_despawn(veh: VehicleArrays, lane_length_m: F32, next_lane: I32) -> CompletedTrips:
+def transfer_and_despawn(
+    veh: VehicleArrays,
+    lane_length_m: F32,
+    next_lane: I32,
+    lane_entered: I64 | None = None,
+) -> CompletedTrips:
     """Move vehicles that crossed their lane end; despawn at dead ends.
 
     Returns the finishers' accumulator snapshots (copied before compaction).
     Positions are continuous across a transfer: the next lane's s=0 IS this
-    lane's end.
+    lane's end. ``lane_entered``, if given, accumulates a per-lane count of
+    arrivals (the interior-approach flow channel reads it).
 
-    Single-hop: assumes one step's ds < any lane length (true in phase 1:
-    ~1.5 m/step vs 300 m lanes). Phase-2 short junction links must revisit.
+    Multi-hop (phase-2 fix of the recorded single-hop debt): transfers repeat
+    until no vehicle's ``s`` exceeds its lane — a fast vehicle may legally
+    cross a whole short lane within one dt. The hop count is bounded by the
+    topology validator's minimum lane length; the assert is a tripwire.
     """
     n = veh.n
     if n == 0:
         return _NO_TRIPS
-    lane = veh.lane[:n]
-    crossed = veh.s[:n] >= lane_length_m[lane]
-    if not bool(crossed.any()):
+    finished: list[BOOL] = []
+    for _hop in range(16):
+        lane = veh.lane[:n]
+        crossed = veh.s[:n] >= lane_length_m[lane]
+        if not bool(crossed.any()):
+            break
+        nxt = next_lane[lane]
+        move = crossed & (nxt >= 0)
+        finish = crossed & (nxt < 0)
+        veh.s[:n][move] -= lane_length_m[lane[move]]
+        veh.lane[:n][move] = nxt[move]
+        if lane_entered is not None and bool(move.any()):
+            np.add.at(lane_entered, nxt[move], 1)
+        if bool(finish.any()):
+            finished.append(finish.copy())
+        # a finisher's s stays past its (dead-end) lane; mask it out of the
+        # next hop's ``crossed`` by treating recorded finishers as parked
+        if finished:
+            veh.s[:n][np.logical_or.reduce(finished)] = 0.0
+    else:  # pragma: no cover - the topology validator makes this unreachable
+        raise AssertionError("transfer_and_despawn: vehicle hopped >16 lanes in one dt")
+    if not finished:
         return _NO_TRIPS
-    nxt = next_lane[lane]
-    move = crossed & (nxt >= 0)
-    finish = crossed & (nxt < 0)
-    veh.s[:n][move] -= lane_length_m[lane[move]]
-    veh.lane[:n][move] = nxt[move]
-    if not bool(finish.any()):
-        return _NO_TRIPS
+    finish_all = np.logical_or.reduce(finished)
     trips = CompletedTrips(
-        demand_t=veh.demand_t[:n][finish].copy(),
-        entered_t=veh.entered_t[:n][finish].copy(),
-        wait_s=veh.wait_s[:n][finish].copy(),
-        stops=veh.stops[:n][finish].copy(),
-        origin=veh.origin[:n][finish].copy(),
+        demand_t=veh.demand_t[:n][finish_all].copy(),
+        entered_t=veh.entered_t[:n][finish_all].copy(),
+        wait_s=veh.wait_s[:n][finish_all].copy(),
+        stops=veh.stops[:n][finish_all].copy(),
+        origin=veh.origin[:n][finish_all].copy(),
     )
-    veh.compact(~finish)
+    veh.compact(~finish_all)
     return trips
 
 
@@ -226,6 +247,7 @@ def step_vehicles(
     wall_exempt: BOOL | None,
     delta: float,
     dt: float,
+    lane_entered: I64 | None = None,
 ) -> tuple[int, CompletedTrips]:
     """One full vehicle sub-step over all lanes. Returns (interventions, finishers).
 
@@ -258,5 +280,5 @@ def step_vehicles(
         interventions = enforce_no_overlap(s_new, len_o, offsets)
         veh.s[:n][order] = s_new
         veh.v[:n][order] = v_new
-    trips = transfer_and_despawn(veh, lane_length_m, next_lane)
+    trips = transfer_and_despawn(veh, lane_length_m, next_lane, lane_entered)
     return interventions, trips

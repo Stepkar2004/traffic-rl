@@ -15,9 +15,44 @@ import numpy as np
 from traffic_rl.core.arrays import F32, F64, I32, I64
 
 if TYPE_CHECKING:
+    from traffic_rl.core.topology import Topology
     from traffic_rl.core.world import World
 
-TRACE_FORMAT_VERSION = 1
+#: v2 (phase 2): signal state is per-intersection arrays, lane geometry rows
+#: carry (signal_node, lane_phase), crosswalk rows carry their band center.
+TRACE_FORMAT_VERSION = 2
+
+
+def lanes_geometry(topo: "Topology") -> F64:
+    """(n_lanes, 8): x0, y0, x1, y1, length_m, approach, signal_node, phase."""
+    lane_phase = {m.in_lane: int(m.phase) for m in topo.movements}
+    return np.array(
+        [
+            [
+                ln.x0,
+                ln.y0,
+                ln.x1,
+                ln.y1,
+                ln.length_m,
+                ln.approach,
+                ln.signal_node,
+                lane_phase.get(ln.id, -1),
+            ]
+            for ln in topo.lanes
+        ],
+        dtype=np.float64,
+    )
+
+
+def crosswalks_geometry(topo: "Topology") -> F64:
+    """(n_cw, 5): leg, length_m, walk_phase, center_x, center_y (its junction)."""
+    return np.array(
+        [
+            [cw.leg, cw.length_m, int(cw.walk_phase), *topo.signal_center(cw.node)]
+            for cw in topo.crosswalks
+        ],
+        dtype=np.float64,
+    )
 
 
 class TraceWriter:
@@ -36,8 +71,8 @@ class TraceWriter:
         self._ped_cw: list[np.ndarray] = []
         self._ped_state: list[np.ndarray] = []
         self._ped_progress: list[np.ndarray] = []
-        self._active: list[int] = []
-        self._indication: list[int] = []
+        self._active: list[np.ndarray] = []  # per-intersection
+        self._indication: list[np.ndarray] = []  # per-intersection
         self._ped_ind: list[np.ndarray] = []  # per-crosswalk PedIndication
 
     def maybe_snapshot(self) -> None:
@@ -55,26 +90,19 @@ class TraceWriter:
         self._ped_cw.append(w.peds.crosswalk[:m].copy())
         self._ped_state.append(w.peds.state[:m].copy())
         self._ped_progress.append(w.peds.progress_m[:m].copy())
-        self._active.append(int(w.signals.active[0]))
-        self._indication.append(int(w.signals.indication[0]))
+        self._active.append(w.signals.active.astype(np.int8).copy())
+        self._indication.append(w.signals.indication.astype(np.int8).copy())
         self._ped_ind.append(w.signals.ped_ind.astype(np.int8).copy())
 
     def save(self, path: Path) -> None:
         w = self._world
         topo = w.topology
-        lanes_geom = np.array(
-            [[ln.x0, ln.y0, ln.x1, ln.y1, ln.length_m, ln.approach] for ln in topo.lanes],
-            dtype=np.float64,
-        )
-        cw_geom = np.array(
-            [[cw.leg, cw.length_m, int(cw.walk_phase)] for cw in topo.crosswalks],
-            dtype=np.float64,
-        )
         path.parent.mkdir(parents=True, exist_ok=True)
 
         def _cat(parts: list[np.ndarray], dtype: type) -> np.ndarray:
             return np.concatenate(parts) if parts else np.empty(0, dtype=dtype)
 
+        n_i = topo.n_signals
         np.savez_compressed(
             path,
             format_version=np.int64(TRACE_FORMAT_VERSION),
@@ -83,8 +111,8 @@ class TraceWriter:
             dt_s=np.float64(w.cfg.episode.dt_s),
             stop_line_offset_m=np.float64(topo.stop_line_offset_m),
             lane_width_m=np.float64(w.cfg.topology.lane_width_m),
-            lanes_geom=lanes_geom,
-            crosswalks_geom=cw_geom,
+            lanes_geom=lanes_geometry(topo),
+            crosswalks_geom=crosswalks_geometry(topo),
             t=np.asarray(self._t, dtype=np.float64),
             veh_offsets=np.asarray(self._veh_offsets, dtype=np.int64),
             veh_lane=_cat(self._veh_lane, np.int32),
@@ -94,8 +122,12 @@ class TraceWriter:
             ped_cw=_cat(self._ped_cw, np.int32),
             ped_state=_cat(self._ped_state, np.int8),
             ped_progress=_cat(self._ped_progress, np.float32),
-            active=np.asarray(self._active, dtype=np.int8),
-            indication=np.asarray(self._indication, dtype=np.int8),
+            active=(np.stack(self._active) if self._active else np.empty((0, n_i), dtype=np.int8)),
+            indication=(
+                np.stack(self._indication)
+                if self._indication
+                else np.empty((0, n_i), dtype=np.int8)
+            ),
             ped_ind=(
                 np.stack(self._ped_ind)
                 if self._ped_ind
@@ -113,8 +145,8 @@ class Frame:
     ped_cw: I32
     ped_state: np.ndarray
     ped_progress: F32
-    active: int
-    indication: int
+    active: np.ndarray  # per-intersection active phase
+    indication: np.ndarray  # per-intersection Indication values
     ped_ind: np.ndarray  # per-crosswalk PedIndication values
 
 
@@ -161,7 +193,7 @@ class Trace:
             ped_cw=self._ped_cw[p0:p1],
             ped_state=self._ped_state[p0:p1],
             ped_progress=self._ped_progress[p0:p1],
-            active=int(self._active[k]),
-            indication=int(self._indication[k]),
+            active=self._active[k],
+            indication=self._indication[k],
             ped_ind=self._ped_ind[k],
         )

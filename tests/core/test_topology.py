@@ -60,7 +60,7 @@ def test_lane_geometry_lengths_and_continuity(topo_cfg: TopologyConfig) -> None:
 def test_inbound_lanes_end_at_stop_line(topo_cfg: TopologyConfig) -> None:
     topo = four_way_intersection(topo_cfg)
     for a in range(len(APPROACHES)):
-        lane = topo.inbound_lane_of(a)
+        lane = topo.inbound_lane_of(0, a)
         dist_to_center = math.hypot(lane.x1, lane.y1)
         # end of an inbound lane is the stop line, half a lane-width off-axis
         expected = math.hypot(topo.stop_line_offset_m, topo_cfg.lane_width_m / 2.0)

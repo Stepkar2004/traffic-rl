@@ -21,7 +21,7 @@ class FixedTime:
         self.cycle_s = cycle_s
         self.split_ns = split_ns
 
-    def reset(self, topo: Topology) -> None:  # stateless
+    def reset(self, topo: Topology, node: int) -> None:  # stateless
         pass
 
     def decide(self, obs: Observation, t: float) -> int:
