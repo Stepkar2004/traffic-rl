@@ -20,6 +20,7 @@ import numpy as np
 from traffic_rl.control.base import ApproachChannel, Observation
 from traffic_rl.core.arrays import PedArrays
 from traffic_rl.core.config import V_WAIT_MPS
+from traffic_rl.core.signals import PedIndication
 from traffic_rl.core.topology import N_PHASES, Topology
 
 if TYPE_CHECKING:  # no runtime import: core.world runtime-imports this module
@@ -69,6 +70,12 @@ class PerfectObservation:
             for i in lanes
         ]
         self._origin_of_lane = [topo.lanes[i].origin for i in lanes]
+        # upstream neighbor per approach: the intersection whose stop line
+        # feeds this approach lane (-1 when it starts at a boundary)
+        feeder = {ln.next_lane: ln.id for ln in topo.lanes if ln.next_lane >= 0}
+        self._neighbor_of_approach = [
+            topo.lanes[feeder[i]].signal_node if i in feeder else -1 for i in lanes
+        ]
         self._last_occupied_t = [-1.0e9] * len(lanes)
         self._flow_hist = [[] for _ in lanes]
 
@@ -140,6 +147,10 @@ class PerfectObservation:
         cw = world.peds.crosswalk[: world.peds.n][waiting]
         ped_counts = np.bincount(cw, minlength=len(sig.cw_phase))
         own = slice(4 * node, 4 * node + 4)  # this node's crosswalks, leg order
+        walk_active = tuple(int(x) != int(PedIndication.DONT_WALK) for x in sig.ped_ind[own])
+        neighbor_active = tuple(
+            int(sig.active[nb]) if nb >= 0 else -1 for nb in self._neighbor_of_approach
+        )
 
         return Observation(
             t=t,
@@ -155,4 +166,6 @@ class PerfectObservation:
             yellow_s=sig.yellow_s,
             all_red_s=sig.all_red_s,
             min_green_s=tuple(float(g) for g in sig.min_green_s),
+            walk_active=walk_active,
+            neighbor_active=neighbor_active,
         )

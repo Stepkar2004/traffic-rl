@@ -81,6 +81,18 @@ re-check any number quoted in README, the leaderboard, or a post.
 Restrict a run: `run_matrix` accepts `scenarios`/`controllers` (used by tests);
 the CLI always runs the full default matrix.
 
+### `traffic-rl train-dqn <scenario.yaml> [--seed N] [--steps N] [--out dir] [--device auto|cuda|cpu]`
+
+**Current as of phase 2, chunk 5.** Double DQN on a SINGLE intersection (the
+ADR 0004 §5 sanity gate; multi-intersection scenarios are rejected). Defaults
+are the locked hyperparameters (1M steps, 8 batched worlds, 900 s training
+episodes). Writes `<out>/seed<k>/`: `config.json` (resolved config + git SHA),
+`curves.csv` (env_steps, wall_s, train_return, eval_return, eval_p95_wait,
+epsilon, loss), `ckpt_best.pt`, `ckpt_final.pt`. Measured throughput on the dev
+box (RTX 4070, 8 envs): ~1,100 env-steps/s → ~15 min per 1M-step seed.
+Evaluate a checkpoint on the leaderboard protocol via controller kind `rl`:
+`run_cell(scenario, "rl", {"checkpoint": ..., "algo": "dqn"}, seed)`.
+
 ### `traffic-rl bench`
 
 Vehicle-kernel throughput on a synthetic ring of lanes (default 1000 vehicles):

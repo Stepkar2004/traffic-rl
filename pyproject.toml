@@ -14,6 +14,7 @@ dependencies = [
     "numpy>=2.5.1",
     "pygame-ce>=2.5.7",
     "pyyaml>=6.0.3",
+    "torch>=2.9",
     "typer>=0.26.8",
 ]
 
@@ -43,6 +44,14 @@ default-groups = ["dev", "local"]
 
 [tool.uv.sources]
 init-configurator = { path = "../init-configurator", editable = true }
+# CUDA torch from the PyTorch index (PyPI's Windows wheels are CPU-only).
+# `explicit` keeps every other package (numpy!) resolving from PyPI.
+torch = { index = "pytorch-cu128" }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
 
 [tool.ruff]
 line-length = 100

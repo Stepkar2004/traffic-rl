@@ -3,7 +3,13 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-14 (phase 2 IN PROGRESS — chunks 1-4 of 7 done; Opus review #1 next):**
+**As of 2026-07-14 (phase 2 IN PROGRESS — chunks 1-5 of 7 done; Opus review #1 running):**
+
+Chunk 5 landed: the `rl/` layer — hand-rolled Double DQN (locked ADR 0004
+hyperparameters), the canonical feature builder pinned against the env,
+RLController (checkpoints eval through the SAME leaderboard path as classics),
+torch 2.11+cu128, `traffic-rl train-dqn`. Smoke-verified; real training runs
+happen in the run session (~15 min per DQN seed measured).
 
 Chunk 4 landed: CoordinatedFixedTime (travel-time offsets, the emergence foil),
 max-pressure network form, scenarios corridor-rush / grid-balanced /

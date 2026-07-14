@@ -2,6 +2,21 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-14 · Phase 2 chunk 5: Double DQN (the sanity gate) + the RL layer.**
+  New `rl/` package, hand-rolled per the constitution: `features.py` (THE 48-channel
+  ADR 0004 vector built from a Controller Observation + the action-mask rules —
+  pinned channel-by-channel against the env's vectorized twin on the same sim
+  state), `nets.py` (masked-head MLPs), `buffer.py` (replay storing next-state
+  masks so Double-DQN targets argmax over LEGAL actions), `dqn.py` (locked
+  hyperparameters, autoreset-aware, real p95-wait curve evals via World),
+  `controller.py` (RLController: a checkpoint behind the ordinary Controller
+  protocol — RL rows go through the SAME leaderboard path as the classics; kind
+  "rl" registered lazily so the classical stack never imports torch). Observation
+  gained two own-hardware fields (walk_active, neighbor_active — the comm channel,
+  SCATS-style). torch 2.11+cu128 via an explicit PyTorch index (PyPI keeps every
+  other package). `traffic-rl train-dqn` CLI. Smoke: tiny run trains, artifacts
+  land, checkpoint drives a World with 0 refusals; GPU throughput measured
+  ~1,100 env-steps/s → ~15 min per 1M-step seed. 174 tests.
 - **2026-07-14 · Phase 2 chunk 4: the hand-built green wave + phase-2 scenarios.**
   CoordinatedFixedTime (FixedTime + travel-time offsets computed from the topology
   at reset; axis auto-inferred: corridor→ew, grid→diag compromise, single→offset 0);

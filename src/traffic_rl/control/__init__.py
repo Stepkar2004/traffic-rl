@@ -12,7 +12,7 @@ from traffic_rl.control.max_pressure import MaxPressure
 from traffic_rl.control.webster import Webster
 from traffic_rl.core.config import ControllerConfig
 
-CONTROLLER_KINDS = ("fixed_time", "webster", "actuated", "max_pressure", "coordinated")
+CONTROLLER_KINDS = ("fixed_time", "webster", "actuated", "max_pressure", "coordinated", "rl")
 
 
 def make_controller(cfg: ControllerConfig) -> Controller:
@@ -27,4 +27,9 @@ def make_controller(cfg: ControllerConfig) -> Controller:
         return MaxPressure(**cfg.params)
     if cfg.kind == "coordinated":
         return CoordinatedFixedTime(**cfg.params)
+    if cfg.kind == "rl":
+        # lazy: pulls in torch, which the classical stack must never require
+        from traffic_rl.rl.controller import RLController
+
+        return RLController(**cfg.params)
     raise ValueError(f"unknown controller kind {cfg.kind!r} (known: {CONTROLLER_KINDS})")

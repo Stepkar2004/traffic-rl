@@ -43,6 +43,12 @@ World), and a viewer that consumes recorded frames (core never imports it).**
   SoA arrays and one vectorized signal machine. Actions are per-intersection
   desired phases; the machine still refuses anything illegal. No torch here —
   the env is pure NumPy; agents live in `rl/` (chunks 5-6).
+- **`rl/`** — the agents (torch lives here and only here): hand-rolled Double
+  DQN + parameter-shared PPO per ADR 0004's locked hyperparameters, the
+  canonical 48-channel feature builder (pinned against the env's vectorized
+  twin by test), and `RLController` — a checkpoint behind the ordinary
+  Controller protocol, so RL rows earn their leaderboard place through the
+  SAME eval path as the classics.
 - **`viewer/`** — pygame-ce live view, trace replay, GIF export. One drawing path:
   everything renders a recorder `Frame`, whether it came from a live World or a
   stored trace. Imports core; core never imports it.
@@ -148,6 +154,16 @@ src/traffic_rl/
 │   └── traffic_env.py     TrafficEnv (batched VectorEnv: 48-channel obs,
 │                          action masks, ADR 0004 reward, NEXT_STEP autoreset)
 │                          + SingleTrafficEnv (B=1 wrapper for gym tooling)
+├── rl/
+│   ├── __init__.py        agents package (torch enters here, nowhere else)
+│   ├── features.py        THE 48-channel ADR 0004 vector from an Observation
+│   │                      + the action-mask rules (env twin pinned by test)
+│   ├── nets.py            QNet / Actor / Critic (MLP 2x256, masked heads)
+│   ├── buffer.py          uniform replay; Double-DQN stores next-state masks
+│   ├── dqn.py             Double DQN train loop (the sanity gate) + artifacts
+│   │                      (config.json, curves.csv, ckpt_best/final.pt)
+│   └── controller.py      RLController: checkpoint -> Controller protocol;
+│                          quick_episode_metrics for training-time p95 evals
 ├── viewer/
 │   ├── __init__.py        viewer imports core, never the reverse
 │   ├── draw.py            Frame -> surface; no World access, offscreen-safe
@@ -188,6 +204,11 @@ tests/
 │   └── test_traffic_env.py   ADR 0004 contract: masks never refused, autoreset
 │                             off-by-one, determinism, comm-ablation zeroing,
 │                             gymnasium checker
+├── rl/
+│   ├── test_features.py   the anti-drift pin: controller features == env
+│   │                      observation, channel by channel, same sim state
+│   └── test_dqn_smoke.py  tiny end-to-end train run; artifacts; checkpoint
+│                          drives a World with zero refusals
 ├── experiments/
 │   └── test_{calibrate,stats,runner_report}.py
 └── viewer/

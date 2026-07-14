@@ -70,6 +70,14 @@ class Observation:
     yellow_s: float
     all_red_s: float
     min_green_s: tuple[float, ...]  # per phase, the machine's enforced floor
+    #: Own ped heads, per crosswalk (leg order): WALK or clearance running now.
+    #: A cabinet knows its own outputs; RL features read this (ADR 0004 §2).
+    walk_active: tuple[bool, ...] = (False, False, False, False)
+    #: Upstream neighbor's active phase per approach (arrival order), -1 when
+    #: the approach comes from a boundary. Real coordinated systems share
+    #: signal state over comms (SCATS/SCOOT-style) — this is the communication
+    #: channel of ADR 0004's ablation, and it is detection-free by nature.
+    neighbor_active: tuple[int, ...] = (-1, -1, -1, -1)
 
 
 class Controller(Protocol):
