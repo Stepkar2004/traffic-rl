@@ -39,7 +39,10 @@ description: The SWE loop binding every implementation session in this repo - fi
    is public; an unpushed mistake is free, a pushed one is not.
 6. **Reflect.** A lesson landed (root cause found, default overridden, mistake repeated)?
    → run the evolve procedure: `skill-manager/references/evolve.md`. Task matched no
-   skill? → one line in `docs/state/miss-log.md`, keep working.
+   skill? → one line in `docs/state/miss-log.md`, keep working. A realism/modeling
+   concern noticed in passing (safe to defer, must not be forgotten in a later phase)?
+   → one entry in `docs/state/watchout-later.md` (what · why deferred · which phase ·
+   which hook).
 
 ## When to stop and ask
 

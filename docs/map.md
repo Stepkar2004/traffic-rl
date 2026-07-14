@@ -62,7 +62,9 @@ surge — the headline scenario), `single-night` (sparse).
 - `decisions/` — ADRs, append-only: 0001 stack, 0002 **the locked metrics + realism
   constraints** (the spec everything measures against), 0003 these doc surfaces.
 - `plans/` — phase plans; historical records of intent, never retro-edited.
-- `state/` — `now.md` (where the project is) → `roadmap.md` (next) → `log.md` (was).
+- `state/` — `now.md` (where the project is) → `roadmap.md` (next) → `log.md` (was);
+  `miss-log.md` (skill-gap notes) and `watchout-later.md` (deferred realism concerns to
+  revisit at the right phase).
 - `results/` — per-phase interpretation of experiment runs (ADR 0003).
 - `leaderboard.md` + `assets/` — the committed phase-1 results table, CI chart, GIF.
 - `research/` — pre-phase-1 architecture research notes.
@@ -168,7 +170,8 @@ docs/
 ├── decisions/             ADRs 0001 (stack), 0002 (metrics — THE spec), 0003 (docs)
 ├── plans/                 phase-1.md (done), phase-2.md (draft), phases-3-5-draft.md
 ├── results/               phase-1.md — what the runs meant
-├── state/                 now.md / roadmap.md / log.md / miss-log.md
+├── state/                 now.md / roadmap.md / log.md / miss-log.md /
+│                          watchout-later.md
 ├── research/              sim-architecture-notes-2026-07.md
 ├── assets/                leaderboard-p95-wait.png, rush-ns-actuated.gif
 └── posts/                 (gitignored) post drafts

@@ -2,6 +2,17 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-14 · Phase-1 second-pass teaching; `watchout-later.md` created.** Stepan ran
+  a full explain-back pass over the phase-1 design principles before starting phase 2
+  (no code changed). Folded the interactive explain-back loop into the teach-me reference
+  (a one-shot firehose rarely lands; his words first, patch one gap at a time, define
+  blocking vocabulary). New `docs/state/watchout-later.md` captures deferred realism
+  concerns that surface while building or teaching — first entry: curve speed limits
+  (lateral-accel cap), phase 5, riding the per-agent `v0` array + `κ(s)` geometry hooks;
+  distinct from the roundabout gap-acceptance kernel debt. Pointers added in `map.md`,
+  `roadmap.md`, and the workflow Reflect step. CLAUDE.md/AGENTS.md left untouched
+  (generated from the constitution + human-gated).
+
 - **2026-07-12 · Phase 1.1 (Stepan-requested): permanent docs + ADR 0003.** Plans are
   history, not documentation — the repo gained three living surfaces: `docs/map.md`
   (progressive codebase map: glance tree → folder responsibilities → full tree with

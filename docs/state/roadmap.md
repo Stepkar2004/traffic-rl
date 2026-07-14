@@ -54,3 +54,7 @@ holds draft directions.
 
 Ordering note: phases 1–2 are publishable on their own; if job-search timing demands,
 ship through phase 2 and let realism land later.
+
+Deferred realism concerns noticed while building or teaching (safe to defer, must not be
+forgotten) live in [watchout-later.md](watchout-later.md); each phase's realism-scan pass
+promotes the relevant ones into its ranked backlog.
