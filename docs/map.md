@@ -14,7 +14,7 @@
 ## At a glance
 
 ```
-src/traffic_rl/    the package — core sim, controllers, viewer, experiments, CLI
+src/traffic_rl/    the package — core sim, controllers, RL envs, viewer, experiments, CLI
 tests/             pytest suite mirroring src/ (plus golden fixture + harness)
 scenarios/         run inputs: one YAML fully determines a run
 docs/              decisions (ADRs), plans, state, results, leaderboard, assets
@@ -38,6 +38,11 @@ World), and a viewer that consumes recorded frames (core never imports it).**
   detection-level `Observation` (per-approach channels a real sensor could produce),
   built by an `ObservationModel` — the seam where phase 3's noisy sensors drop in.
   A registry maps scenario `controller.kind` strings to factories.
+- **`envs/`** — the RL layer (phase 2, contract locked in ADR 0004): a natively
+  batched `gymnasium.vector.VectorEnv` over B stacked worlds sharing one set of
+  SoA arrays and one vectorized signal machine. Actions are per-intersection
+  desired phases; the machine still refuses anything illegal. No torch here —
+  the env is pure NumPy; agents live in `rl/` (chunks 5-6).
 - **`viewer/`** — pygame-ce live view, trace replay, GIF export. One drawing path:
   everything renders a recorder `Frame`, whether it came from a live World or a
   stored trace. Imports core; core never imports it.
@@ -132,6 +137,14 @@ src/traffic_rl/
 │   │                      only (honestly detection-bounded); dt cadence
 │   └── max_pressure.py    Varaiya 2013 queue pressure; ped-blind by design —
 │                          the signal machine is its fairness floor
+├── envs/
+│   ├── __init__.py        RL environments (ADR 0004); exports TrafficEnv
+│   ├── batching.py        replicate_topology (B copies, ids offset) +
+│   │                      BatchedWorlds: World's exact sub-step order over
+│   │                      merged arrays, per-world demand/reward accounting
+│   └── traffic_env.py     TrafficEnv (batched VectorEnv: 48-channel obs,
+│                          action masks, ADR 0004 reward, NEXT_STEP autoreset)
+│                          + SingleTrafficEnv (B=1 wrapper for gym tooling)
 ├── viewer/
 │   ├── __init__.py        viewer imports core, never the reverse
 │   ├── draw.py            Frame -> surface; no World access, offscreen-safe
@@ -166,6 +179,12 @@ tests/
 ├── control/
 │   ├── factory.py         crafted-Observation builder for controller tests
 │   └── test_{fixed_time,webster,actuated,max_pressure,observation}.py
+├── envs/
+│   ├── test_batching.py   batched == sequential; world isolation; the anchor:
+│   │                      B=1 BatchedWorlds step-for-step == World (same seed)
+│   └── test_traffic_env.py   ADR 0004 contract: masks never refused, autoreset
+│                             off-by-one, determinism, comm-ablation zeroing,
+│                             gymnasium checker
 ├── experiments/
 │   └── test_{calibrate,stats,runner_report}.py
 └── viewer/

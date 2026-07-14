@@ -135,6 +135,27 @@ class SignalState:
         self._begin_yellow(i, phase)
         return True
 
+    def request_batch(self, desired: I32) -> BOOL:
+        """Vectorized ``request`` over all intersections at once (the RL path).
+
+        ``desired[i]``: the phase intersection i's agent wants green. Returns
+        per-intersection acceptance; every refusal is counted exactly as the
+        scalar path counts it. Semantically identical to calling ``request``
+        per intersection in index order (switches are node-local, so order
+        cannot matter).
+        """
+        in_range = (desired >= 0) & (desired < N_PHASES)
+        green = self.indication == int(Indication.GREEN)
+        benign = ~green & (desired == self.pending)  # already heading there
+        hold = green & (desired == self.active)
+        wants_switch = green & in_range & (desired != self.active)
+        can_switch = wants_switch & (self.earliest_switch_wait_all() == 0.0)
+        for i in np.flatnonzero(can_switch):
+            self._begin_yellow(int(i), int(desired[i]))
+        accepted: BOOL = (in_range & (benign | hold)) | can_switch
+        self.refused += int(np.count_nonzero(~accepted))
+        return accepted
+
     def earliest_switch_wait(self, i: int = 0) -> float:
         """Seconds until terminating intersection ``i``'s active phase becomes
         legal (0 = now; +inf mid-transition).

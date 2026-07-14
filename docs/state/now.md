@@ -3,7 +3,15 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-14 (phase 2 IN PROGRESS — chunks 1-2 of 7 done):**
+**As of 2026-07-14 (phase 2 IN PROGRESS — chunks 1-3 of 7 done):**
+
+Chunk 3 landed: `envs/` — BatchedWorlds (B worlds, one process, same kernels;
+B=1 pinned step-for-step against World) + TrafficEnv (batched VectorEnv per
+ADR 0004: 48-channel obs, action masks, tail-surcharge reward, NEXT_STEP
+autoreset, gymnasium checker clean). The batched-vs-sequential test caught a
+latent phase-1 SoA bug (see the correction note below); fixed, leaderboard
+re-run, artifacts corrected. Next: chunk 4 (coordinated baseline + scenarios),
+then Opus review #1.
 
 Stepan approved the phase-2 plan (scope option A: through-only grid) and this run
 mode: **all phase-2 code written this session** (chunks 1-6 + analysis tooling,

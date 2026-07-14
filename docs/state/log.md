@@ -2,6 +2,20 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-14 · Phase 2 chunk 3: batched worlds + TrafficEnv (VectorEnv).** New
+  `envs/` package: `replicate_topology` (B disjoint topology copies, ids offset) +
+  `BatchedWorlds` (World's exact sub-step order over merged arrays — one vectorized
+  signal machine over B×n_i, one CSR segmentation over B×n_lanes, per-world demand
+  seeds/queues/reward accounting, no controller loop) + `TrafficEnv` (ADR 0004
+  verbatim: 48-channel obs with locked norms, MultiDiscrete actions, masks from the
+  machine's own state, tail-surcharge reward, 900 s truncation episodes, NEXT_STEP
+  autoreset) + `SingleTrafficEnv` (passes gymnasium's check_env clean). SignalState
+  gained the vectorized `request_batch`. Tests pin: batched == sequential per world,
+  world isolation under different actions, the anchor (B=1 BatchedWorlds
+  step-for-step == plain World at the same seed), masked actions never refused /
+  unmasked refused+counted, autoreset off-by-one, determinism, comm-ablation
+  zeroing. gymnasium dependency added. The equivalence test is what exposed the
+  slot-reuse bug (separate log entry above).
 - **2026-07-14 · CORRECTION: SoA slot-reuse bug fixed; phase-1 leaderboard re-run.**
   `arrays.py::add` documented "unspecified fields stay zero" but never zeroed reused
   slots after `compact()` — a vehicle spawned into a freed row inherited a stale
