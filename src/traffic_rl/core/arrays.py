@@ -53,7 +53,16 @@ class _SoA:
         self.capacity = new_cap
 
     def add(self, count: int, **values: npt.ArrayLike) -> I64:
-        """Append ``count`` rows; unspecified fields stay zero. Returns new ids."""
+        """Append ``count`` rows; unspecified fields ARE ZEROED. Returns new ids.
+
+        The explicit zeroing matters: after a ``compact()``, the slots beyond
+        ``n`` still hold stale copies of old rows, and a new agent must not
+        inherit another agent's accumulators. (Phase-2 finding: this method
+        previously only *promised* zeros — vehicles spawned into reused slots
+        inherited stale ``wait_s``/``stops``/``yellow_exempt``, silently
+        corrupting phase-1 wait metrics. The batched-vs-sequential
+        equivalence test caught it.)
+        """
         unknown = values.keys() - self._SPEC.keys()
         if unknown or "id" in values:
             raise KeyError(f"bad fields: {sorted(unknown | (values.keys() & {'id'}))}")
@@ -61,8 +70,10 @@ class _SoA:
         rows = slice(self.n, self.n + count)
         ids = np.arange(self._next_id, self._next_id + count, dtype=np.int64)
         self.id[rows] = ids
-        for name, value in values.items():
-            getattr(self, name)[rows] = value
+        for name in self._SPEC:
+            if name == "id":
+                continue
+            getattr(self, name)[rows] = values.get(name, 0)
         self.n += count
         self._next_id += count
         return ids

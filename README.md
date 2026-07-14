@@ -27,10 +27,10 @@ The simulator and all four classical controllers are live. Headline results
 ([full leaderboard](docs/leaderboard.md), 20 seeds per cell, 95% bootstrap CIs):
 
 - **Rush (NS-heavy):** naive 50/50 fixed-time posts a p95 wait of **102 s
-  [85, 121]** — the widest CI on the board; instability under asymmetric load is
+  [84, 120]** — the widest CI on the board; instability under asymmetric load is
   itself the result. Webster (tuned from the sim's own measured saturation flow),
   gap-out actuated, and max-pressure all land at **24–30 s**.
-- **Night:** actuated dominates (p95 wait 11.7 s vs fixed-time's 25.2 s) — and
+- **Night:** actuated dominates (p95 wait 10.4 s vs fixed-time's 23.3 s) — and
   max-pressure's pedestrian-blindness becomes visible (p95 ped wait 70 s, bounded
   only by the signal machine's starvation cap, exactly as designed).
 - Throughput is identical everywhere (unsaturated); anyone selling a throughput win

@@ -2,6 +2,22 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-14 · CORRECTION: SoA slot-reuse bug fixed; phase-1 leaderboard re-run.**
+  `arrays.py::add` documented "unspecified fields stay zero" but never zeroed reused
+  slots after `compact()` — a vehicle spawned into a freed row inherited a stale
+  `wait_s`, `stops`, hysteresis state, and (worst) a stale dilemma-zone exemption; a
+  ped could inherit stale crossing progress. Caught by the batched-vs-sequential
+  equivalence test written for the RL env (world populations share one array in the
+  batched sim, so slot-reuse patterns differ — the divergence WAS the bug). Fix:
+  add() now zeroes every unspecified field; unit test pins it; both goldens
+  regenerated (intentional behavior change). Full 20-seed leaderboard re-run:
+  **rankings and the rush headline unchanged** (p95 101.6 [84.2, 120.3] vs 102.1
+  before; throughput and all ped metrics identical), but **stops/vehicle was
+  inflated up to ~25%** (rush fixed-time 1.73 → 1.38) and **night waits were
+  inflated** (actuated p95 11.7 → 10.4 s). leaderboard.md, chart, README,
+  results/phase-1.md corrected; post-draft numbers still round to the same values.
+  Calibration unchanged (standing queue never reuses slots). Travel times matching
+  to 0.1 s also confirms chunk 2's refactor preserved single-intersection dynamics.
 - **2026-07-14 · Phase 2 chunk 2: multi-intersection core.** Corridor (1xN arterial +
   cross streets) and NxN grid builders over the SAME topology tables (through-only,
   scope A) with locked conventions (4 inbound lanes / movements 4i..4i+3 / crosswalks

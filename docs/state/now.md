@@ -44,6 +44,13 @@ forcing is the cap front-running a blind-by-design controller, not a rescue),
 protocol line now derived from rows, calibration regenerated at the ADR's 10 seeds,
 README bench claim scoped to the kernel bench.
 
+**⚠ 2026-07-14 note for the gate review:** a latent SoA slot-reuse bug (stale
+wait/stops/exemption on spawn) was found and fixed during phase-2 chunk 3; the
+leaderboard was re-run and its committed artifacts corrected. Rankings and the rush
+headline survived; stops/vehicle and night waits were inflated before the fix. See
+the correction note at the top of [results/phase-1.md](../results/phase-1.md) and
+the log entry. The materials below reflect the CORRECTED numbers.
+
 **Waiting on Stepan (the async gates, all material ready):**
 1. ADR 0002 review — [decisions/0002](../decisions/0002-metrics-and-realism-constraints.md)
 2. Visual sign-off — `runs/gifs/{balanced,rush-ns}-s42.gif` or `traffic-rl view ...`

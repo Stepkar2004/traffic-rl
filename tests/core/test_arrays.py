@@ -28,6 +28,34 @@ def test_unknown_field_rejected() -> None:
         raise AssertionError("expected KeyError")
 
 
+def test_add_zeroes_reused_slots_after_compact() -> None:
+    """A new agent must NEVER inherit a stale accumulator (phase-2 finding:
+    slot reuse silently corrupted phase-1 wait/stops metrics and could leave
+    a stale red-light exemption on a fresh vehicle)."""
+    va = VehicleArrays(capacity=4)
+    va.add(2, lane=0, s=1.0, v=1.0, length=4.5)
+    va.wait_s[:2] = [55.5, 77.7]
+    va.stops[:2] = [3, 9]
+    va.stopped[:2] = True
+    va.yellow_exempt[:2] = True
+    va.compact(np.array([False, True]))
+    va.add(1, lane=0, s=0.0, v=1.0, length=4.5)  # reuses slot 1
+    assert float(va.wait_s[1]) == 0.0
+    assert int(va.stops[1]) == 0
+    assert not bool(va.stopped[1])
+    assert not bool(va.yellow_exempt[1])
+    # the surviving vehicle's accumulators are untouched
+    assert float(va.wait_s[0]) == np.float32(77.7)
+    assert int(va.stops[0]) == 9
+
+    pa = PedArrays(capacity=4)
+    pa.add(1, crosswalk=0, state=1, speed=1.0)
+    pa.progress_m[0] = 8.9
+    pa.compact(np.array([False]))
+    pa.add(1, crosswalk=0, state=0, speed=1.0)
+    assert float(pa.progress_m[0]) == 0.0
+
+
 def test_compact_preserves_order_and_alignment() -> None:
     va = VehicleArrays(capacity=8)
     va.add(6, lane=np.arange(6, dtype=np.int32), s=np.arange(6, dtype=np.float32) * 10)
