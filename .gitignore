@@ -11,7 +11,9 @@ dist/
 .ruff_cache/
 .coverage
 
-# Personal working notes, never part of the repo
+# Personal working notes and per-machine skill layers, never part of the repo.
+# A skill's generic capability is tracked; its personal or optics-sensitive layer lives
+# in a sibling <name>.local.md and stays local (see skill-manager authoring section 6).
 *.local.md
 
 # Post drafts stay local - the public repo shows the work, not the marketing

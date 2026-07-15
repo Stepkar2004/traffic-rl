@@ -83,3 +83,26 @@ better explanation instead.
 invocation needs. **Merge** when two skills compete for the same triggers or duplicate
 procedure. **Retire** when the underlying tool/workflow no longer exists or base-model
 competence caught up — a stale trigger is an active hazard.
+
+## 6. Public building, local personal layer
+
+Skills here are open source (the genome is part of the showcase), but only the generic
+capability a skill teaches, "the building", is. Personal or optics-sensitive content is
+NOT: a specific person's writing voice, private strategy, or anything that reads badly in
+public or is useful mainly to a bad actor (an impersonator, a heckler).
+
+That content never goes in a tracked skill file. It lives in one of:
+
+- a sibling `<name>.local.md` reference in the skill dir — gitignored by the repo's
+  `*.local.md` rule, so it stays on this machine;
+- agent memory (out of repo entirely), which is the right home for user identity/voice
+  because it is recalled every session.
+
+The public skill stays generic. When you load a skill, also load any `*.local.md`
+siblings present — they carry this machine's personal layer. Keep a single source of
+truth: if the voice lives in memory, the `.local.md` points to it rather than copying it.
+
+Rationale: a public genome that teaches HOW the system builds things is a portfolio
+asset; a public file that replicates someone's voice or exposes how they handle critics
+is a liability that mostly helps impersonators. Open-source the building, keep the person
+local.
