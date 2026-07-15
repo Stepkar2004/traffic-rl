@@ -25,6 +25,12 @@ description: The SWE loop binding every implementation session in this repo - fi
    - Run the repo's gates: `project.yaml` declares them as tasks; the constitution
      (CLAUDE.md) and the pre-commit / CI configs are the full set.
    - User-visible behavior ⇒ actually run it — a green unit test is not a seen behavior.
+   - **Comparison integrity** — any "A vs B" number that will be quoted (leaderboard,
+     results, README, post): the arms must differ ONLY in the controller. Same eval
+     seed set for both (re-run the comparator on the new arm's seeds — never reuse a
+     table computed on other seeds), and a learned controller trained FOR the condition
+     it is judged in. A cross-seed or out-of-distribution number is noise or a
+     generalization probe, never a head-to-head.
 4. **Document in the same chunk.** Update whatever the change made stale: README, the
    plan doc, an ADR for any new decision (`docs/decisions/`), docstrings — **and the
    three permanent surfaces (repo ADR 0003), checked by name at every chunk boundary:**
@@ -89,3 +95,18 @@ long-term costs. Blocked beats wrong.
   (steps × seeds × arms ÷ measured throughput) fits the compute window — the locked
   budgets multiplied out to ~30 h sequential and the run session needed a triage
   order bolted on afterward. raw (2026-07)
+- 2026-07-15 · A head-to-head is valid only when the arms differ ONLY in the thing
+  measured. Two near-miss FALSE headlines in the phase-2 run session, both the exact
+  failure this rigor-branded repo exists to prevent: (a) quoted "PPO beats actuated"
+  from PPO@eval-seeds 1000-1019 vs the committed leaderboard's actuated@seeds 0-19 —
+  on matched seeds it was a TIE, the 0.8 s "win" was pure seed noise; (b) called a
+  single-demand-trained PPO's collapse at higher demand a method limit ("RL can't
+  handle load") — it was an out-of-distribution generalization probe, not a fair
+  comparison. Root cause of both: comparing runs that differed in a hidden variable
+  (seed set; training condition), not just the controller. Gate (now in Verify step 3):
+  same eval seeds for every controller compared — re-run the comparator on the new
+  arm's seeds rather than reuse an old table; train a learned controller FOR the
+  condition it is judged in (per-condition or domain-randomized); label any
+  train-one-condition-eval-another run a generalization test, never a head-to-head.
+  Contributing process factor: the workflow skill was not initiated at the start of the
+  run session, so its rigor gates were not active — initiate the skill first. raw (2026-07)
