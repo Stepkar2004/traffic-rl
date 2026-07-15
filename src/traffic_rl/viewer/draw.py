@@ -116,10 +116,27 @@ def camera_for(geom: Geometry, size_px: int) -> Camera:
     return Camera(size_px=size_px, center_x_m=cx, center_y_m=cy, half_extent_m=half)
 
 
+def _lerp(a: tuple[int, int, int], b: tuple[int, int, int], t: float) -> tuple[int, int, int]:
+    return (
+        round(a[0] + (b[0] - a[0]) * t),
+        round(a[1] + (b[1] - a[1]) * t),
+        round(a[2] + (b[2] - a[2]) * t),
+    )
+
+
+# stopped → crimson, mid → amber, free-flow → bright green: reads like traffic
+# and makes a moving platoon a travelling band of green (the wave, made visible).
+SPEED_STOP = (222, 46, 52)
+SPEED_MID = (240, 186, 46)
+SPEED_GO = (74, 226, 132)
+
+
 def _speed_color(v: float, v_max: float = 13.4) -> tuple[int, int, int]:
-    """Red (stopped) → green (free flow)."""
+    """Crimson (stopped) → amber → bright green (free flow)."""
     f = min(max(v / v_max, 0.0), 1.0)
-    return (round(230 * (1.0 - f) + 40 * f), round(60 * (1.0 - f) + 200 * f), 60)
+    if f < 0.5:
+        return _lerp(SPEED_STOP, SPEED_MID, f / 0.5)
+    return _lerp(SPEED_MID, SPEED_GO, (f - 0.5) / 0.5)
 
 
 def _crosswalk_segment(geom: Geometry, c: int) -> tuple[float, float, float, float]:
@@ -147,13 +164,38 @@ def _lane_strip(
         surface.fill(color, cam.rect(cx, cy, w_m, abs(y1 - y0)))
 
 
-def render(surface: pygame.Surface, geom: Geometry, frame: Frame, hud: str = "") -> None:
+def _additive_glow(
+    surface: pygame.Surface,
+    blobs: list[tuple[tuple[int, int], tuple[int, int, int], int]],
+) -> None:
+    """Bloom: soft additive halos so signal heads and fast platoons emit light.
+
+    Additive blending brightens whatever is underneath toward the blob color,
+    so there are never dark halo rings over the road — it reads as a light
+    source, not a decal. Each blob is a stack of translucent concentric discs.
+    """
+    if not blobs:
+        return
+    size = surface.get_width()
+    layer = pygame.Surface((size, size), pygame.SRCALPHA)
+    for (cx, cy), color, radius in blobs:
+        for ring in range(3, 0, -1):
+            r = radius * ring
+            alpha = 34 // ring  # outer rings fainter
+            pygame.draw.circle(layer, (*color, alpha), (cx, cy), r)
+    surface.blit(layer, (0, 0), special_flags=pygame.BLEND_RGB_ADD)
+
+
+def render(
+    surface: pygame.Surface, geom: Geometry, frame: Frame, hud: str = "", glow: bool = True
+) -> None:
     """Draw one frame. Pure function of its inputs; no display required."""
     size = surface.get_width()
     cam = camera_for(geom, size)
     lw = geom.lane_width_m
     b = geom.stop_line_offset_m
     surface.fill(BG)
+    blobs: list[tuple[tuple[int, int], tuple[int, int, int], int]] = []
 
     # roads: one strip per lane (opposing lanes touch into a road ribbon)
     for k in range(geom.lanes.shape[0]):
@@ -216,13 +258,15 @@ def render(surface: pygame.Surface, geom: Geometry, frame: Frame, hud: str = "")
         active = int(frame.active[node])
         indication = int(frame.indication[node])
         if active == lane_phase and indication == int(Indication.GREEN):
-            head = (60, 200, 80)
+            head = (70, 230, 110)
         elif active == lane_phase and indication == int(Indication.YELLOW):
-            head = (240, 200, 50)
+            head = (245, 205, 55)
         else:
-            head = (225, 60, 60)
+            head = (232, 66, 66)
         radius = max(2, round(0.9 * cam.scale))
-        pygame.draw.circle(surface, head, cam.to_px(x1 + ox, y1 + oy), radius)
+        center = cam.to_px(x1 + ox, y1 + oy)
+        pygame.draw.circle(surface, head, center, radius)
+        blobs.append((center, head, radius))
 
     # vehicles: axis-aligned rects positioned along their lane, colored by speed
     for i in range(frame.veh_lane.shape[0]):
@@ -232,7 +276,11 @@ def render(surface: pygame.Surface, geom: Geometry, frame: Frame, hud: str = "")
         vx, vy = x0 + (x1 - x0) * f, y0 + (y1 - y0) * f
         along_x = abs(x1 - x0) > abs(y1 - y0)
         w, h = (VEHICLE_LEN_M, VEHICLE_W_M) if along_x else (VEHICLE_W_M, VEHICLE_LEN_M)
-        surface.fill(_speed_color(float(frame.veh_v[i])), cam.rect(vx, vy, w, h))
+        v = float(frame.veh_v[i])
+        color = _speed_color(v)
+        surface.fill(color, cam.rect(vx, vy, w, h))
+        if v > 0.6 * 13.4:  # moving platoons emit a soft bloom (the wave glows)
+            blobs.append((cam.to_px(vx, vy), color, max(2, round(0.8 * cam.scale))))
 
     # pedestrians: dots — crossing peds along the band, waiters at the curb
     for i in range(frame.ped_cw.shape[0]):
@@ -245,6 +293,9 @@ def render(surface: pygame.Surface, geom: Geometry, frame: Frame, hud: str = "")
             f = -0.5 - 0.02 * (i % 5)
         px, py = cx + ux * f * length, cy + uy * f * length
         pygame.draw.circle(surface, PED_DOT, cam.to_px(px, py), max(2, round(0.45 * cam.scale)))
+
+    if glow:
+        _additive_glow(surface, blobs)
 
     if hud:
         font = pygame.font.Font(None, max(14, size // 42))

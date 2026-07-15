@@ -97,13 +97,33 @@ def gif(
     every: Annotated[int, typer.Option(help="Take every N-th frame.")] = 1,
     fps: Annotated[int, typer.Option(help="GIF frames per second.")] = 20,
     size: Annotated[int, typer.Option(help="GIF width/height in pixels.")] = 560,
+    ss: Annotated[int, typer.Option(help="Supersample factor (anti-aliasing).")] = 2,
+    fade: Annotated[float, typer.Option(help="Motion-trail persistence [0,1); 0 disables.")] = 0.62,
+    caption: Annotated[str | None, typer.Option(help="Top-left label baked into the clip.")] = None,
+    subtitle: Annotated[
+        str | None, typer.Option(help="Smaller second line (legend or key stat).")
+    ] = None,
+    aspect: Annotated[
+        float | None, typer.Option(help="Wide-crop width/height (e.g. 2.4 for a corridor).")
+    ] = None,
 ) -> None:
     """Export a looping GIF from a recorded trace."""
     from traffic_rl.core.recorder import Trace
     from traffic_rl.viewer.gif import export_gif
 
     n = export_gif(
-        Trace(trace_path), out, start_s=start, end_s=end, every=every, fps=fps, size_px=size
+        Trace(trace_path),
+        out,
+        start_s=start,
+        end_s=end,
+        every=every,
+        fps=fps,
+        size_px=size,
+        ss=ss,
+        trail_decay=fade,
+        caption=caption,
+        subtitle=subtitle,
+        aspect=aspect,
     )
     typer.echo(f"gif: {n} frames -> {out}")
 
