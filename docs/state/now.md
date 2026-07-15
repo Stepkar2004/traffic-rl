@@ -3,7 +3,34 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-15 (phase 2 code COMPLETE + wrapped — the run session is next):**
+**As of 2026-07-15 — PHASE-2 RUN SESSION DONE (results landed; awaiting Stepan's review + push):**
+
+Trainings + experiments ran and are interpreted in
+[results/phase-2.md](../results/phase-2.md) (every number matched-seed, transcribed
+from committed artifacts). Headline: on the corridor a learned policy **matches** the
+best classical adaptive control (actuated) at training demand and pulls **clearly
+ahead as the network saturates**; **communication did not earn its keep** on the
+homogeneous sim; the hand-built green wave **breaks under saturation**. DQN gate
+**PASSED** (single-rush-ns p95 21.9 [21.0, 22.8], front of the band, 0 refusals). The
+fair demand-density sweep (fresh PPO trained per demand, both seeds shown) is the
+postable centrepiece: [assets/phase-2-demand-sweep.png](../assets/phase-2-demand-sweep.png).
+
+**Two rigor errors were caught BEFORE any commit** (cross-seed comparison; unfair
+out-of-distribution eval) and turned into a workflow-skill gate (Verify → comparison
+integrity) via the evolve procedure — flagged for Stepan's review like any skill edit.
+
+**Everything is committed locally; NOTHING is pushed.** Awaiting Stepan: results
+blessing, the README phase-2 paragraph + post #2 (his voice, not written autonomously),
+the leaderboard decision (RL head-to-heads live in results/phase-2.md on matched seeds
+1000-1019; committed [leaderboard.md](../leaderboard.md) stays classical on seeds 0-19
+to keep the viral post-#1 headline intact — a full-board re-run to put RL rows *in* the
+leaderboard is a one-word go), and the push. Honest gaps (all in results/phase-2.md):
+PPO on the grid deferred, the emergence-probe protocol deferred, adversarial probes 5-8
+outstanding.
+
+---
+
+**As of 2026-07-15 (phase 2 code COMPLETE + wrapped — the run session, now done, was next):**
 
 Wrap done (2026-07-15): two lessons entered the workflow skill via the evolve
 procedure (differential testing audits blessed code; a locked protocol must be

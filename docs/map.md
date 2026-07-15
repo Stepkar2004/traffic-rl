@@ -5,7 +5,7 @@
 > Scope is the code layer — `src/`, `tests/`, `scenarios/`, `docs/`, `runs/`, configs.
 > The `.claude/` skills layer sits above the code and documents itself.
 >
-> **Current as of: phase 2, chunk 7** — the full RL stack is code-complete on top
+> **Current as of: phase 2 run session** — the full RL stack is code-complete on top
 > of the complete phase 1 (single 4-way + four classical controllers + leaderboard):
 > corridor + grid builders, vectorized signal machines, batched VectorEnv,
 > coordinated green-wave baseline, hand-rolled Double DQN and parameter-shared
@@ -246,11 +246,11 @@ docs/
 ├── plans/                 phase-1.md (done), phase-2.md, phase-2-runbook.md
 │                          (the run-session handoff), phase-3.md (draft),
 │                          phases-4-5-draft.md
-├── results/               phase-1.md — what the runs meant
+├── results/               phase-1.md, phase-2.md — what the runs meant
 ├── state/                 now.md / roadmap.md / log.md / miss-log.md /
 │                          watchout-later.md
 ├── research/              sim-architecture-notes-2026-07.md
-├── assets/                leaderboard-p95-wait.png, rush-ns-actuated.gif
+├── assets/                leaderboard-p95-wait.png, phase-2-demand-sweep.png, rush-ns-actuated.gif
 └── posts/                 (gitignored) post drafts
 
 runs/                      (gitignored)

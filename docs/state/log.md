@@ -2,6 +2,26 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-15 · Phase 2 RUN SESSION: trainings + experiments + results doc.**
+  Ran the DQN gate (3 seeds, single-rush-ns), corridor PPO comm/nocomm (3 seeds each,
+  5M steps), and a per-demand PPO retrain (comm, 2 seeds x 5 demands) for a FAIR
+  demand-density sweep. Results are matched-seed (RL rows + re-run classical
+  comparators all on eval seeds 1000-1019): DQN 21.9 [21.0, 22.8] ties actuated at the
+  front of the classical band (gate PASS, 0 refusals); corridor PPO comm 34.9 /
+  nocomm 33.3 ties actuated 34.7 — learned control MATCHES the best adaptive classical,
+  does not beat it; comm ≈ nocomm (no communication benefit on the homogeneous sim);
+  rush-trained PPO generalizes to balanced demand. Demand sweep: PPO ties the adaptive
+  baselines at light load and pulls clearly ahead as the corridor saturates (eb1000
+  PPO 166-231 vs actuated 659; eb1200 724-752 vs 1108), degrading most gracefully in
+  oversaturation (fewest stranded, highest throughput) — NOT "solving" gridlock, which
+  no controller can. Two rigor errors caught pre-commit (cross-seed comparison; unfair
+  OOD eval) → a comparison-integrity gate added to the workflow skill via evolve.
+  Classical leaderboard v2 committed (7 scenarios, seeds 0-19, phase-1 headline
+  preserved). GIF viewer gained a clean wide zoom + honest overlay
+  (`--aspect`/`--caption`/`--stat`), old render style kept, no flashiness. Nothing
+  pushed; awaiting Stepan's results blessing + README/post + push. Honest gaps: grid
+  PPO, the emergence-probe protocol, and adversarial probes 5-8 not run (all flagged
+  in [results/phase-2.md](../results/phase-2.md)).
 - **2026-07-15 · Phase 2 wrap: lessons, phase-3 draft, plan restructure, review status.**
   Two lessons through the evolve door into the workflow skill (differential
   testing audits code the suite already blesses; a locked protocol must be
