@@ -50,8 +50,13 @@ Live 2D viewer (pygame). SPACE pause · RIGHT step · UP/DOWN speed · Q quit.
 Trace format is **v2 since phase-2 chunk 2** (per-intersection signal state);
 v1 traces recorded before that need re-recording — the reader refuses them
 with a version error. Replay a recorded trace (R restarts), or export a looping GIF from one
-(`--start/--end` clip seconds, `--every` frame stride, `--fps`, `--size`). GIFs
-always come from traces: the expensive sim runs once, headless.
+(`--start/--end` clip seconds, `--every` frame stride, `--fps`, `--size`; and since the
+phase-2 run session `--aspect` for a wide corridor viewport — width/height, e.g. 2.0,
+uniform scale so distances stay exact and only empty cross-street tails are cropped —
+plus `--caption`/`--stat` for an honest top-left overlay: caption names the controller,
+stat names the protocol, and the live counters are labelled as network totals, never
+implied to be only the visible cars). GIFs always come from traces: the expensive sim
+runs once, headless.
 
 ### `traffic-rl calibrate` → `runs/calibration.json`
 

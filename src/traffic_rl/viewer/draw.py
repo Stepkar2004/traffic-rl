@@ -73,21 +73,24 @@ def geometry_from_trace(trace: Trace) -> Geometry:
 
 @dataclass(frozen=True)
 class Camera:
-    """Meters → pixels, centered on the network, y flipped for screens."""
+    """Meters → pixels, centered on the network, y flipped for screens.
 
-    size_px: int
+    Rectangular: a wide viewport (width != height) frames a horizontal corridor
+    without the empty vertical bands a square leaves. ``scale`` (pixels per
+    meter) is UNIFORM on both axes, so distances stay exactly to scale — a wide
+    frame shows fewer meters vertically, never a stretched one.
+    """
+
+    width_px: int
+    height_px: int
     center_x_m: float
     center_y_m: float
-    half_extent_m: float  # world half-width shown
-
-    @property
-    def scale(self) -> float:
-        return self.size_px / (2.0 * self.half_extent_m)
+    scale: float  # pixels per meter (uniform x and y)
 
     def to_px(self, x_m: float, y_m: float) -> tuple[int, int]:
         return (
-            round(self.size_px / 2.0 + (x_m - self.center_x_m) * self.scale),
-            round(self.size_px / 2.0 - (y_m - self.center_y_m) * self.scale),
+            round(self.width_px / 2.0 + (x_m - self.center_x_m) * self.scale),
+            round(self.height_px / 2.0 - (y_m - self.center_y_m) * self.scale),
         )
 
     def rect(self, cx_m: float, cy_m: float, w_m: float, h_m: float) -> pygame.Rect:
@@ -97,23 +100,36 @@ class Camera:
         )
 
 
-def camera_for(geom: Geometry, size_px: int) -> Camera:
-    """Frame the junction centers (plus margin) in a square viewport.
-
-    Framing the junctions, not the full lane extent, keeps a single
-    intersection at phase-1's zoom (~60 m half-extent) while a corridor or
-    grid widens just enough to show every signal; long empty approach tails
-    get cropped — the queues near the stop lines are the story.
-    """
+def _network_center(geom: Geometry) -> tuple[float, float, float, float]:
+    """(center_x, center_y, x_span, y_span) of the junctions (or lane bbox)."""
     if geom.crosswalks.shape[0]:
         xs, ys = geom.crosswalks[:, 3], geom.crosswalks[:, 4]
     else:  # no junctions: fall back to the lane bounding box
         xs = np.concatenate([geom.lanes[:, 0], geom.lanes[:, 2]])
         ys = np.concatenate([geom.lanes[:, 1], geom.lanes[:, 3]])
     cx, cy = float(xs.min() + xs.max()) / 2.0, float(ys.min() + ys.max()) / 2.0
-    span = max(float(xs.max() - xs.min()), float(ys.max() - ys.min()))
-    half = max(60.0, span / 2.0 + 60.0)
-    return Camera(size_px=size_px, center_x_m=cx, center_y_m=cy, half_extent_m=half)
+    return cx, cy, float(xs.max() - xs.min()), float(ys.max() - ys.min())
+
+
+def camera_for(geom: Geometry, size_px: int) -> Camera:
+    """Square viewport framing the junction centers plus margin (the default).
+
+    Framing the junctions, not the full lane extent, keeps a single
+    intersection at phase-1's zoom while a corridor or grid widens just enough
+    to show every signal; long empty approach tails get cropped.
+    """
+    cx, cy, x_span, y_span = _network_center(geom)
+    half = max(60.0, max(x_span, y_span) / 2.0 + 60.0)
+    return Camera(size_px, size_px, cx, cy, size_px / (2.0 * half))
+
+
+def camera_wide(geom: Geometry, width_px: int, height_px: int, pad_m: float = 25.0) -> Camera:
+    """Wide viewport: fit the junction row across the width (plus a car margin),
+    let the shorter height crop the empty cross-street tails. Zooms a horizontal
+    corridor in without distorting distance (scale is uniform on both axes)."""
+    cx, cy, x_span, _ = _network_center(geom)
+    half_x = max(30.0, x_span / 2.0 + pad_m)
+    return Camera(width_px, height_px, cx, cy, width_px / (2.0 * half_x))
 
 
 def _speed_color(v: float, v_max: float = 13.4) -> tuple[int, int, int]:
@@ -147,10 +163,16 @@ def _lane_strip(
         surface.fill(color, cam.rect(cx, cy, w_m, abs(y1 - y0)))
 
 
-def render(surface: pygame.Surface, geom: Geometry, frame: Frame, hud: str = "") -> None:
-    """Draw one frame. Pure function of its inputs; no display required."""
+def render(
+    surface: pygame.Surface, geom: Geometry, frame: Frame, hud: str = "", cam: Camera | None = None
+) -> None:
+    """Draw one frame. Pure function of its inputs; no display required.
+
+    ``cam`` overrides the default square framing (the GIF exporter passes a
+    wide camera for corridors); the drawing code is camera-agnostic.
+    """
     size = surface.get_width()
-    cam = camera_for(geom, size)
+    cam = cam or camera_for(geom, size)
     lw = geom.lane_width_m
     b = geom.stop_line_offset_m
     surface.fill(BG)
