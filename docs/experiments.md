@@ -52,11 +52,6 @@ v1 traces recorded before that need re-recording — the reader refuses them
 with a version error. Replay a recorded trace (R restarts), or export a looping GIF from one
 (`--start/--end` clip seconds, `--every` frame stride, `--fps`, `--size`). GIFs
 always come from traces: the expensive sim runs once, headless.
-Presentation flags (render-only, no engine/trace change): `--ss` supersamples
-for anti-aliasing, `--fade` sets the motion-trail persistence (moving platoons
-leave a comet trail; `0` disables), `--aspect` letterbox-crops to a wide
-cinematic clip (e.g. `2.4` for a corridor), and `--caption`/`--subtitle` bake a
-label + legend into the frame for standalone sharing.
 
 ### `traffic-rl calibrate` → `runs/calibration.json`
 
