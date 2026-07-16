@@ -431,6 +431,19 @@ determinism contract (B2) — do not loosen the tolerance.
 
 ## B5. Config + CLI plumbing
 
+> **DONE 2026-07-15.** `SensingConfig(quality=1.0)` on SimConfig (strict loader, optional
+> `sensing:` block, validates (0,1]); `World` builds `NoisyDetection(seed=rng.entropy)` per
+> node iff `quality < 1.0` (legacy omniscient path untouched → goldens/leaderboard frozen);
+> `run_cell(..., sensing_quality=None)` override + a `quality` column on EVERY row + RL-row
+> provenance (`algo`/`comm`/`checkpoint`/`train_git_sha` from the checkpoint's config.json —
+> probe-8); `--quality` on `run`/`train-dqn`/`train-ppo` (threaded to TrafficEnv train+eval
+> envs and into `config.json` so checkpoints record their training quality). Reward/metrics
+> stay true-state. Tests: config (default/parse/range/unknown-key), runner (quality column +
+> `_rl_provenance` incl. missing-config fallback), World model-selection + noisy smoke run.
+> 222 tests + 5 gates green. NEXT: B6 ∥ B7 (disjoint-file subagent candidates), then B9.
+
+
+
 - `SensingConfig(quality: float = 1.0)` on SimConfig (strict loader; scenarios omit
   it ⇒ 1.0 — no committed scenario changes).
 - `World`: when `observation is None` and `cfg.sensing.quality < 1.0`, build

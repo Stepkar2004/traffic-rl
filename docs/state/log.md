@@ -2,6 +2,21 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-15 · Phase-3 B5: the quality dial wired end-to-end (config + CLI + provenance).**
+  `SensingConfig(quality=1.0)` on SimConfig (strict loader, optional `sensing:` block,
+  validated (0,1]); `World` builds `NoisyDetection` per node iff `quality < 1.0` keyed on the
+  World's resolved seed (the omniscient q=1 path is untouched, so goldens and the leaderboard
+  never move); `run_cell(..., sensing_quality=None)` fogs the sensors for the sweep and every
+  row now self-describes with a `quality` column; RL rows gain checkpoint-provenance columns
+  (algo/comm/checkpoint/train_git_sha, read from the checkpoint's config.json — closes the
+  probe-8 finding so a mixed comm/nocomm/DR board self-distinguishes); `--quality` lands on
+  `run`/`train-dqn`/`train-ppo` (threaded to the training AND eval envs and into config.json,
+  so a checkpoint records the quality it trained under). Reward and metrics stay true-state
+  throughout. Tests cover config default/parse/range/unknown-key, the run_cell quality column
+  + `_rl_provenance` (incl. missing-config fallback), and the World's model selection + a
+  noisy smoke episode. 222 tests (+10), 5 gates green. Docs: experiments.md (commands +
+  currency), map, spec B5. Not pushed. **The dial is now usable end to end — Part C's sweep
+  can run once B6/B7/B9 land.**
 - **2026-07-15 · Phase-3 B4: noise in TrafficEnv._observe + the extended parity pin
   (ADR 0005 §1, the drift tripwire).** Gave `TrafficEnv` a `quality` dial; `quality < 1.0`
   routes `_observe` through the sensors kernel as the vectorized twin of `NoisyDetection`:

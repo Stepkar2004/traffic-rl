@@ -87,3 +87,25 @@ def test_unsorted_segments_raise(tmp_path: Path) -> None:
     )
     with pytest.raises(ScenarioError, match="start at 0"):
         load_scenario(_write(tmp_path, broken))
+
+
+def test_default_sensing_is_omniscient(tmp_path: Path) -> None:
+    """A scenario that omits the sensing block is q=1.0 — phase-1/2 behavior."""
+    cfg = load_scenario(_write(tmp_path, MINIMAL))
+    assert cfg.sensing.quality == 1.0
+
+
+def test_sensing_quality_parses(tmp_path: Path) -> None:
+    cfg = load_scenario(_write(tmp_path, MINIMAL + "\nsensing: {quality: 0.5}\n"))
+    assert cfg.sensing.quality == 0.5
+
+
+@pytest.mark.parametrize("bad", ["quality: 0", "quality: 1.5", "quality: -0.1"])
+def test_out_of_range_quality_raises(tmp_path: Path, bad: str) -> None:
+    with pytest.raises(ScenarioError, match="quality"):
+        load_scenario(_write(tmp_path, MINIMAL + "\nsensing: {" + bad + "}\n"))
+
+
+def test_unknown_sensing_key_raises(tmp_path: Path) -> None:
+    with pytest.raises(ScenarioError, match="unknown keys"):
+        load_scenario(_write(tmp_path, MINIMAL + "\nsensing: {quality: 0.5, fog: 1}\n"))

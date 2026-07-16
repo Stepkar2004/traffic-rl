@@ -4,6 +4,7 @@ The command reference (usage, defaults, artifacts, measured wall-times) lives
 in docs/experiments.md; this module stays a thin Typer layer.
 """
 
+import dataclasses
 import time
 from pathlib import Path
 from typing import Annotated, Any
@@ -29,11 +30,16 @@ def run(
     record: Annotated[
         Path | None, typer.Option(help="Write an npz trace here (for replay/gif).")
     ] = None,
+    quality: Annotated[
+        float | None, typer.Option(help="Sensing quality in (0,1] (ADR 0005; omit = scenario).")
+    ] = None,
 ) -> None:
     """Run a scenario headless; print counters + ADR 0002 episode metrics."""
     from traffic_rl.core.recorder import TraceWriter
 
     cfg = load_scenario(scenario)
+    if quality is not None:
+        cfg = dataclasses.replace(cfg, sensing=dataclasses.replace(cfg.sensing, quality=quality))
     world = World(cfg, seed=seed)
     if record is not None:
         world.recorder = TraceWriter(world)
@@ -172,6 +178,9 @@ def train_dqn(
     steps: Annotated[int, typer.Option(help="Total env steps (ADR 0004: 1M).")] = 1_000_000,
     num_envs: Annotated[int, typer.Option(help="Batched worlds in the vector env.")] = 8,
     device: Annotated[str, typer.Option(help="auto | cuda | cpu")] = "auto",
+    quality: Annotated[
+        float, typer.Option(help="Sensing quality to train under (ADR 0005; 1.0 = omniscient).")
+    ] = 1.0,
 ) -> None:
     """Double DQN on one intersection (ADR 0004 §5) — the phase-2 sanity gate."""
     from traffic_rl.rl.dqn import DQNConfig
@@ -185,6 +194,7 @@ def train_dqn(
             total_steps=steps,
             num_envs=num_envs,
             device=device,
+            quality=quality,
         )
     )
     typer.echo(f"dqn: artifacts in {run_dir}")
@@ -203,6 +213,9 @@ def train_ppo(
         bool, typer.Option("--comm/--no-comm", help="Neighbor channels on/off (the ablation).")
     ] = True,
     device: Annotated[str, typer.Option(help="auto | cuda | cpu")] = "auto",
+    quality: Annotated[
+        float, typer.Option(help="Sensing quality to train under (ADR 0005; 1.0 = omniscient).")
+    ] = 1.0,
 ) -> None:
     """Parameter-shared PPO on a corridor/grid (ADR 0004 §5)."""
     from traffic_rl.rl.ppo import PPOConfig
@@ -217,6 +230,7 @@ def train_ppo(
             num_envs=num_envs,
             comm=comm,
             device=device,
+            quality=quality,
         )
     )
     typer.echo(f"ppo: artifacts in {run_dir}")

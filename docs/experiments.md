@@ -30,13 +30,16 @@ phase-1 singles (`single-balanced`, `single-rush-ns`, `single-night`) plus the
 phase-2 networks (`corridor-rush` — 1x3 arterial, the green-wave scenario;
 `grid-balanced` and `grid-rush-diag` — 3x3 grids). Any command takes any of them.
 
-### `traffic-rl run <scenario.yaml> [--seed N] [--record path.npz]`
+### `traffic-rl run <scenario.yaml> [--seed N] [--record path.npz] [--quality Q]`
 
 One headless episode. Prints run counters (demanded/entered/completed, refusals,
 forced switches, interventions) and the ADR 0002 episode metrics (travel, wait,
 p95 wait, throughput, stops/veh, ped waits, unserved). `--record` writes an npz
 trace for `replay`/`gif`. Omitting `--seed` draws fresh entropy (always printed,
-so any run can be reproduced afterwards).
+so any run can be reproduced afterwards). `--quality Q` (∈ (0,1], default from the
+scenario's `sensing` block or 1.0) fogs the controller's sensors per ADR 0005:
+1.0 is omniscient (phases 1-2); lower drops/occludes/mismeasures detections.
+Reward and metrics stay true-state regardless.
 
 **A single run is a preview, not a result** — headline numbers come only from the
 `leaderboard` protocol (see the workflow skill's preview-numbers lesson).
@@ -80,7 +83,10 @@ Auto-calibrates first if `runs/calibration.json` is missing. Outputs:
 - `docs/leaderboard.md` — the committed results table (bootstrap CIs; the
   CI-overlap rule is printed in its header)
 - `docs/assets/leaderboard-p95-wait.png` — the CI bar chart
-- `runs/leaderboard/results.json` — raw per-run rows (gitignored)
+- `runs/leaderboard/results.json` — raw per-run rows (gitignored). Every row now
+  carries a `quality` column (ADR 0005; 1.0 unless `run_cell(..., sensing_quality=q)`
+  fogs it for the phase-3 sweep); RL rows add checkpoint-provenance columns
+  (`algo`/`comm`/`checkpoint`/`train_git_sha`) so a mixed-arm board self-distinguishes.
 
 The committed table currently holds the CORRECTED phase-1 single-intersection
 results (re-run 2026-07-14 after the SoA slot-reuse fix). This is THE command to
@@ -88,9 +94,9 @@ re-check any number quoted in README, the leaderboard, or a post.
 Restrict a run: `run_matrix` accepts `scenarios`/`controllers` (used by tests);
 the CLI always runs the full default matrix.
 
-### `traffic-rl train-dqn <scenario.yaml> [--seed N] [--steps N] [--out dir] [--device auto|cuda|cpu]`
+### `traffic-rl train-dqn <scenario.yaml> [--seed N] [--steps N] [--out dir] [--device auto|cuda|cpu] [--quality Q]`
 
-**Current as of phase 2, chunk 5.** Double DQN on a SINGLE intersection (the
+**Current as of phase 3, B5** (`--quality` added; core loop phase-2 chunk 5). Double DQN on a SINGLE intersection (the
 ADR 0004 §5 sanity gate; multi-intersection scenarios are rejected). Defaults
 are the locked hyperparameters (1M steps, 8 batched worlds, 900 s training
 episodes). Writes `<out>/seed<k>/`: `config.json` (resolved config + git SHA),
@@ -102,10 +108,13 @@ barely loaded), so plan batches as "wall ≈ slowest run", never as a
 sequential sum.
 Evaluate a checkpoint on the leaderboard protocol via controller kind `rl`:
 `run_cell(scenario, "rl", {"checkpoint": ..., "algo": "dqn"}, seed)`.
+`--quality Q` (ADR 0005) trains the agent under fogged sensors; it is recorded in
+`config.json` so the checkpoint self-describes its training quality (the training
+env observes noisily, the reward stays true-state).
 
-### `traffic-rl train-ppo <scenario.yaml> [--seed N] [--steps N] [--comm/--no-comm] [--out dir] [--device auto|cuda|cpu]`
+### `traffic-rl train-ppo <scenario.yaml> [--seed N] [--steps N] [--comm/--no-comm] [--out dir] [--device auto|cuda|cpu] [--quality Q]`
 
-**Current as of phase 2, chunk 6.** Parameter-shared PPO on a corridor or grid
+**Current as of phase 3, B5** (`--quality` added; core loop phase-2 chunk 6). Parameter-shared PPO on a corridor or grid
 (ADR 0004 §5): one Actor/Critic applied to every intersection's 48-channel row,
 team reward per world, GAE cut at truncation boundaries. Defaults are the locked
 hyperparameters (5M steps — pass `--steps 10000000` for grids per the ADR budget

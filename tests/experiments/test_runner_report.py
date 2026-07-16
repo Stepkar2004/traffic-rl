@@ -1,7 +1,8 @@
+import json
 from pathlib import Path
 
 from traffic_rl.experiments.report import aggregate, ci_bar_chart, leaderboard_markdown
-from traffic_rl.experiments.runner import controllers_for, run_cell, run_matrix
+from traffic_rl.experiments.runner import _rl_provenance, controllers_for, run_cell, run_matrix
 
 SCENARIOS = Path(__file__).parents[2] / "scenarios"
 CAL = {"saturation_flow_veh_h": 1440.0, "startup_lost_time_s": 1.6}
@@ -61,6 +62,42 @@ def test_corridor_cell_runs_coordinated_end_to_end() -> None:
     assert row["safety_interventions"] == 0
     assert row["refused_commands"] == 0  # coordinated is interlock-honest
     assert row["n_trips"] > 0
+
+
+def test_run_cell_records_sensing_quality() -> None:
+    """Every row self-describes its sensing (ADR 0005 §4); the override lands."""
+    base = run_cell(str(SCENARIOS / "single-rush-ns.yaml"), "actuated", {}, 1, measure_s=120.0)
+    assert base["quality"] == 1.0
+    noisy = run_cell(
+        str(SCENARIOS / "single-rush-ns.yaml"),
+        "actuated",
+        {},
+        1,
+        measure_s=120.0,
+        sensing_quality=0.5,
+    )
+    assert noisy["quality"] == 0.5
+
+
+def test_rl_provenance_reads_the_checkpoint_config(tmp_path: Path) -> None:
+    """RL rows carry checkpoint identity (probe-8), git_sha from config.json."""
+    run_dir = tmp_path / "seed0"
+    run_dir.mkdir()
+    (run_dir / "config.json").write_text(
+        json.dumps({"algo": "ppo-shared", "git_sha": "deadbeef"}), encoding="utf-8"
+    )
+    ckpt = run_dir / "ckpt_best.pt"
+    prov = _rl_provenance({"checkpoint": str(ckpt), "algo": "ppo", "comm": False})
+    assert prov["algo"] == "ppo"
+    assert prov["comm"] is False
+    assert prov["checkpoint"] == str(ckpt)
+    assert prov["train_git_sha"] == "deadbeef"
+
+
+def test_rl_provenance_tolerates_missing_config() -> None:
+    prov = _rl_provenance({"checkpoint": "/no/such/ckpt.pt", "algo": "dqn"})
+    assert prov["train_git_sha"] == "unknown"
+    assert prov["comm"] is True  # default arm
 
 
 def test_report_renders_multi_intersection_rows() -> None:

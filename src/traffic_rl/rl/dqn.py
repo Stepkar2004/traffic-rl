@@ -52,6 +52,7 @@ class DQNConfig:
     eval_every: int = 100_000  # env steps
     eval_episodes: int = 3
     device: str = "auto"
+    quality: float = 1.0  # sensing quality the agent trains under (ADR 0005)
 
 
 def git_sha() -> str:
@@ -94,7 +95,7 @@ def train_dqn(dqn: DQNConfig) -> Path:
     torch.manual_seed(dqn.seed)
     rng = np.random.default_rng(dqn.seed)
 
-    env = TrafficEnv(scenario, num_envs=dqn.num_envs, episode_s=dqn.episode_s)
+    env = TrafficEnv(scenario, num_envs=dqn.num_envs, episode_s=dqn.episode_s, quality=dqn.quality)
     q = QNet(N_CHANNELS, N_PHASES).to(device)
     q_target = QNet(N_CHANNELS, N_PHASES).to(device)
     q_target.load_state_dict(q.state_dict())
@@ -112,7 +113,7 @@ def train_dqn(dqn: DQNConfig) -> Path:
 
     def run_eval() -> tuple[float, float]:
         """Greedy env return + REAL p95 wait from a World episode."""
-        eval_env = TrafficEnv(scenario, num_envs=1, episode_s=dqn.episode_s)
+        eval_env = TrafficEnv(scenario, num_envs=1, episode_s=dqn.episode_s, quality=dqn.quality)
         rets = []
         for k in range(dqn.eval_episodes):
             e_obs, e_info = eval_env.reset(seed=dqn.seed * 1000 + 500 + k)

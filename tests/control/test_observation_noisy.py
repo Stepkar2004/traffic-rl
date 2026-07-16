@@ -8,6 +8,8 @@ and WALK service) and demands bit-exact agreement. Below it: same-seed
 reproducibility and the queue-undercount the noise is supposed to produce.
 """
 
+import dataclasses
+
 import numpy as np
 
 from traffic_rl.control.base import Observation
@@ -18,6 +20,7 @@ from traffic_rl.core.config import (
     DemandConfig,
     DemandSegment,
     EpisodeConfig,
+    SensingConfig,
     SimConfig,
     TopologyConfig,
     origin_names,
@@ -115,6 +118,20 @@ def test_noisy_observation_is_reproducible() -> None:
     for _ in range(200):
         world.step()
         _assert_obs_equal(a.observe(world), b.observe(world), "reproducibility")
+
+
+def test_world_selects_observation_model_by_quality() -> None:
+    """The World wires NoisyDetection iff sensing.quality < 1.0 — the legacy
+    omniscient path (q=1) stays PerfectObservation, so goldens never move."""
+    cfg = _cfg("corridor")
+    perfect = World(cfg, seed=1)
+    assert all(type(o) is PerfectObservation for o in perfect.obs_models)
+
+    noisy_cfg = dataclasses.replace(cfg, sensing=SensingConfig(quality=0.5))
+    noisy = World(noisy_cfg, seed=1)
+    assert all(isinstance(o, NoisyDetection) for o in noisy.obs_models)
+    noisy.run(30.0)  # smoke: a noisy World runs an episode end to end
+    assert noisy.counters.veh_completed >= 0
 
 
 def test_low_quality_undercounts_the_queue() -> None:

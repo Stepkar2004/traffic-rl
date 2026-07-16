@@ -179,6 +179,22 @@ class ControllerConfig:
 
 
 @dataclass(frozen=True)
+class SensingConfig:
+    """The detection-noise dial (ADR 0005). ``quality = 1.0`` is the omniscient
+    ``PerfectObservation`` of phases 1-2 (the default; scenarios that omit the
+    block get it); lower values fog the sensors (missed/occluded/hallucinated
+    detections, position/speed error). Reward and every ADR 0002 metric stay
+    computed from true state regardless — the dial only touches what a controller
+    observes, so phase-1/2 numbers remain comparable."""
+
+    quality: float = 1.0
+
+    def __post_init__(self) -> None:
+        if not (0.0 < self.quality <= 1.0):
+            raise ScenarioError(f"sensing.quality must be in (0, 1], got {self.quality}")
+
+
+@dataclass(frozen=True)
 class SimConfig:
     name: str
     description: str
@@ -189,6 +205,7 @@ class SimConfig:
     signal: SignalTimingConfig = SignalTimingConfig()
     idm: IDMParams = IDMParams()
     ped: PedParams = PedParams()
+    sensing: SensingConfig = SensingConfig()
 
 
 def _require_mapping(obj: object, where: str) -> dict[str, Any]:
@@ -240,7 +257,7 @@ def load_scenario(path: Path) -> SimConfig:
         raw,
         str(path),
         required={"name", "episode", "topology", "demand", "controller"},
-        optional={"description"},
+        optional={"description", "sensing"},
     )
 
     ep = _require_mapping(raw["episode"], "episode")
@@ -296,6 +313,12 @@ def load_scenario(path: Path) -> SimConfig:
     params = _require_mapping(ctl.get("params", {}), "controller.params")
     controller = ControllerConfig(kind=str(ctl["kind"]), params=params)
 
+    sensing = SensingConfig()
+    if "sensing" in raw:
+        sen = _require_mapping(raw["sensing"], "sensing")
+        _check_keys(sen, "sensing", required=set(), optional={"quality"})
+        sensing = SensingConfig(quality=float(sen.get("quality", 1.0)))
+
     return SimConfig(
         name=str(raw["name"]),
         description=str(raw.get("description", "")),
@@ -303,4 +326,5 @@ def load_scenario(path: Path) -> SimConfig:
         topology=topology,
         demand=demand,
         controller=controller,
+        sensing=sensing,
     )

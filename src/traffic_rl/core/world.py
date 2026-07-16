@@ -116,9 +116,18 @@ class World:
             raise ValueError(f"got {len(controllers)} controllers for {n_i} intersections")
         observations: list[ObservationModel]
         if observation is None:
-            from traffic_rl.control.observation import PerfectObservation
+            # quality < 1.0 fogs the sensors (ADR 0005); the legacy omniscient
+            # path (== 1.0) is untouched, so goldens/leaderboard never move. The
+            # per-node key is the World's resolved construction seed.
+            from traffic_rl.control.observation import NoisyDetection, PerfectObservation
 
-            observations = [PerfectObservation() for _ in range(n_i)]
+            q = cfg.sensing.quality
+            if q < 1.0:
+                observations = [
+                    NoisyDetection(quality=q, seed=self.rng.entropy) for _ in range(n_i)
+                ]
+            else:
+                observations = [PerfectObservation() for _ in range(n_i)]
         elif isinstance(observation, Sequence):
             observations = list(observation)
         else:

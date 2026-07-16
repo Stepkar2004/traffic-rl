@@ -30,18 +30,45 @@ DEFAULT_SCENARIOS = (
 )
 
 
+def _rl_provenance(params: dict[str, Any]) -> dict[str, Any]:
+    """Checkpoint identity for RL rows (probe-8 finding): a board mixing
+    comm/nocomm/DR/frame-stack arms must self-distinguish. ``train_git_sha`` comes
+    from the checkpoint's sibling ``config.json`` (written at train time)."""
+    ckpt = params.get("checkpoint")
+    prov: dict[str, Any] = {
+        "algo": params.get("algo", "dqn"),
+        "comm": bool(params.get("comm", True)),
+        "checkpoint": str(ckpt) if ckpt is not None else "",
+        "train_git_sha": "unknown",
+    }
+    if ckpt is not None:
+        cfg_json = Path(ckpt).parent / "config.json"
+        if cfg_json.exists():
+            try:
+                loaded = json.loads(cfg_json.read_text(encoding="utf-8"))
+                prov["train_git_sha"] = str(loaded.get("git_sha", "unknown"))
+            except (OSError, json.JSONDecodeError):
+                pass
+    return prov
+
+
 def run_cell(
     scenario_path: str,
     controller_kind: str,
     controller_params: dict[str, Any],
     seed: int,
     measure_s: float | None = None,
+    sensing_quality: float | None = None,
 ) -> dict[str, Any]:
     """One (controller, scenario, seed) episode -> metric row. Top-level for pickling."""
     cfg = load_scenario(Path(scenario_path))
     if measure_s is not None:  # test/quick override
         cfg = dataclasses.replace(
             cfg, episode=dataclasses.replace(cfg.episode, measure_s=measure_s)
+        )
+    if sensing_quality is not None:  # sweep override (ADR 0005): fog the sensors
+        cfg = dataclasses.replace(
+            cfg, sensing=dataclasses.replace(cfg.sensing, quality=sensing_quality)
         )
     # swap the controller config in; the World builds one copy per intersection
     cfg = dataclasses.replace(
@@ -54,9 +81,12 @@ def run_cell(
         "controller": controller_kind,
         "seed": seed,
         "entropy": str(world.rng.entropy),
+        "quality": cfg.sensing.quality,  # every row self-describes its sensing (ADR 0005 §4)
         "warmup_s": cfg.episode.warmup_s,
         "measure_s": cfg.episode.measure_s,
     }
+    if controller_kind == "rl":
+        row.update(_rl_provenance(controller_params))
     row.update(dataclasses.asdict(world.episode_metrics()))
     return row
 

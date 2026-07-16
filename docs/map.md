@@ -115,7 +115,9 @@ src/traffic_rl/
 │   │                      (sensor_key, uid, tick): detect/miss, occlusion, 5 s
 │   │                      dropout, pos/speed error, false positives — bit-identical
 │   │                      across both observation paths; q=1.0 is the identity (ADR 0005)
-│   ├── config.py          frozen dataclasses + strict YAML scenario loader
+│   ├── config.py          frozen dataclasses + strict YAML scenario loader;
+│   │                      SensingConfig(quality) is the ADR-0005 noise dial
+│   │                      (optional `sensing:` block; default 1.0 = omniscient)
 │   ├── topology.py        graph tables: nodes/edges/lanes/movements/crosswalks +
 │   │                      movement-conflict matrix; builders: 4-way, corridor
 │   │                      (1xN arterial), NxN grid — through-only chains

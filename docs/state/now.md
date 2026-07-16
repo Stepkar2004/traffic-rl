@@ -3,8 +3,8 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-15 (later) — PHASE-3 PART B: B2 (kernel + uid) + B3 (NoisyDetection) + B4
-(env noise + parity pin) LANDED:**
+**As of 2026-07-15 (later) — PHASE-3 PART B: B2-B5 LANDED (the main-session parity spine +
+the quality dial wired end-to-end):**
 
 ADR 0005 is **accepted** (Stepan confirmed; the [REC] defaults stand). Part B opened with
 B2, the determinism spine of ADR 0005 §1:
@@ -41,16 +41,26 @@ Then B4, the drift tripwire — the phase's central risk closed:
   `tests/rl/test_features.py` proves it channel-by-channel: NOISY parity (q ∈ {1.0, 0.5}),
   the grid-corner-after-WALK BASE pin (closes probe-7), and a **multi-world** pin (world b
   of a B=3 batch == a standalone World at that seed under noise — the per-world key gather).
-  The q=1 fast path is untouched (zero leaderboard regression). **212 tests green** (+29
-  over the phase-2 baseline), 5 gates green. Local/unpushed.
+  The q=1 fast path is untouched (zero leaderboard regression).
 
-**Next action: B5 — `SensingConfig(quality=1.0)` on SimConfig; `World` builds
-`NoisyDetection` when `quality < 1`; `run_cell(sensing_quality)` + a `quality` row column;
-RL-row checkpoint-provenance columns (algo/comm/path/git_sha, probe-8); `--quality` on the
-`run`/`train-dqn`/`train-ppo` CLI. This wires the dial end-to-end so the Part C sweep can
-run.** Grid PPO (A2) + all Part C trainings stay PARKED until Stepan schedules compute.
-B6 (frame-stack) ∥ B7 (filtered max-pressure) are disjoint-file subagent candidates once
-B5 lands.
+Then B5, the dial wired end-to-end:
+
+- **`SensingConfig(quality)`** on SimConfig (optional `sensing:` block, strict-validated);
+  `World` builds `NoisyDetection` per node iff `quality < 1` (q=1 stays PerfectObservation,
+  goldens frozen); `run_cell(sensing_quality)` + a `quality` column on every row; RL-row
+  checkpoint-provenance columns (algo/comm/checkpoint/train_git_sha — closes probe-8);
+  `--quality` on `run`/`train-dqn`/`train-ppo` (threaded to train+eval envs and config.json).
+  Reward/metrics stay true-state. **222 tests green** (+39 over the phase-2 baseline), 5 gates
+  green. Local/unpushed. **The dial is usable end to end.**
+
+**Next action: B6 ∥ B7 — both disjoint-file, the plan's designated PARALLEL SUBAGENT
+candidates. B6: `envs/wrappers.py::FrameStack(env, k)` + `rl/controller.py` optional
+`stack_k` + a wrapper-vs-controller stacking-parity test (build only; train on the C4
+trigger). B7: `control/max_pressure.py` optional `filter_tau_s` EMA (tau=0 identity pinned) +
+the `max_pressure_filtered` leaderboard arm. Then B9 (per-episode demand randomization,
+Stepan's generalist arm). B2-B5 were the top-risk spine and ran in the MAIN session;
+B6/B7 are safe to fan out.** Grid PPO (A2) + all Part C trainings stay PARKED until Stepan
+schedules compute.
 
 ---
 

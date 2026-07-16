@@ -57,6 +57,7 @@ class PPOConfig:
     max_grad_norm: float = 0.5
     eval_every: int = 100_000  # env steps
     device: str = "auto"
+    quality: float = 1.0  # sensing quality the agent trains under (ADR 0005)
 
 
 def train_ppo(ppo: PPOConfig) -> Path:
@@ -65,7 +66,9 @@ def train_ppo(ppo: PPOConfig) -> Path:
     device = pick_device(ppo.device)
     torch.manual_seed(ppo.seed)
 
-    env = TrafficEnv(scenario, num_envs=ppo.num_envs, episode_s=ppo.episode_s, comm=ppo.comm)
+    env = TrafficEnv(
+        scenario, num_envs=ppo.num_envs, episode_s=ppo.episode_s, comm=ppo.comm, quality=ppo.quality
+    )
     n_i = env.n_i
     rows = ppo.num_envs * n_i  # parameter sharing: one row per intersection
     actor = Actor(N_CHANNELS, N_PHASES).to(device)
@@ -253,7 +256,9 @@ def _eval(
     greedy_policy: Policy,
 ) -> tuple[float, float]:
     """One greedy env episode return + REAL p95 wait from a World episode."""
-    eval_env = TrafficEnv(scenario, num_envs=1, episode_s=ppo.episode_s, comm=ppo.comm)
+    eval_env = TrafficEnv(
+        scenario, num_envs=1, episode_s=ppo.episode_s, comm=ppo.comm, quality=ppo.quality
+    )
     e_obs, e_info = eval_env.reset(seed=ppo.seed * 1000 + 500)
     n_i = eval_env.n_i
     ret, done = 0.0, False
