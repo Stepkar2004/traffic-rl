@@ -3,6 +3,43 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
+**As of 2026-07-15 (night) — A1 GATE GREEN: adversarial probes 5-8 all PASS:**
+
+The phase-3 implementation session opened by running the four owed adversarial
+probes as four parallel subagents (probe-not-read: each wrote and RAN instrumented
+code, reporting measured evidence). **All four PASS** — the RL stack and the
+phase-2 components under it are trusted; nothing here blocks phase 3:
+
+- **Probe 5 (CoordinatedFixedTime offsets):** applied offsets == cumulative
+  distance ÷ free-flow speed to 0.00 s error; beats fixed-time on p95 at rush
+  (38.1 vs 44.7 s) and on mean wait at every demand. Offset is live in `decide()`.
+- **Probe 6 (max-pressure downstream term):** observed downstream count == true
+  SoA exit-lane count 80/80; `downstream` true/false flips the served phase (42
+  ticks) with correct spillback diversion. (Single-seed net benefit was negative —
+  a multi-seed CI question for the board, not a correctness defect.)
+- **Probe 7 (feature parity, grid corner + WALK):** the two observation paths
+  agree bit-exact (0.0 diff) over 2169 vectors × 48 channels on a nasty grid
+  state; a negative control confirms the check discriminates.
+- **Probe 8 (RLController eval path):** a real checkpoint emits a complete, finite
+  metrics row through the identical `run_cell` path (p95 33.2 s ≈ committed 34.9;
+  refused=0; seed recorded).
+
+Three non-blocking findings carried forward (homes in the deep-plan spec): (1) the
+committed parity pin `tests/rl/test_features.py` only covers a CORRIDOR — the grid
+path is effectively unpinned (probe 7 found no drift, but a grid-only divergence
+would not be caught) → Part B B8 extends the base q=1.0 pin to grid+WALK; (2) RL
+leaderboard rows carry no checkpoint identity (algo/comm/path/git_sha), so
+mixed-arm boards can't self-distinguish → ADR 0005 / B5 add provenance columns;
+(3) network-form max-pressure's net benefit is a multi-seed CI question
+(informational).
+
+**Next action: continue per the deep-plan spec — the cheap owed experiments (A3
+emergence protocol, A5 mirrored-demand) + the ADR 0005 draft; the multi-hour
+trainings (A2 grid PPO, Part C) stay PARKED until Stepan schedules the compute.**
+Nothing pushed (docs commits ahead).
+
+---
+
 **As of 2026-07-15 (evening) — PHASE-3 SPEC WRITTEN; next session implements it:**
 
 Stepan pushed phase 2 (origin/main = cfb1d24) and posted post #2. On his direction
@@ -34,8 +71,8 @@ concurrent — the grid budget fits in one evening, so A2 runs the FULL ADR budg
 (the phase-2 deferral was a sequential-arithmetic artifact). experiments.md
 throughput lines corrected to match.
 
-**Next action: the implementation session starts from the deep-plan spec, Part A,
-work package A1 (probes 5-8).** Nothing new is pushed (docs commits ahead).
+**Next action (superseded by the top block): A1 is DONE — probes 5-8 all PASS.**
+Nothing new is pushed (docs commits ahead).
 
 ---
 

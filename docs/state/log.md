@@ -2,6 +2,22 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-15 · A1 gate: adversarial probes 5-8 all PASS (phase-3 session open).**
+  Ran the four owed phase-2 probes as four parallel probe-not-read subagents (each
+  wrote and executed instrumented code, reported measured numbers): (5)
+  CoordinatedFixedTime offsets == cumulative distance ÷ free-flow speed to 0.00 s
+  error and it beats fixed-time on p95 at rush; (6) max-pressure's downstream term
+  reads the true exit-lane occupancy (80/80 count matches) and flips decisions
+  (42 ticks); (7) the two observation paths are bit-exact (0.0 diff over 2169
+  vectors × 48 channels) on a grid corner after WALK, with a discriminating negative
+  control; (8) a real checkpoint scores a complete honest metrics row through the
+  same run_cell path (refused=0, seed recorded, p95 ≈ committed). Retires the
+  "probes 5-8 outstanding" residual risk carried since the phase-2 code review died
+  on a quota limit. Three non-blocking findings folded into the deep-plan spec: the
+  committed parity pin only covers a corridor (grid path unpinned → B8 extends it),
+  RL rows lack checkpoint provenance (→ ADR 0005 / B5), and network-form
+  max-pressure's net benefit is a CI question. Multi-hour trainings stay parked.
+  Docs-only commit; not pushed.
 - **2026-07-15 · Phase-3 deep plan spec: the implementation handoff.** Stepan pushed
   phase 2 and posted post #2; this planning pass reviewed the phase-2 results against
   ADR 0004's planned experiment matrix and wrote

@@ -26,10 +26,13 @@
 - Losing RL rows ship. If DQN can't beat fixed-time, that's a finding, not a bug
   to fix by tuning (the hyperparameters are locked).
 - Post drafts in `docs/posts/` (gitignored), **no em dashes in post text**.
-- **The adversarial probe-review is half-done.** Review #2 (full phase-2 diff,
+- **The adversarial probe-review is COMPLETE (2026-07-15): probes 1-8 all PASS.**
+  Probes 5-8 ran clean at the top of the phase-3 session (see docs/state/now.md,
+  log.md, results/phase-2.md). The text below is retained as the historical record
+  of what was owed. Review #2 (full phase-2 diff,
   probe-not-read) ran probes 1-4 clean — batching fidelity, env contract vs the
   ADR, Double-DQN targets, PPO arms + nocomm zeroing — then died on the session
-  limit; no findings were reported before it died. **Probes 5-8 are outstanding:
+  limit; no findings were reported before it died. **Probes 5-8 [DONE — all PASS]:
   (5) CoordinatedFixedTime offsets = travel-time arithmetic + beats independent
   fixed-time, (6) max-pressure downstream term = real exit occupancy, (7) feature
   parity on a grid corner / after WALK, (8) RLController through run_cell produces

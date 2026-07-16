@@ -201,12 +201,17 @@ reason for the win.
   without the encoded wave; whether it does so by *phase-locking* (the probe's periodic
   metric) or by opportunistic, demand-triggered progression is the open question the
   probe answers, and it is the headline of a focused follow-up. Flagged, not claimed.
-- **Adversarial probe-review probes 5-8** (coordinated offsets, max-pressure downstream
-  term, feature parity on a grid corner, RLController eval path) remain outstanding from
-  the phase-2 code review (probes 1-4 ran clean; the review died on a quota limit). The
-  components have direct unit tests and the results above are internally consistent, so
-  residual risk is moderate — but the phase-1 lesson (green suites can hide
-  name-vs-behavior gaps) stands until they are run.
+- **Adversarial probe-review probes 5-8** ran clean at the top of the phase-3 session
+  (2026-07-15), as four parallel probe-not-read subagents — **all four PASS** (probes
+  1-4 had already run clean). Measured: coordinated offsets == travel-time arithmetic
+  (0.00 s error) and beat fixed-time; max-pressure's downstream term reads the true
+  exit-lane occupancy (80/80) and changes decisions; the two observation paths are
+  bit-exact on a grid corner after WALK (0.0 diff, 2169 vectors × 48 channels); the
+  RLController scores a complete honest row through `run_cell`. The name-vs-behavior
+  residual risk this list tracked is retired. Two non-defect caveats surfaced for
+  phase 3: RL rows don't carry checkpoint identity (a leaderboard-provenance to-do),
+  and the committed feature-parity pin only exercises a corridor (Part B extends it to
+  the grid). Full evidence in [state/now.md](../state/now.md) / [log.md](../state/log.md).
 
 ## Shipped checkpoints (provenance)
 

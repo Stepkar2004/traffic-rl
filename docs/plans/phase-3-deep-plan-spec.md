@@ -120,6 +120,12 @@ A1-A5 below + C5.
 
 ## A1. Adversarial probes 5-8 (~30 min, run BEFORE anything multi-hour)
 
+> **DONE 2026-07-15 — ALL FOUR PASS** (four parallel probe-not-read subagents;
+> ~304k subagent tokens, ~4.6 min wall). Evidence in docs/state/now.md + log.md;
+> the results/phase-2.md gap is closed. Three non-blocking findings folded below
+> (B8 base-pin extension; B5 row provenance) and into results/phase-2.md. The rest
+> of this section is kept as the record of what was run.
+
 Review #2 verified probes 1-4 clean, then died on quota. Run the remaining four as
 parallel subagents; each must PROBE (run instrumented code), not read:
 
@@ -390,6 +396,10 @@ determinism contract (B2) — do not loosen the tolerance.
   else PerfectObservation (legacy path untouched ⇒ zero risk to goldens/leaderboard).
 - `run_cell(..., sensing_quality: float | None = None)` — dataclasses.replace
   override, recorded in the row (`"quality": q` column so sweep rows self-describe).
+  **Also add checkpoint-provenance columns to RL rows** (algo / comm / checkpoint
+  path / train-time git_sha) — probe-8 finding: rows currently carry only
+  `controller: "rl"`, so a board mixing comm/nocomm/DR arms can't self-distinguish
+  them. The checkpoint's own config.json already holds git_sha; thread it through.
 - CLI: `--quality` on `run`, `train-dqn`, `train-ppo` (threads to TrafficEnv and
   into config.json so checkpoints record their training quality).
 
@@ -419,7 +429,11 @@ middle ground between raw classics and RL.
    within a 5 s window.
 2. `test_observation_noisy.py` — the q=1.0 equivalence pin (B3); same-seed
    reproducibility; queue undercount at q=0.5 on a built queue (statistical).
-3. `test_features.py` extension — the noisy parity pin (B4), bit-exact.
+3. `test_features.py` extension — the noisy parity pin (B4), bit-exact. **Also
+   extend the base quality=1.0 pin to a GRID corner after WALK** (probe-7 finding:
+   the committed pin only exercises a corridor, so the grid observation path is
+   currently unpinned — probe 7 found 0.0 drift there, but a grid-only divergence
+   would slip past the suite; pin it while we are in this code).
 4. Existing goldens + leaderboard defaults untouched (no test edits needed —
    their passing IS the proof the default path didn't move).
 5. FrameStack shape/reset/autoreset semantics + controller-side parity (B6).
