@@ -5,6 +5,15 @@
 > baselines and budgets depend on them), (2) a realism-scan pass ranks the noise
 > model against alternatives, and (3) Stepan approves scope. Grounded by
 > [phase-2.md](phase-2.md) and the phase-2 code (seams below reference real files).
+>
+> **2026-07-15 update (Stepan's go):** the implementation handoff is
+> [phase-3-deep-plan-spec.md](phase-3-deep-plan-spec.md) — a temporary spec
+> carrying (Part A) the phase-2 finish-up experiments that were honestly deferred
+> (adversarial probes 5-8, grid PPO, the emergence-probe protocol, grid RL rows)
+> and (Part B/C) the exact phase-3 code changes + experiment protocol, with a
+> parallelization map for subagents. Part A runs BEFORE phase-3 trainings; the
+> ADR 0005 async review happens alongside (edits cheap until results exist). The
+> spec is deleted when phase 3 lands; this file stays the phase frame.
 
 **Phase 3 in one sentence:** replace the omniscient `PerfectObservation` with a
 detection-level noise model behind the SAME `ObservationModel` protocol — one

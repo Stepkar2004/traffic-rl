@@ -3,7 +3,30 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-15 — PHASE-2 RUN SESSION DONE (results landed; awaiting Stepan's review + push):**
+**As of 2026-07-15 (evening) — PHASE-3 SPEC WRITTEN; next session implements it:**
+
+Stepan pushed phase 2 (origin/main = cfb1d24) and posted post #2. On his direction
+(review phase-2 results → fold the leftovers into phase 3 → hand implementation to a
+subagent-driven session), the planning pass produced
+**[plans/phase-3-deep-plan-spec.md](../plans/phase-3-deep-plan-spec.md)** — a
+TEMPORARY implementation+run handoff with a parallelization map: **Part A** is the
+phase-2 finish-up (adversarial probes 5-8 FIRST, grid PPO, the emergence-probe
+protocol, grid RL rows — the honest-gaps list from results/phase-2.md), **Parts B/C**
+are the exact phase-3 code changes (counter-based shared-noise kernel resolving the
+two-observation-paths risk, NoisyDetection + pins, config/CLI, frame-stack, filtered
+max-pressure) and the locked-protocol experiments (classical sweep, zero-shot
+omniscience-overfit test, train-for-condition arms, pre-registered frame-stack
+trigger). ADR 0005 gets written first in that session; Stepan async-reviews. The
+watchout-later ledger was swept into the plans: demand sweep RESOLVED (phase-2 ran
+the strong version), comm re-test planted in phases 4+5, curve speed caps planted in
+phase 5. The runbook is superseded for what remains (note at its top).
+
+**Next action: the implementation session starts from the deep-plan spec, Part A,
+work package A1 (probes 5-8).** Nothing new is pushed (one docs commit ahead).
+
+---
+
+**As of 2026-07-15 — PHASE-2 RUN SESSION DONE (results landed; Stepan pushed):**
 
 Trainings + experiments ran and are interpreted in
 [results/phase-2.md](../results/phase-2.md) (every number matched-seed, transcribed

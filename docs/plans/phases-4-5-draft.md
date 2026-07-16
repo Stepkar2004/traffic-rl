@@ -36,6 +36,18 @@
   red-runner conflicts, ped exposure; fairness sharpens to p95 by user type.
 - Experiments: train clean → test messy (brittleness), domain randomization
   (robustness), incident response vs max-pressure.
+- **Re-test the comm ablation here** (watchout 2026-07-14): phase 2 found comm ≈
+  nocomm on the homogeneous sim — the leading hypothesis is that identical drivers
+  + uniform 150 m blocks make a neighbor's state predictable from your own, so the
+  null may be an artifact of homogeneity. The comm/nocomm arms + the emergence
+  probe already exist; re-run them once per-vehicle `v0/t_hw` distributions land.
+  A minimal block-length variation (properly phase 5) may be worth pulling in,
+  since it is coupled to the same question — flag at the phase-4 realism-scan.
+- **The demand axis is now a standing stress axis** (phase-2 run session built it):
+  the fair sweep protocol — fresh training per demand level, matched eval seeds,
+  both training seeds shown — lives in results/phase-2.md and should be re-run
+  under heterogeneity (does the learned policy's saturation edge survive messy
+  humans?). Zero new kernel code; scenario rate knobs already exist.
 - Also due here: calibration's multi-seed protocol finally earns its keep
   (heterogeneous discharge → sd > 0; phase 1 recorded sd = 0 honestly).
 
@@ -56,6 +68,20 @@
   tables as data; the machine grows head types, controllers grow the action space.
   `N_PHASES = 2` assumptions are localized (controllers' `1 - active` shortcuts
   are commented as two-phase; the machine's arrays are already N-phase).
+- **Curve speed limits** (watchout 2026-07-14): curved lanes need a lateral-
+  acceleration cap — IDM only sees the gap, so it would take a tight bend at full
+  speed. Additive fix riding existing hooks: per-position curvature `κ(s)` from
+  the lane geometry that already exists for rendering, then
+  `v0_effective[i] = min(v0[i], sqrt(a_lat_max / κ(s_i)))` (combines with phase-4
+  per-agent `v0` by `min`; arc-length physics stays 1D and is already correct —
+  only the missing slow-down is wrong). Open design fork to flag at phase-5
+  planning: hard clamp at curve entry (simple, abrupt) vs anticipatory
+  deceleration on approach (realistic, more code). Full entry:
+  [watchout-later.md](../state/watchout-later.md).
+- **Comm ablation, round 3** (watchout 2026-07-14): varying block lengths are the
+  second condition under which a neighbor's state stops being predictable from
+  your own — re-run the comm/nocomm arms + emergence probe on the topology zoo
+  (phase 4 re-tests under driver heterogeneity first).
 - Multi-hop transfers: ~~single-hop by documented assumption~~ **closed in phase 2**
   (`transfer_and_despawn` is multi-hop with a 16-hop tripwire) — dense topologies
   inherit it for free.

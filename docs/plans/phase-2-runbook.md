@@ -1,5 +1,12 @@
 # Phase-2 run session — the handoff runbook
 
+> **2026-07-15, superseded for what remains:** the run session executed the DQN gate,
+> corridor PPO, the demand sweep, and leaderboard v2 (results in
+> [results/phase-2.md](../results/phase-2.md)). The still-owed items — adversarial
+> probes 5-8, grid PPO, the emergence-probe protocol, grid RL rows — now live as
+> **Part A of [phase-3-deep-plan-spec.md](phase-3-deep-plan-spec.md)**, the active
+> handoff. This file stays as the reference for commands/recipes it already carries.
+
 > **Audience: the session that RUNS the phase-2 trainings and experiments** (agreed
 > split: code was written 2026-07-14; this session executes, measures, interprets).
 > Everything below was smoke-verified on this machine; wall-time numbers are measured,

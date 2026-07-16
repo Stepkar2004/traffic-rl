@@ -2,6 +2,19 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-15 · Phase-3 deep plan spec: the implementation handoff.** Stepan pushed
+  phase 2 and posted post #2; this planning pass reviewed the phase-2 results against
+  ADR 0004's planned experiment matrix and wrote
+  [plans/phase-3-deep-plan-spec.md](../plans/phase-3-deep-plan-spec.md) (temporary,
+  deleted when phase 3 lands): Part A = the owed phase-2 experiments (probes 5-8,
+  grid PPO, emergence protocol, grid RL rows) with commands and gates; Parts B/C =
+  the phase-3 code spec — the key design being a counter-based (hash-of-uid/tick/seed,
+  not stateful-RNG) detection-noise kernel shared by BOTH observation paths, which
+  turns the two-observation-paths drift risk into a bit-exact parity-pin extension —
+  plus locked experiment arms with wall-clock arithmetic and a pre-registered
+  frame-stack trigger. Watchout ledger swept into plans: demand sweep moved to
+  Resolved (the run session ran its strong form), comm re-test planted in phases 4+5,
+  curve speed caps planted in phase 5. Runbook marked superseded for what remains.
 - **2026-07-15 · Phase 2 RUN SESSION: trainings + experiments + results doc.**
   Ran the DQN gate (3 seeds, single-rush-ns), corridor PPO comm/nocomm (3 seeds each,
   5M steps), and a per-demand PPO retrain (comm, 2 seeds x 5 demands) for a FAIR
