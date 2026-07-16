@@ -26,6 +26,7 @@ from traffic_rl.core.demand import build_arrival_schedule
 from traffic_rl.core.metrics import accumulate_step
 from traffic_rl.core.pedestrians import step_pedestrians
 from traffic_rl.core.rng import spawn_streams
+from traffic_rl.core.sensors import sensor_key
 from traffic_rl.core.signals import SignalState
 from traffic_rl.core.topology import (
     N_PHASES,
@@ -191,6 +192,13 @@ class BatchedWorlds:
         self._w_veh = np.zeros(num_worlds, dtype=np.float64)
         self._w_ped = np.zeros(num_worlds, dtype=np.float64)
         self._w_tail = np.zeros(num_worlds, dtype=np.float64)
+        #: One monotone spawn-id counter per world (ADR 0005 §1): world ``b``'s
+        #: k-th spawned vehicle gets uid k, the SAME as a standalone World at
+        #: that world's seed, so the sensing hash matches across both paths.
+        self._uid_veh: I64 = np.zeros(num_worlds, dtype=np.int64)
+        self._uid_ped: I64 = np.zeros(num_worlds, dtype=np.int64)
+        #: Per-world sensing key (populated by reset from the world seeds).
+        self._sensor_seed: list[int] = [0] * num_worlds
 
     @property
     def t(self) -> float:
@@ -217,6 +225,8 @@ class BatchedWorlds:
         self._w_veh[:] = 0.0
         self._w_ped[:] = 0.0
         self._w_tail[:] = 0.0
+        self._uid_veh[:] = 0
+        self._uid_ped[:] = 0
 
         base = self.base_topo
         ped_keys = [APPROACHES[cw.leg] for cw in base.crosswalks]
@@ -224,6 +234,9 @@ class BatchedWorlds:
             world_seeds = [world_seed(root_seed, episode, b) for b in range(self.num_worlds)]
         if len(world_seeds) != self.num_worlds:
             raise ValueError(f"got {len(world_seeds)} seeds for {self.num_worlds} worlds")
+        # Sensing key per world, derived from the SAME seed the demand schedule
+        # used — so a standalone World(seed=world_seeds[b]) keys sensing identically.
+        self._sensor_seed = [sensor_key(s) for s in world_seeds]
         self._veh_arrivals = []
         self._ped_arrivals = []
         for b in range(self.num_worlds):
@@ -352,8 +365,10 @@ class BatchedWorlds:
                 continue
             demand_t = queue.pop(0)
             idm = self.cfg.idm
+            b = int(self._world_of_origin[o_idx])
             self.vehicles.add(
                 1,
+                uid=int(self._uid_veh[b]),
                 lane=entry_lane,
                 s=0.0,
                 v=v_in,
@@ -369,6 +384,7 @@ class BatchedWorlds:
                 entered_t=t,
                 compliant=True,
             )
+            self._uid_veh[b] += 1
             self.lane_entered[entry_lane] += 1
 
     def _entry_speed(self, lane_id: int) -> float | None:
@@ -409,15 +425,18 @@ class BatchedWorlds:
             cur = self._ped_cursor[c_idx]
             if cur >= arrivals.size or arrivals[cur] > t:
                 continue
+            b = int(self._world_of_cw[c_idx])
             while cur < arrivals.size and arrivals[cur] <= t:
                 self.peds.add(
                     1,
+                    uid=int(self._uid_ped[b]),
                     crosswalk=c_idx,
                     state=PedArrays.STATE_WAITING,
                     speed=ped.walk_speed_mps,
                     compliant=True,
                     demand_t=float(arrivals[cur]),
                 )
+                self._uid_ped[b] += 1
                 cur += 1
             self._ped_cursor[c_idx] = cur
 

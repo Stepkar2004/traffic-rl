@@ -59,6 +59,12 @@ class World:
         self.rng: RngStreams = spawn_streams(seed)
         self.vehicles = VehicleArrays()
         self.peds = PedArrays()
+        #: Monotone per-world spawn ids — the immutable sensing-hash key (ADR
+        #: 0005 §1). One world here, so uid == spawn order; ``BatchedWorlds``
+        #: keeps one counter per world in the identical spawn order, so a given
+        #: logical vehicle gets the SAME uid on both observation paths.
+        self._uid_veh = 0
+        self._uid_ped = 0
         self.counters = WorldCounters()
         self.signals = SignalState(self.topology, cfg.signal)
         self.step_count = 0
@@ -304,6 +310,7 @@ class World:
             idm = self.cfg.idm
             self.vehicles.add(
                 1,
+                uid=self._uid_veh,
                 lane=entry_lane,
                 s=0.0,
                 v=v_in,
@@ -319,6 +326,7 @@ class World:
                 entered_t=t,
                 compliant=True,
             )
+            self._uid_veh += 1
             self.lane_entered[entry_lane] += 1
             self.counters.veh_entered += 1
 
@@ -362,12 +370,14 @@ class World:
             while cur < arrivals.size and arrivals[cur] <= t:
                 self.peds.add(
                     1,
+                    uid=self._uid_ped,
                     crosswalk=c_idx,
                     state=PedArrays.STATE_WAITING,
                     speed=ped.walk_speed_mps,  # per-agent; phase 4 samples this
                     compliant=True,
                     demand_t=float(arrivals[cur]),
                 )
+                self._uid_ped += 1
                 self.counters.ped_demanded += 1
                 cur += 1
             self._ped_cursor[c_idx] = cur

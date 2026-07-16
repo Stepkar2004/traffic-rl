@@ -2,6 +2,22 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-15 · Phase-3 B2: the sensing kernel + uid spine (ADR 0005 §1 accepted).**
+  Stepan confirmed ADR 0005 (status proposed → accepted, [REC] defaults adopted). Built
+  `core/sensors.py` — sensing noise as a PURE counter-based hash (splitmix64 over
+  world-local integer keys: per-world `sensor_key`, per-vehicle `uid`, whole-second
+  `tick`), no `np.random` (the reserved `sensors` stream stays unused). Kernels:
+  `detect_vehicles` (distance-dependent p_detect, <25 m occlusion undercount, 5 s
+  correlated dropout keyed on `tick//5`, pos/speed Gaussian via hashed Box-Muller),
+  `false_positives`, `detect_peds`; `quality=1.0` is the arithmetic identity (all
+  detected, zero noise, zero FPs — the equivalence pin's guarantee, so callers can skip
+  the kernel on the hot path). Added an immutable `int64` `uid` column to
+  VehicleArrays/PedArrays, assigned from monotone per-world counters in `World` and
+  `BatchedWorlds`; a test proves world b in a B=3 batch carries the SAME
+  (uid, origin, demand_t) per vehicle as a standalone World at that world's seed — the
+  spine that makes the shared hash key identically on both observation paths. Goldens
+  unchanged (uid never affects dynamics), batched-vs-sequential still exact. 203 tests
+  (+20), all 5 gates green. Not pushed.
 - **2026-07-15 · Phase-2 finish-up experiments: emergence + mirrored-demand (A3, A5).**
   Ran the two cheap owed phase-2 experiments as parallel subagents, both verified against
   committed artifacts before transcription. Emergence probe (corridor-rush, 10 seeds):

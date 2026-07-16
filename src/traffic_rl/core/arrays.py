@@ -99,6 +99,7 @@ class VehicleArrays(_SoA):
 
     _SPEC: ClassVar[dict[str, type]] = {
         "id": np.int64,
+        "uid": np.int64,  # immutable per-WORLD spawn id; the sensing-hash key (ADR 0005)
         "lane": np.int32,
         "s": np.float32,  # meters along current lane
         "v": np.float32,  # m/s, always >= 0
@@ -119,6 +120,7 @@ class VehicleArrays(_SoA):
         "yellow_exempt": np.bool_,  # latched: too close to stop when yellow began
     }
 
+    uid: I64
     lane: I32
     s: F32
     v: F32
@@ -161,6 +163,7 @@ class PedArrays(_SoA):
 
     _SPEC: ClassVar[dict[str, type]] = {
         "id": np.int64,
+        "uid": np.int64,  # immutable per-WORLD spawn id; the sensing-hash key (ADR 0005)
         "crosswalk": np.int32,
         "state": np.int8,
         "progress_m": np.float32,  # meters advanced across the crosswalk
@@ -171,6 +174,7 @@ class PedArrays(_SoA):
         "wait_s": np.float32,
     }
 
+    uid: I64
     crosswalk: I32
     state: npt.NDArray[np.int8]
     progress_m: F32

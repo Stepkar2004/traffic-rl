@@ -1,10 +1,10 @@
 # ADR 0005 — sensing noise: the detection-level observation model (phase 3)
 
-- **Status:** proposed 2026-07-15 (drafted this session; locked-on-review — edits are
-  cheap until phase-3 training results exist, the async-gate mode used since phase 1).
-  Recommendations marked **[REC]** are defaults Stepan can veto at review; work does
-  not block on the review.
-- **Deciders:** Claude (drafted), Stepan (async gate).
+- **Status:** accepted 2026-07-15 (Stepan confirmed; the **[REC]** defaults are adopted
+  as-is). Remains amendable until phase-3 training results exist — edits are cheap until
+  then (the async-gate mode used since phase 1); any change AFTER the first full phase-3
+  run follows §7.
+- **Deciders:** Claude (drafted), Stepan (confirmed 2026-07-15).
 - **Context:** phase-3 plan ([phase-3.md](../plans/phase-3.md)) + the implementation
   handoff ([phase-3-deep-plan-spec.md](../plans/phase-3-deep-plan-spec.md) Part B).
   Binds under [ADR 0002](0002-metrics-and-realism-constraints.md) (metrics, locked) and

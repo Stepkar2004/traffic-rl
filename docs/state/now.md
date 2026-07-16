@@ -3,6 +3,33 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
+**As of 2026-07-15 (later) — PHASE-3 PART B STARTED: B2 (sensing kernel + uid spine) LANDED:**
+
+ADR 0005 is **accepted** (Stepan confirmed; the [REC] defaults stand). Part B opened with
+B2, the determinism spine of ADR 0005 §1:
+
+- **`core/sensors.py`** — sensing noise as a PURE counter-based hash (splitmix64) of
+  world-local integer keys (per-world `sensor_key`, per-vehicle `uid`, whole-second
+  `tick`). Kernels: `detect_vehicles` (distance-dependent p_detect, <25 m occlusion
+  undercount, 5 s correlated dropout, pos/speed Gaussian error), `false_positives`,
+  `detect_peds`. `quality = 1.0` is the arithmetic identity (all detected, zero noise,
+  zero FPs) — the equivalence pin's guarantee. No `np.random`: the reserved `sensors`
+  stream stays unused, so both observation paths hash to bit-identical results.
+- **`uid` spine** — an immutable `int64` per-WORLD spawn id on VehicleArrays/PedArrays,
+  assigned from monotone per-world counters in `World` and `BatchedWorlds` alike. A test
+  proves world b in a B=3 batch carries the SAME (uid, origin, demand_t) per vehicle as a
+  standalone World at that world's seed — so the shared hash keys identically on the
+  train-time and eval-time paths. Goldens unchanged (uid never touches dynamics); all
+  **203 tests green** (+20 new), 5 gates green. Local/unpushed.
+
+**Next action: B3 ∥ B4 — `NoisyDetection` in control/observation.py with the q=1.0
+equivalence pin written TEST-FIRST, in parallel with the TrafficEnv `_observe` noise path
++ the extended bit-exact parity pin (tests/rl/test_features.py, incl. the grid+WALK base
+pin from probe 7). B2's kernel is the shared dependency both call.** Grid PPO (A2) + all
+Part C trainings stay PARKED until Stepan schedules compute.
+
+---
+
 **As of 2026-07-15 (late night) — PART A ESSENTIALLY CLOSED; ADR 0005 drafted; phase-3 code next:**
 
 Since the A1 gate (below), the phase-3 session drafted **ADR 0005** (the sensing-noise
@@ -26,9 +53,8 @@ Both matched-seed (A5 on eval seeds 1000-1019; A3 on the probe's 10 seeds, same 
 arm). **The only owed phase-2 item still open is PPO on the grid (A2) — PARKED until Stepan
 schedules the compute.**
 
-**Next action: begin Part B (phase-3 code) — B2, the counter-based shared-noise kernel +
-uid plumbing (`core/sensors.py`), the determinism spine ADR 0005 §1 specifies. Hold at that
-boundary for Stepan's pace call.** Nothing pushed (docs commits ahead).
+**Next action (SUPERSEDED — B2 landed; see the top block): begin Part B — B2, the
+counter-based shared-noise kernel + uid plumbing.** Nothing pushed (docs commits ahead).
 
 ---
 

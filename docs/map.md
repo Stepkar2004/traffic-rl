@@ -78,7 +78,7 @@ surge — the headline scenario), `single-night` (sparse).
   constraints** (the spec everything measures against), 0003 these doc surfaces,
   0004 **the RL env + reward contract** (locked before any phase-2 training code),
   0005 **the sensing-noise model** (phase 3: the counter-based shared-kernel detection
-  noise + quality dial; proposed, async review).
+  noise + quality dial; accepted — Part B is implementing it, kernel + uid plumbing landed).
 - `plans/` — phase plans; historical records of intent, never retro-edited.
 - `state/` — `now.md` (where the project is) → `roadmap.md` (next) → `log.md` (was);
   `miss-log.md` (skill-gap notes) and `watchout-later.md` (deferred realism concerns to
@@ -108,13 +108,20 @@ src/traffic_rl/
 ├── core/
 │   ├── __init__.py        core = pure kernels + one orchestrator; render-free
 │   ├── units.py           SI everywhere inside; imperial↔SI at the edges only
-│   ├── rng.py             root SeedSequence + child streams (demand/behavior/
-│   │                      sensors); entropy always logged; determinism per seed
+│   ├── rng.py             root SeedSequence + child streams (demand/behavior;
+│   │                      the reserved `sensors` stream is UNUSED — sensing is
+│   │                      counter-based hashing, see sensors.py); determinism per seed
+│   ├── sensors.py         phase-3 sensing noise as a PURE counter-based hash of
+│   │                      (sensor_key, uid, tick): detect/miss, occlusion, 5 s
+│   │                      dropout, pos/speed error, false positives — bit-identical
+│   │                      across both observation paths; q=1.0 is the identity (ADR 0005)
 │   ├── config.py          frozen dataclasses + strict YAML scenario loader
 │   ├── topology.py        graph tables: nodes/edges/lanes/movements/crosswalks +
 │   │                      movement-conflict matrix; builders: 4-way, corridor
 │   │                      (1xN arterial), NxN grid — through-only chains
-│   ├── arrays.py          SoA state: VehicleArrays/PedArrays, CSR lane_order
+│   ├── arrays.py          SoA state: VehicleArrays/PedArrays (each carries an
+│   │                      immutable per-world `uid` — the sensing-hash key),
+│   │                      CSR lane_order
 │   ├── vehicles.py        vehicle kernels: leader gaps (cross-junction aware),
 │   │                      per-vehicle walls, IDM, ballistic step + exact-stop,
 │   │                      never-fires overlap tripwire, multi-hop transfer
@@ -203,6 +210,10 @@ tests/
 │   │                         conservation + golden, multi-hop transfer
 │   ├── test_timing.py        formulas vs published worked examples
 │   ├── test_metrics.py       metric definitions vs hand-computed values
+│   ├── test_sensors.py       the sensing kernel (ADR 0005): hash determinism +
+│   │                         decorrelation, q=1 identity, occlusion/dropout/FP
+│   ├── test_uid.py           uid spine: batched world b's (uid,origin,demand_t)
+│   │                         == a standalone World at that world's seed
 │   └── test_{units,rng,config,topology,arrays,demand,
 │         pedestrians,recorder,world}.py   one module each, same-named
 ├── control/
@@ -245,7 +256,7 @@ docs/
 ├── leaderboard.md         committed phase-1 results (20 seeds, CIs)
 ├── vision.md              human-owned WHY
 ├── decisions/             ADRs 0001 (stack), 0002 (metrics — THE spec), 0003 (docs),
-│                          0004 (RL env), 0005 (sensing noise — phase 3, proposed)
+│                          0004 (RL env), 0005 (sensing noise — phase 3, accepted)
 ├── plans/                 phase-1.md (done), phase-2.md, phase-2-runbook.md
 │                          (the run-session handoff), phase-3.md (draft),
 │                          phases-4-5-draft.md

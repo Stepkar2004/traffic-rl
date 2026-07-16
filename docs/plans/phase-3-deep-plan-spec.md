@@ -303,6 +303,17 @@ Contents to lock (the recommendations here are the draft; the ADR is the authori
 
 ## B2. `core/sensors.py` + uid plumbing
 
+> **DONE 2026-07-15.** `core/sensors.py` built (splitmix64 hash primitive +
+> `detect_vehicles`/`false_positives`/`detect_peds` + `sensor_key`); immutable `uid`
+> int64 column on VehicleArrays/PedArrays, assigned from monotone per-world counters in
+> World + BatchedWorlds; per-world `_sensor_seed` populated in `BatchedWorlds.reset`.
+> Pins: `tests/core/test_sensors.py` (hash determinism/decorrelation, q=1 identity,
+> occlusion/dropout/FP/state-noise bundle) + `tests/core/test_uid.py` (batched world b's
+> (uid, origin, demand_t) == a standalone World at that seed; sensor-seed derivation).
+> Goldens unchanged, 203 tests + 5 gates green. Deviation from the sketch below:
+> `detect_vehicles` drops the unused `lane_local` arg (uid+tick fully key per-vehicle
+> draws; lane keys only the per-lane false positives). NEXT: B3 ∥ B4.
+
 **Hash primitive** (pure, vectorized, uint64 numpy):
 
 ```python
