@@ -2,6 +2,20 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-15 · ADR 0005 drafted: the sensing-noise contract (phase-3 B1).**
+  [decisions/0005-sensing-noise.md](../decisions/0005-sensing-noise.md), proposed for
+  Stepan's async review. Locks (as [REC] defaults): the counter-based shared-kernel
+  injection (a pure hash of world-local keys — per-world sensor seed, per-vehicle uid,
+  base-topology lane, whole-second tick — so BOTH observation paths produce bit-identical
+  noisy observations, turning the two-observation-paths drift risk into a parity-pin
+  extension); the noise bundle (distance-dependent detection prob, occlusion undercount,
+  5 s correlated dropout, position/speed Gaussian, false positives; detector-dwell and
+  detection-derived flow deferred as recorded extensions); the quality dial (q=1.0 ==
+  PerfectObservation bit-exact, the equivalence pin written first); the locked sweep
+  (quality {1.0,0.9,0.75,0.5,0.25} × rush set × 20 seeds 1000-1019); the training arms +
+  wall-clock arithmetic + the pre-registered frame-stack trigger. Folds in the two probe
+  findings (grid+WALK parity pin; RL-row checkpoint provenance). Reward/metrics/masks stay
+  omniscient/ADR-0002/machine-derived. Docs-only; not pushed.
 - **2026-07-15 · A1 gate: adversarial probes 5-8 all PASS (phase-3 session open).**
   Ran the four owed phase-2 probes as four parallel probe-not-read subagents (each
   wrote and executed instrumented code, reported measured numbers): (5)

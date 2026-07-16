@@ -76,7 +76,9 @@ surge — the headline scenario), `single-night` (sparse).
 
 - `decisions/` — ADRs, append-only: 0001 stack, 0002 **the locked metrics + realism
   constraints** (the spec everything measures against), 0003 these doc surfaces,
-  0004 **the RL env + reward contract** (locked before any phase-2 training code).
+  0004 **the RL env + reward contract** (locked before any phase-2 training code),
+  0005 **the sensing-noise model** (phase 3: the counter-based shared-kernel detection
+  noise + quality dial; proposed, async review).
 - `plans/` — phase plans; historical records of intent, never retro-edited.
 - `state/` — `now.md` (where the project is) → `roadmap.md` (next) → `log.md` (was);
   `miss-log.md` (skill-gap notes) and `watchout-later.md` (deferred realism concerns to
@@ -242,7 +244,8 @@ docs/
 ├── experiments.md         command/experiment reference + phase currency
 ├── leaderboard.md         committed phase-1 results (20 seeds, CIs)
 ├── vision.md              human-owned WHY
-├── decisions/             ADRs 0001 (stack), 0002 (metrics — THE spec), 0003 (docs), 0004 (RL env)
+├── decisions/             ADRs 0001 (stack), 0002 (metrics — THE spec), 0003 (docs),
+│                          0004 (RL env), 0005 (sensing noise — phase 3, proposed)
 ├── plans/                 phase-1.md (done), phase-2.md, phase-2-runbook.md
 │                          (the run-session handoff), phase-3.md (draft),
 │                          phases-4-5-draft.md
