@@ -15,6 +15,15 @@
   frame-stack trigger. Watchout ledger swept into plans: demand sweep moved to
   Resolved (the run session ran its strong form), comm re-test planted in phases 4+5,
   curve speed caps planted in phase 5. Runbook marked superseded for what remains.
+  Amended same evening on Stepan's notes: green-wave narrative rule (never featured
+  publicly; stays in tables + as the emergence metric reference); A5 mirrored-demand
+  probe + B9 demand randomization + C5 demand-generalist arm (one PPO across the
+  demand range vs the specialist frontier — his "intelligent simulator" idea, core
+  now, curriculum stays phase 4); and all time estimates replaced with measured
+  actuals — his catch: a "22 h" sequential estimate had actually run in ~90 min,
+  because training processes parallelize near-perfectly (curves.csv wall_s: corridor
+  5M ≈ 65 min/run at 6-way concurrency; batch wall ≈ slowest run, never the sum).
+  A2 therefore runs the FULL grid ADR budget; experiments.md throughput lines fixed.
 - **2026-07-15 · Phase 2 RUN SESSION: trainings + experiments + results doc.**
   Ran the DQN gate (3 seeds, single-rush-ns), corridor PPO comm/nocomm (3 seeds each,
   5M steps), and a per-demand PPO retrain (comm, 2 seeds x 5 demands) for a FAIR

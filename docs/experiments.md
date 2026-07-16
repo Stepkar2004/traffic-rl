@@ -95,8 +95,11 @@ ADR 0004 §5 sanity gate; multi-intersection scenarios are rejected). Defaults
 are the locked hyperparameters (1M steps, 8 batched worlds, 900 s training
 episodes). Writes `<out>/seed<k>/`: `config.json` (resolved config + git SHA),
 `curves.csv` (env_steps, wall_s, train_return, eval_return, eval_p95_wait,
-epsilon, loss), `ckpt_best.pt`, `ckpt_final.pt`. Measured throughput on the dev
-box (RTX 4070, 8 envs): ~1,100 env-steps/s → ~15 min per 1M-step seed.
+epsilon, loss), `ckpt_best.pt`, `ckpt_final.pt`. Measured wall time (run session actuals,
+curves.csv): ~30 min per 1M-step seed with 3 seeds running CONCURRENTLY —
+training processes parallelize near-perfectly on this box (CPU-bound, GPU
+barely loaded), so plan batches as "wall ≈ slowest run", never as a
+sequential sum.
 Evaluate a checkpoint on the leaderboard protocol via controller kind `rl`:
 `run_cell(scenario, "rl", {"checkpoint": ..., "algo": "dqn"}, seed)`.
 
@@ -111,9 +114,13 @@ communication ablation: the nocomm arm zeroes neighbor channels 40-47 in
 training AND eval, and writes to its own directory. Artifacts land in
 `<out>/<comm|nocomm>/seed<k>/`: `config.json`, `curves.csv` (env_steps, wall_s,
 train_return, eval_return, eval_p95_wait, policy_loss, value_loss, entropy),
-`ckpt_best/final.pt` + `critic_best/final.pt`. Measured throughput on the dev
-box (RTX 4070, 16 envs): corridor ~1,100 env-steps/s → ~75 min per 5M-step
-seed; 3x3 grid ~770 env-steps/s → ~3.6 h per 10M-step seed. Evaluate on the
+`ckpt_best/final.pt` + `critic_best/final.pt`. Measured wall time (run session
+actuals, curves.csv): corridor 5M ≈ 65 min per run even with SIX runs
+concurrent, 80-102 min at heavy demand (more vehicles = slower stepping);
+per-run throughput holds up to ~10 concurrent processes, so a whole arm-set
+costs about its slowest run — plan with concurrency, never sequential sums
+(grid 10M: smoke-estimated ~3.6 h/run solo; measure and record the concurrent
+actual when the grid batch runs). Evaluate on the
 leaderboard protocol via controller kind `rl` with `{"algo": "ppo"}` (one
 RLController per intersection; the runner does this per-node cloning itself).
 

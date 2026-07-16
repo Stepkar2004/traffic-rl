@@ -21,8 +21,21 @@ watchout-later ledger was swept into the plans: demand sweep RESOLVED (phase-2 r
 the strong version), comm re-test planted in phases 4+5, curve speed caps planted in
 phase 5. The runbook is superseded for what remains (note at its top).
 
+**Spec amended same evening on Stepan's notes:** (1) narrative rule — the hand-tuned
+green wave is never featured in public-facing narrative (stays in tables as the
+honesty layer + as the emergence probe's metric reference); (2) new A5
+mirrored-demand probe (is the training direction baked in?) + B9 per-episode demand
+randomization + C5 demand-generalist arm (one PPO trained across the whole demand
+range, judged against the committed per-demand specialist frontier) — his
+"intelligent simulator" idea, core now, full curriculum version stays phase 4;
+(3) all wall-clock estimates replaced with run-session ACTUALS (curves.csv):
+trainings parallelize near-perfectly, batch wall ≈ slowest run at up to ~10
+concurrent — the grid budget fits in one evening, so A2 runs the FULL ADR budget
+(the phase-2 deferral was a sequential-arithmetic artifact). experiments.md
+throughput lines corrected to match.
+
 **Next action: the implementation session starts from the deep-plan spec, Part A,
-work package A1 (probes 5-8).** Nothing new is pushed (one docs commit ahead).
+work package A1 (probes 5-8).** Nothing new is pushed (docs commits ahead).
 
 ---
 

@@ -35,14 +35,23 @@
 - Sharp edges: `initc` only via `uv run initc`; PowerShell JSON params single-quoted
   (`--params '{"cycle_s": 60.0}'`); eval-time World observations are one dt fresher
   on signal timers than env observations (documented, benign, do not "fix").
+- **Narrative rule (Stepan, 2026-07-15): the hand-tuned green wave
+  (CoordinatedFixedTime) is NOT featured in public-facing narrative** — no posts,
+  README paragraphs, or headline figures built around it (it performed badly;
+  "RL beats our green wave" would be a strawman). It REMAINS in leaderboard/results
+  tables (the honesty layer — committed rows are never deleted) and keeps its
+  methodological role as the emergence probe's offset_score reference. New public
+  figures (money plot, sweep charts) drop its line; fixed-time is the
+  non-adaptive floor line.
 
 ## 0. Parallelization map (read this first, then dispatch)
 
 | WP | what | depends on | parallel-safe with | est. wall |
 |---|---|---|---|---|
 | A1 | adversarial probes 5-8 (4 subagents) | — | nothing else starts before A1 | ~30 min |
-| A2 | grid PPO trainings (GPU, background) | A1 | everything CPU-side | 7-22 h GPU |
+| A2 | grid PPO trainings (all 6 concurrent, background) | A1 | everything CPU-side | ~4-6 h wall |
 | A3 | emergence-probe protocol (CPU) | A1 | A2, B* | ~15 min |
+| A5 | mirrored-demand probe (CPU, zero-shot) | A1 (+ 1 new scenario yaml) | everything | ~20 min |
 | B1 | ADR 0005 authoring (doc) | — | A1-A3 | ~30 min |
 | B2 | `core/sensors.py` kernel + uid plumbing | B1 locked | A2 (GPU busy), A3 | code |
 | B3 | `NoisyDetection` + equivalence pin | B2 API | B4 after B2 | code |
@@ -50,25 +59,36 @@
 | B5 | config/CLI plumbing | B3 + B4 | B6, B7 | code |
 | B6 | frame-stack wrapper (build only) | — | everything | code |
 | B7 | filtered max-pressure baseline | — | everything | code |
-| C1 | classical noise sweep (CPU pool) | B3, B5 | A2/C3 GPU work | ~2-3 h CPU |
-| C2 | zero-shot phase-2 ckpts under noise (CPU) | B3, B5 | C1, GPU work | ~1 h CPU |
-| C3 | PPO retrain under noise (GPU) | B4, B5, A1; GPU free after A2 | C1, C2 | ~10 h GPU |
-| C4 | conditional frame-stack arm | C3 + pre-registered trigger | — | ~2.5 h GPU |
+| B9 | demand randomization in the training env | — | B2-B7 | code |
+| C1 | classical noise sweep (CPU pool) | B3, B5 | A2/C3/C5 trainings | ~2-3 h CPU |
+| C2 | zero-shot phase-2 ckpts under noise (CPU) | B3, B5 | C1, trainings | ~1 h CPU |
+| C3 | PPO retrain under noise (8 runs concurrent) | B4, B5, A1 | C1, C2 | ~1.5-2 h wall |
+| C4 | conditional frame-stack arm | C3 + pre-registered trigger | — | ~1.5 h wall |
+| C5 | demand-generalist PPO (2 runs concurrent) + eval vs specialists | B9, A1 | C1, C2 | ~2 h wall + ~1 h CPU |
 | A4 | grid RL rows + generalization (CPU) | A2 checkpoints | C1/C2 | ~1 h CPU |
 | D | results/figures/docs/commits | at each boundary | — | — |
 
 **Suggested schedule:** A1 first (nothing multi-hour is trusted before it) → kick off
-A2 on the GPU in the background + run A3 and author B1 → implement B2-B7 while A2
-trains (subagents: B2 first, then B3 ∥ B4, then B5; B6 ∥ B7 anytime) → C1 + C2 on the
-CPU pool as soon as B5 lands → A4 when A2 checkpoints exist → C3 on the GPU when A2
-finishes → C4 only if its trigger fires → D at every boundary. Commit points: after
-A1+A3+A4 results land in results/phase-2.md; after each B chunk (gates green); after
-C1/C2; after C3/C4; after D.
+A2 in the background (all 6 runs at once) + run A3 + A5 and author B1 → implement
+B2-B9 while A2 trains (subagents: B2 first, then B3 ∥ B4, then B5; B6 ∥ B7 ∥ B9
+anytime) → C5 training as soon as B9 lands (it answers Stepan's direct question) →
+C1 + C2 on the CPU pool as soon as B5 lands → A4 when A2 checkpoints exist → C3 →
+C4 only if its trigger fires → D at every boundary. Commit points: after A1+A3+A5
+land in results/phase-2.md; after each B chunk (gates green); after C5; after C1/C2;
+after C3/C4; after D.
 
-Concurrency note (measured in phase 2): the sim is CPU-bound; before running two GPU
-trainings concurrently, time two 40k-step runs against the solo throughput (~770
-steps/s grid, ~1,100 corridor) and only parallelize if per-run throughput holds
-within ~20%.
+**Concurrency model (MEASURED in the phase-2 run session — plan with this, not with
+sequential sums):** training processes parallelize near-perfectly on this box (each
+run is CPU-bound on a few cores; the GPU is barely loaded). Actuals from curves.csv
+wall_s: DQN 1M ≈ 1,780 s/run with 3 concurrent (~30 min); corridor PPO 5M ≈ 3,870 s/run
+with 6 concurrent (~65 min — per-run throughput HELD at 6-way concurrency); demand-
+sweep PPO 5M ≈ 4,800-6,100 s/run with 10 concurrent (heavier traffic steps slower —
+eb1200 ≈ 102 min vs eb400 ≈ 80 min). **Batch wall-clock ≈ the slowest single run,
+not the sum.** The phase-2 planning error was sequential arithmetic ("≈30 h"); the
+whole batch ran in about 90 minutes per wave. Rule: launch a whole arm-set
+concurrently (up to ~10 runs), leave 2-4 cores for the session itself, and expect
+per-run times near the solo number (grid runs, ~3x the vehicles, will step slower —
+hence the 4-6 h estimate for 10M x 6, to be measured and recorded).
 
 ---
 
@@ -94,7 +114,9 @@ do not re-derive, do not re-run):**
 - Eval seeds are **1000-1019** everywhere; classical comparators are re-run on
   those seeds for every head-to-head table (comparison integrity).
 
-**What is owed (the honest-gaps list from results/phase-2.md):** A1-A4 below.
+**What is owed (the honest-gaps list from results/phase-2.md, plus two items Stepan
+added 2026-07-15 — the mirrored-demand probe and the demand-generalist arm):**
+A1-A5 below + C5.
 
 ## A1. Adversarial probes 5-8 (~30 min, run BEFORE anything multi-hour)
 
@@ -121,18 +143,20 @@ Report PASS/FAIL per probe in `docs/state/now.md` + the review record; a FAIL st
 the line (fix before A2/C3 spend GPU hours). On PASS, update the "probes 5-8
 outstanding" flags in now.md, results/phase-2.md, and the runbook.
 
-## A2. PPO on the grid (the biggest owed item; GPU background)
+## A2. PPO on the grid (the biggest owed item; background)
 
 ```powershell
-# ADR budget 10M steps (NOT the 5M default). Start seed 0, both arms:
+# ADR budget 10M steps (NOT the 5M default). Launch ALL SIX concurrently
+# (concurrency model above — batch wall ~= slowest run, expect ~4-6 h total):
 uv run traffic-rl train-ppo scenarios/grid-rush-diag.yaml --seed 0 --steps 10000000 --comm
 uv run traffic-rl train-ppo scenarios/grid-rush-diag.yaml --seed 0 --steps 10000000 --no-comm
-# seeds 1, 2 as wall clock allows (measured ~3.6 h per seed·arm)
+# ... seeds 1, 2 both arms — six processes at once, background
 ```
 
-- Priority: seed 0 both arms (≈7.2 h sequential; check concurrency first). If only
-  seed 0 lands, record the downward amendment (1 seed per arm, wall-clock reason)
-  in results/phase-2.md — the ADR allows exactly this.
+- Run the FULL ADR budget (3 seeds x 2 arms) — the measured concurrency model makes
+  it fit easily; the phase-2 deferral was a sequential-arithmetic artifact. Record
+  the measured grid wall-time in results/phase-2.md (it calibrates future plans).
+  Downward amendment only if reality surprises us again — with the reason.
 - Watch `curves.csv`: eval_return rising, eval_p95_wait falling toward the
   classical band. Entropy collapse / value-loss explosion gets flagged, not re-tuned.
 - Checkpoint selection: best eval mean return (ADR §4); record SHA-256 + git SHA in
@@ -158,6 +182,25 @@ finding — *the policy matches adaptive control WITHOUT phase-locking; opportun
 demand-triggered progression, not a schedule* (smoke previews hinted this way:
 coordinated 0.868 vs fixed 0.303; PPO not yet measured). Grid probe (ew AND ns pairs
 on grid-rush-diag) is an optional extension after A2 checkpoints exist.
+Narrative note: the coordinated arm is the offset_score REFERENCE (methodological
+role, kept), but the public story is "does PPO phase-lock or progress
+opportunistically" — never "PPO vs our green wave" (narrative rule above).
+
+## A5. Mirrored-demand probe (Stepan's bake-in question; zero training)
+
+Does the rush-trained policy have its training direction baked in? We tested
+transfer to SYMMETRIC demand (it held first place) but never to REVERSED asymmetry.
+
+- Add `scenarios/corridor-rush-wb.yaml` — corridor-rush with the eastbound/westbound
+  arrival rates swapped (westbound-heavy mirror; everything else identical).
+- Evaluate the existing corridor checkpoints (comm + nocomm seed0) on it zero-shot
+  via `run_cell` on seeds 1000-1019, classical comparators (actuated, webster,
+  fixed_time, max_pressure) re-run on the same seeds.
+- **Label it a generalization probe** (comparison integrity — the policy never
+  trained on this profile). Interpretation: PPO still in the adaptive band ⇒ the
+  policy learned reactive control, not an eastbound schedule; PPO collapses ⇒ the
+  bake-in is real, and the C5 demand-generalist arm is the fix — either way it
+  goes in results/phase-2.md next to the balanced-transfer table.
 
 ## A4. Grid RL head-to-head + generalization rows (after A2)
 
@@ -170,10 +213,10 @@ head-to-head table. Add both tables to results/phase-2.md in the existing style
 (matched-seed note, CI-overlap rule), update the one-line phase-2 answer if the grid
 changes it, and close the "PPO on the grid" gap paragraph.
 
-## A5. Phase-2 closeout docs
+## A6. Phase-2 closeout docs
 
 - results/phase-2.md: gaps section rewritten (what closed, what remains), new
-  provenance rows, emergence + grid sections.
+  provenance rows, emergence + grid + mirrored-demand sections.
 - docs/state/now.md + log.md entries; runbook marked superseded by this spec's Part A
   (add a one-line note at its top).
 - Commit: "phase-2 finish-up: probes 5-8, grid PPO, emergence protocol". Never push.
@@ -209,6 +252,8 @@ extension of the existing parity pin instead of a new drift surface.
 | `src/traffic_rl/envs/wrappers.py` | NEW — FrameStack (B6) |
 | `src/traffic_rl/rl/controller.py` | optional `stack_k` (B6) |
 | `src/traffic_rl/control/max_pressure.py` | optional `filter_tau_s` EMA (B7) |
+| `scenarios/corridor-rush-wb.yaml` | NEW — mirrored corridor-rush (A5) |
+| `src/traffic_rl/envs/batching.py` + `traffic_env.py` + `rl/ppo.py` + `cli.py` | per-episode demand randomization (B9) |
 | `tests/core/test_sensors.py`, `tests/control/test_observation_noisy.py`, extensions to `tests/rl/test_features.py`, `tests/envs/`, `tests/control/` | B8 |
 
 ## B1. ADR 0005 — sensing noise (write and lock FIRST; Stepan async-reviews)
@@ -382,13 +427,38 @@ middle ground between raw classics and RL.
 7. Config: SensingConfig default + strict-loader rejection of unknown keys;
    run_cell override lands in the row.
 
+## B9. Per-episode demand randomization (Stepan's "intelligent simulator", the core of it)
+
+The idea: instead of one policy per demand level, ONE policy that trains under
+per-episode random demand and covers the whole range. The full version (an infinite
+nonstationary run with phased random events, curriculum) is phase-4 machinery —
+nonstationary training breaks episodic GAE and eval comparability, and phase 4
+formally owns randomization+chaos. The core benefit is cheap NOW because demand is
+already re-drawn per episode from per-world seeds:
+
+- `DemandRandomization(rate_lo_veh_h, rate_hi_veh_h, mirror_p)` config on the
+  training side (PPOConfig + `train-ppo --demand-rand '{...}'`; recorded in
+  config.json so checkpoints self-describe).
+- In `BatchedWorlds.reset`: per world, per episode, from the world's demand seed
+  (deterministic, resumable): sample the axis rate `R ~ U(lo, hi)` for the scaled
+  origin(s), and with probability `mirror_p` swap the eastbound/westbound rates
+  before `build_arrival_schedule`. Cross streets unchanged. [REC ranges for C5:
+  U(400, 1200), mirror_p = 0.5 — the sweep's own axis plus direction blindness.]
+- Eval is UNCHANGED (fixed scenarios through run_cell) — randomization is a
+  training-distribution knob, never an eval knob (comparability).
+- Tests: same seed ⇒ same sampled demands; mirror actually swaps origin rates;
+  `demand_rand=None` ⇒ bit-identical schedules to today (pin, so existing
+  checkpoints' training conditions stay reproducible).
+
 ---
 
 # Part C — phase-3 experiments (after Part B gates green)
 
-Wall-clock arithmetic (measured phase-2 throughputs; redo in ADR 0005 if hardware
-changed): corridor PPO 5M ≈ 75 min/seed; DQN 1M ≈ 15 min/seed; full classical
-board ≈ 1 h CPU.
+Wall-clock arithmetic (ACTUALS from the phase-2 run session's curves.csv — use the
+concurrency model from §0, never sequential sums): corridor PPO 5M ≈ 65-100 min/run
+(demand-dependent: heavier traffic steps slower), per-run throughput holds at 6-10
+concurrent runs, so a whole arm-set ≈ its slowest run; DQN 1M ≈ 30 min/run at 3
+concurrent; full classical board ≈ 1 h CPU pool.
 
 - **C1. Classical sweep** — quality ∈ {0.9, 0.75, 0.5, 0.25} × {single-rush-ns,
   corridor-rush, grid-rush-diag} × topology controller set + filtered max-pressure
@@ -402,19 +472,36 @@ board ≈ 1 h CPU.
   (comparison integrity) — "does a policy trained on perfect eyes fall off a
   cliff when they fog?" is publishable either way.
 - **C3. Train-for-condition PPO [REC]:** corridor-rush, comm arm, 2 seeds × quality
-  ∈ {0.75, 0.5, 0.25} (q=1.0 = the phase-2 checkpoints; 0.9 only if curves are
-  interesting) ≈ 7.5 h GPU, **plus** one domain-randomization arm (quality ~
-  U(0.25, 1.0) per episode, 2 seeds) ≈ 2.5 h GPU. DR-vs-fixed-q is the
-  "which training regime generalizes across the dial" claim. [REC: skip DQN
-  retrains; the corridor is the story. Optional if GPU idles: 2 seeds × 3 q ≈ 1.5 h.]
+  ∈ {0.75, 0.5, 0.25} **plus** one domain-randomization arm (quality ~
+  U(0.25, 1.0) per episode, 2 seeds) — all 8 runs concurrent ≈ 1.5-2 h wall
+  (q=1.0 = the phase-2 checkpoints; 0.9 only if curves are interesting).
+  DR-vs-fixed-q is the "which training regime generalizes across the dial" claim.
+  [REC: skip DQN retrains; the corridor is the story. Optional since the batch is
+  cheap: 2 seeds × 3 q ≈ +6 concurrent runs.]
 - **C4. Frame-stack arm — pre-registered trigger only:** train it (k=4, comm arm,
   2 seeds, q=0.5) **iff** plain PPO trained at q=0.5 (C3) loses to actuated at
   q=0.5 by non-overlapping CIs. Otherwise record "trigger did not fire, memory not
   needed at this noise level" — that sentence is a result.
+- **C5. The demand-generalist arm (Stepan's question: one PPO for ALL demands):**
+  train PPO on corridor-rush with B9's demand randomization (rate U(400, 1200),
+  mirror_p 0.5), comm arm, 2 seeds, 5M steps, both concurrent ≈ ~1.5-2 h wall.
+  Evaluate the best checkpoint on the FULL phase-2 demand grid (eb 400-1200, eval
+  seeds 1000-1019 — the specialist rows already exist as committed artifacts, so
+  the comparison is matched-seed for free), plus corridor-balanced and the A5
+  mirrored scenario. The claim structure: **generalist within the specialists' CIs
+  everywhere ⇒ "one policy covers the whole demand range" (the deployable story,
+  and a post-worthy headline); generalist loses at the extremes ⇒ the honest
+  specialist-vs-generalist tradeoff, also a finding.** Note for the writeup: the
+  per-demand sweep was the fair MEASUREMENT (train-for-condition frontier); C5 is
+  the fair DEPLOYMENT candidate judged against that frontier — both are needed,
+  in that order.
 - **The money plot** (`docs/assets/phase-3-quality-sweep.png`): p95 wait vs
   quality, corridor-rush, one line per controller (classics + filtered MP + zero-
-  shot PPO + trained-at-q PPO + DR PPO). Crossover points are the findings.
-  Secondary figures: single + grid classical panels, training curves.
+  shot PPO + trained-at-q PPO + DR PPO; fixed-time is the non-adaptive floor line —
+  no coordinated line, per the narrative rule). Crossover points are the findings.
+  Secondary figures: single + grid classical panels, training curves, and the C5
+  generalist-vs-specialists demand chart (same axes as the phase-2 sweep figure,
+  no green-wave line).
 
 # Part D — writeup + closeout
 
@@ -440,3 +527,10 @@ board ≈ 1 h CPU.
 4. Viewer ghost-detection overlay — [REC] skip in phase 3 (post GIF nicety, not
    evidence); revisit for post #3 if he wants the visual.
 5. Money-plot scenario — [REC] corridor-rush.
+6. C5 randomization ranges — [REC] rate U(400, 1200) + mirror_p 0.5 (the sweep's
+   own axis + direction blindness); wider ranges or cross-street randomization are
+   phase-4 territory.
+7. The committed phase-2 demand-sweep figure contains a green-wave line
+   (docs/assets/phase-2-demand-sweep.png, already pushed). [REC] regenerate it
+   without that line when the C5 chart is made (same recipe, one fewer line) —
+   needs his go since the asset is referenced by results/phase-2.md.
