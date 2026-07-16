@@ -254,15 +254,17 @@ class NoisyDetection(PerfectObservation):
             rdist = det.dist_meas[sel].astype(np.float32)
             rspeed = det.speed_meas[sel].astype(np.float32)
 
-            # false positives on this approach lane: a phantom stopped return
-            _, fp_dist = false_positives(
+            # false positives on this approach lane: a phantom stopped return.
+            # float32 length matches the batched env's lane-length dtype so the
+            # phantom's position is bit-identical across both observation paths.
+            fp_present, fp_dist = false_positives(
                 np.array([lane_id], dtype=np.int64),
-                np.array([lane_len], dtype=np.float64),
+                np.array([lane_len], dtype=np.float32),
                 self.quality,
                 self._key,
                 tick,
             )
-            pdist = fp_dist.astype(np.float32)
+            pdist = fp_dist[fp_present].astype(np.float32)
             pspeed = np.zeros(pdist.shape, dtype=np.float32)
 
             mdist = np.concatenate([rdist, pdist])

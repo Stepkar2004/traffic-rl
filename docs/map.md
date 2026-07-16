@@ -165,8 +165,9 @@ src/traffic_rl/
 │   │                      BatchedWorlds: World's exact sub-step order over
 │   │                      merged arrays, per-world demand/reward accounting
 │   └── traffic_env.py     TrafficEnv (batched VectorEnv: 48-channel obs,
-│                          action masks, ADR 0004 reward, NEXT_STEP autoreset)
-│                          + SingleTrafficEnv (B=1 wrapper for gym tooling)
+│                          action masks, ADR 0004 reward, NEXT_STEP autoreset;
+│                          quality<1 routes _observe through the sensors kernel
+│                          with per-vehicle world keys) + SingleTrafficEnv (B=1)
 ├── rl/
 │   ├── __init__.py        agents package (torch enters here, nowhere else)
 │   ├── features.py        THE 48-channel ADR 0004 vector from an Observation
@@ -231,7 +232,9 @@ tests/
 │                             gymnasium checker
 ├── rl/
 │   ├── test_features.py   the anti-drift pin: controller features == env
-│   │                      observation, channel by channel, same sim state
+│   │                      observation, channel by channel, same sim state —
+│   │                      base (q=1, corridor + grid-after-WALK), NOISY (q=0.5),
+│   │                      and per-world (B=3 vs standalone Worlds under noise)
 │   ├── test_dqn_smoke.py  tiny end-to-end train run; artifacts; checkpoint
 │   │                      drives a World with zero refusals
 │   └── test_ppo_smoke.py  same machinery pin for PPO: arm dirs, curves,

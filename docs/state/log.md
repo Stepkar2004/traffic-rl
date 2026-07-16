@@ -2,6 +2,25 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-15 · Phase-3 B4: noise in TrafficEnv._observe + the extended parity pin
+  (ADR 0005 §1, the drift tripwire).** Gave `TrafficEnv` a `quality` dial; `quality < 1.0`
+  routes `_observe` through the sensors kernel as the vectorized twin of `NoisyDetection`:
+  ONE `detect_vehicles` call over every vehicle in every world with a **per-vehicle world
+  key** (so the batched env senses all worlds in one call, each keyed to its own
+  `sensor_key`), leader gaps via lexsort, detected-only counts/queue/near/min_dist, false
+  positives on the approach lanes, detected peds. The omniscient q=1 fast path is untouched
+  (zero regression to the leaderboard/base pin). Generalized the kernel to accept a
+  per-element key array and changed `false_positives` to return an unfiltered
+  `(present, dist)` so both observation paths aggregate identically. The env matches
+  NoisyDetection's float handling exactly (float64 lane lengths → float32 measured; float64
+  leader gaps) to hit bit-exactness. **Extended `tests/rl/test_features.py`** — the phase's
+  central guarantee — with: the NOISY parity pin (q∈{1.0,0.5}, env == features of
+  NoisyDetection, channel by channel), the grid-corner-after-WALK BASE q=1 pin (closes the
+  probe-7 gap: the committed pin only covered a corridor), and a **multi-world** pin (world
+  b of a B=3 batch == a standalone World at that world's seed under noise — the only test
+  that exercises the per-world key gather). The multi-world pin caught a real (test-side)
+  horizon-desync — `episode_s` must equal the config duration or the Poisson streams
+  diverge — now documented. 212 tests (+5), 5 gates green. Not pushed.
 - **2026-07-15 · Phase-3 B3: NoisyDetection + the q=1.0 equivalence pin (ADR 0005 §3).**
   Added `NoisyDetection` to control/observation.py as a **subclass** of `PerfectObservation`
   — it inherits `reset` and the omniscient `_arrival_count`/`flow` and overrides only

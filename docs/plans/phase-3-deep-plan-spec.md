@@ -397,6 +397,24 @@ node. Written BEFORE the noise arithmetic (phase-3.md §1 commitment).
 
 ## B4. TrafficEnv integration + the extended parity pin
 
+> **DONE 2026-07-15.** `TrafficEnv(quality=1.0)` gains a noisy `_observe` path
+> (`quality < 1.0`): the vectorized twin of `NoisyDetection` — one `detect_vehicles`
+> call over every vehicle in every world with a **per-vehicle world key**
+> (`_sensor_key_u64[world_of_lane]`), leader gaps via lexsort, detected-only
+> counts/queue/near/min_dist, false positives on the approach lanes, detected peds. The
+> fast q=1 path is untouched (zero regression). To hit bit-exactness the env matches
+> NoisyDetection's float handling exactly (float64 lane lengths → float32 measured; gap in
+> float64; float32-length false positives). Pins in `tests/rl/test_features.py`: NOISY
+> parity q∈{1.0,0.5} single-world, the grid-corner-after-WALK BASE q=1 pin (probe-7), and
+> a **multi-world** pin (B=3 env world b == a standalone World at that world's seed under
+> noise — the only test that exercises the per-world key gather). `false_positives` now
+> returns an unfiltered `(present, dist)` and the kernel accepts a per-element key array.
+> Testing gotcha recorded: `episode_s` must equal the config's episode duration or the
+> BatchedWorlds vs standalone-World Poisson horizons desync. 212 tests + 5 gates green.
+> NEXT: B5.
+
+
+
 `TrafficEnv.__init__` gains `quality: float = 1.0`; `_observe` at quality < 1.0
 computes leader gaps (lexsort), calls the same kernels with per-world keys, and
 feeds DETECTED-only counts into its bincount pipeline (queue, occupied, near,

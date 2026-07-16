@@ -147,16 +147,18 @@ def detect_vehicles(
     uid: npt.ArrayLike,
     leader_gap_m: npt.ArrayLike,
     quality: float,
-    key: int,
+    key: npt.ArrayLike,
     tick: int,
 ) -> VehicleDetections:
-    """Detect/miss + measurement noise for one approach's vehicles at one tick.
+    """Detect/miss + measurement noise for a set of vehicles at one tick.
 
     ``dist``/``speed`` are true distance-to-stop-line (m) and speed (m/s);
     ``uid`` the immutable per-world id; ``leader_gap_m`` the gap to the next
-    vehicle ahead on the same lane (``inf`` if none). ``key`` is ``sensor_key``,
-    ``tick`` the whole-second time. At ``quality == 1.0`` every vehicle is
-    detected with measurements equal to truth (the equivalence pin).
+    vehicle ahead on the same lane (``inf`` if none). ``key`` is ``sensor_key``
+    — a scalar for the single-world path, or a per-vehicle array (one world's key
+    per vehicle) so the batched env can sense every world in one call. ``tick`` is
+    the whole-second time. At ``quality == 1.0`` every vehicle is detected with
+    measurements equal to truth (the equivalence pin).
     """
     d = np.asarray(dist, dtype=np.float64)
     v = np.asarray(speed, dtype=np.float64)
@@ -170,10 +172,10 @@ def detect_vehicles(
     p_detect = np.where(occluded, p_detect * quality, p_detect)
 
     window = np.int64(tick // DROPOUT_WINDOW_S)  # correlated 5 s dropout
-    detected: BOOL = hash_uniform(np.uint64(key), uids, window, _C_DETECT) < p_detect
+    detected: BOOL = hash_uniform(key, uids, window, _C_DETECT) < p_detect
 
-    z_pos = hash_normal(np.uint64(key), uids, np.int64(tick), _C_POS)  # per-tick
-    z_speed = hash_normal(np.uint64(key), uids, np.int64(tick), _C_SPEED)
+    z_pos = hash_normal(key, uids, np.int64(tick), _C_POS)  # per-tick
+    z_speed = hash_normal(key, uids, np.int64(tick), _C_SPEED)
     dist_meas: F64 = np.maximum(d + (SIGMA_POS_M * one_m_q) * z_pos, 0.0)
     speed_meas: F64 = np.maximum(v + (SIGMA_SPEED_MPS * one_m_q) * z_speed, 0.0)
     return VehicleDetections(detected=detected, dist_meas=dist_meas, speed_meas=speed_meas)
@@ -183,37 +185,41 @@ def false_positives(
     approach_lane_local: npt.ArrayLike,
     lane_length_m: npt.ArrayLike,
     quality: float,
-    key: int,
+    key: npt.ArrayLike,
     tick: int,
-) -> tuple[I64, F64]:
+) -> tuple[BOOL, F64]:
     """Phantom detections: per approach lane, one with prob ``FP_RATE * (1-q)``.
 
-    Returns ``(lanes, dists)`` of the lanes that hallucinated a vehicle this tick
-    and its position along the lane. Empty at ``quality == 1.0``.
+    Returns ``(present, dist)`` ALIGNED with the input lanes (never filtered), so
+    the single-world and batched callers aggregate them the same way. ``present``
+    is all-False at ``quality == 1.0``; ``dist`` is the phantom's position along
+    the lane, valid where ``present``. ``key`` is a scalar or per-lane array.
     """
     lanes = np.asarray(approach_lane_local, dtype=np.int64)
     lengths = np.asarray(lane_length_m, dtype=np.float64)
     one_m_q = 1.0 - quality
-    present = hash_uniform(np.uint64(key), lanes, np.int64(tick), _C_FP_PRESENT) < FP_RATE * one_m_q
-    pos_frac = hash_uniform(np.uint64(key), lanes, np.int64(tick), _C_FP_POS)
-    return lanes[present], (pos_frac * lengths)[present]
+    present: BOOL = hash_uniform(key, lanes, np.int64(tick), _C_FP_PRESENT) < FP_RATE * one_m_q
+    pos_frac = hash_uniform(key, lanes, np.int64(tick), _C_FP_POS)
+    dist: F64 = pos_frac * lengths
+    return present, dist
 
 
 def detect_peds(
     crosswalk_local: npt.ArrayLike,
     uid: npt.ArrayLike,
     quality: float,
-    key: int,
+    key: npt.ArrayLike,
     tick: int,
 ) -> BOOL:
     """Detect/miss for waiting pedestrians: flat ``quality`` rate, 5 s correlated.
 
     The ADR 0005 §2 bundle parameterizes vehicle detection by distance; peds wait
     at the curb, so their detection probability is the flat dial ``quality`` (all
-    detected at q=1). Keyed by ``(sensor_key, crosswalk, uid, window)``.
+    detected at q=1). Keyed by ``(sensor_key, crosswalk, uid, window)``; ``key`` is
+    a scalar or per-ped array.
     """
     cw = np.asarray(crosswalk_local, dtype=np.int64)
     uids = np.asarray(uid, dtype=np.int64)
     window = np.int64(tick // DROPOUT_WINDOW_S)
-    out: BOOL = hash_uniform(np.uint64(key), cw, uids, window, _C_PED) < quality
+    out: BOOL = hash_uniform(key, cw, uids, window, _C_PED) < quality
     return out

@@ -19,14 +19,18 @@ from typing import Any
 
 import gymnasium as gym
 import numpy as np
+import numpy.typing as npt
 from gymnasium.vector import VectorEnv
 from gymnasium.vector.utils import batch_space
 
-from traffic_rl.core.arrays import BOOL, F32, I32, I64
+from traffic_rl.core.arrays import BOOL, F32, F64, I32, I64, VehicleArrays
 from traffic_rl.core.config import V_WAIT_MPS, SimConfig
+from traffic_rl.core.sensors import detect_peds, detect_vehicles, false_positives
 from traffic_rl.core.signals import Indication, PedIndication
 from traffic_rl.core.topology import N_PHASES
 from traffic_rl.envs.batching import BatchedWorlds
+
+U64 = npt.NDArray[np.uint64]
 
 # ADR 0004 §2-3 constants (locked; change the ADR first).
 N_CHANNELS = 48
@@ -53,11 +57,13 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         episode_s: float = 900.0,
         decision_interval_s: float = 1.0,
         comm: bool = True,
+        quality: float = 1.0,
     ) -> None:
         self.metadata = {"autoreset_mode": gym.vector.AutoresetMode.NEXT_STEP}
         self.num_envs = num_envs
         self.cfg = cfg
         self.comm = comm
+        self.quality = quality  # < 1.0 routes _observe through the sensing kernel
         dt = cfg.episode.dt_s
         self._substeps = max(1, round(decision_interval_s / dt))
         if abs(self._substeps * dt - decision_interval_s) > 1e-9:
@@ -74,6 +80,9 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         self.action_space = batch_space(self.single_action_space, num_envs)
 
         self._build_static_maps()
+        # per-world / per-approach sensing keys (rebuilt each reset when noisy)
+        self._sensor_key_u64: U64 = np.zeros(0, dtype=np.uint64)
+        self._app_key_u64: U64 = np.zeros(0, dtype=np.uint64)
         self._root_seed = 0
         self._episode = -1  # first unseeded reset() lands on episode 0
         self._elapsed = 0
@@ -95,6 +104,14 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         self._app_next: I64 = self.sim._next_lane[app].astype(np.int64)
         self._app_origin: I64 = np.array([topo.lanes[x].origin for x in app], dtype=np.int64)
         self._app_phase: I32 = sig.lane_phase[app]
+        # sensing-noise plumbing (used only when quality < 1.0): float64 lane
+        # lengths matching NoisyDetection's topology source (so both paths compute
+        # the same measured distance), and per-approach base-local lane + world.
+        self._n_lanes_base = self.sim.base_topo.n_lanes
+        self._n_cw_base = len(self.sim.base_topo.crosswalks)
+        self._lane_len_f64: F64 = np.array([ln.length_m for ln in topo.lanes], dtype=np.float64)
+        self._app_base_local: I64 = app % self._n_lanes_base
+        self._app_world: I64 = self.sim._world_of_lane[app]
         idm = self.cfg.idm
         next_len = self.sim._lane_length[self._app_next]
         self._down_cap: F32 = np.maximum(
@@ -128,8 +145,17 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         self._pending_autoreset = False
         self._last_occupied_t[:] = -1.0e9
         self._flow_hist = []
+        self._refresh_sensor_keys()
         obs = self._observe()
         return obs, {"action_mask": self._action_masks()}
+
+    def _refresh_sensor_keys(self) -> None:
+        """Rebuild the per-world / per-approach sensing keys for the new episode
+        (the keys derive from the fresh per-world seeds). No-op when omniscient."""
+        if self.quality >= 1.0:
+            return
+        self._sensor_key_u64 = np.array(self.sim._sensor_seed, dtype=np.uint64)
+        self._app_key_u64 = self._sensor_key_u64[self._app_world]
 
     def step(self, actions: np.ndarray) -> tuple[F32, F32, BOOL, BOOL, dict[str, Any]]:
         if self._needs_reset:
@@ -145,6 +171,7 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
             self._pending_autoreset = False
             self._last_occupied_t[:] = -1.0e9
             self._flow_hist = []
+            self._refresh_sensor_keys()
             obs = self._observe()
             return obs, zeros, false, false, {"action_mask": self._action_masks()}
 
@@ -171,15 +198,23 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         n_nodes = self.num_envs * self.n_i
         n_lanes = sim.topology.n_lanes
 
+        tick = round(t)
         lane = veh.lane[:n]
-        dist = sim._lane_length[lane] - veh.s[:n]
-        counts = np.bincount(lane, minlength=n_lanes)
-        slow = veh.v[:n] < V_WAIT_MPS
-        queue_by_lane = np.bincount(lane[slow], minlength=n_lanes)
-        near = np.bincount(lane[dist <= DETECTOR_LEN_M], minlength=n_lanes)
+        # a vehicle straddling the stop line into the junction (rear not cleared)
+        # is the strongest actuation — this term stays omniscient, matching
+        # NoisyDetection's occupancy mid-crossing check (ADR 0005 §2, detector
+        # dwell deferred).
         over_start = np.bincount(lane[(veh.s[:n] - veh.length[:n]) < 0.0], minlength=n_lanes)
-        min_dist = np.full(n_lanes, np.inf, dtype=np.float64)
-        np.minimum.at(min_dist, lane, dist.astype(np.float64))
+        if self.quality >= 1.0:
+            dist = sim._lane_length[lane] - veh.s[:n]
+            counts = np.bincount(lane, minlength=n_lanes)
+            slow = veh.v[:n] < V_WAIT_MPS
+            queue_by_lane = np.bincount(lane[slow], minlength=n_lanes)
+            near = np.bincount(lane[dist <= DETECTOR_LEN_M], minlength=n_lanes)
+            min_dist = np.full(n_lanes, np.inf, dtype=np.float64)
+            np.minimum.at(min_dist, lane, dist.astype(np.float64))
+        else:
+            counts, queue_by_lane, near, min_dist = self._noisy_aggregates(veh, n, lane, tick)
 
         occupied = (near[self._app_lane] > 0) | (over_start[self._app_next] > 0)
         self._last_occupied_t[occupied] = t
@@ -232,7 +267,15 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         n_cw = len(sim.topology.crosswalks)
         if m:
             waiting_mask = peds.state[:m] == 0
-            ped_counts = np.bincount(peds.crosswalk[:m][waiting_mask], minlength=n_cw)
+            cw = peds.crosswalk[:m][waiting_mask]
+            if self.quality >= 1.0:
+                ped_counts = np.bincount(cw, minlength=n_cw)
+            else:
+                pkey = self._sensor_key_u64[sim._world_of_cw[cw]]
+                seen = detect_peds(
+                    cw % self._n_cw_base, peds.uid[:m][waiting_mask], self.quality, pkey, tick
+                )
+                ped_counts = np.bincount(cw[seen], minlength=n_cw)
         else:
             ped_counts = np.zeros(n_cw, dtype=np.int64)
         walk_active = (sig.ped_ind != int(PedIndication.DONT_WALK)).astype(np.float64)
@@ -251,6 +294,63 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
 
         obs = np.concatenate([app, signal, ped_block, comm], axis=1)
         return obs.reshape(self.num_envs, self.n_i, N_CHANNELS).astype(np.float32)
+
+    def _noisy_aggregates(
+        self, veh: VehicleArrays, n: int, lane: I32, tick: int
+    ) -> tuple[I64, I64, I64, F64]:
+        """Detected-only per-lane counts/queue/near/min_dist + false positives.
+
+        The vectorized twin of ``NoisyDetection``: one kernel call over every
+        vehicle in every world (per-vehicle key), keyed identically, so the two
+        observation paths agree bit-for-bit (the parity pin). Detection for a
+        vehicle is world-local and position-independent, so its outcome is the
+        same whether the vehicle is seen as an approach here or a downstream count
+        elsewhere. ``counts`` (detected reals, no phantoms) feeds the downstream
+        occupancy; false positives join queue/near/min_dist on their approach lane.
+        """
+        sim = self.sim
+        n_lanes = sim.topology.n_lanes
+        counts = np.zeros(n_lanes, dtype=np.int64)
+        queue = np.zeros(n_lanes, dtype=np.int64)
+        near = np.zeros(n_lanes, dtype=np.int64)
+        min_dist = np.full(n_lanes, np.inf, dtype=np.float64)
+        if n:
+            # measured distance from float64 lengths (matches NoisyDetection), and
+            # per-lane leader gaps (ascending distance, float64 diff).
+            dist = (self._lane_len_f64[lane] - veh.s[:n]).astype(np.float32)
+            order = np.lexsort((dist, lane))
+            lane_s = lane[order]
+            dist_s = dist[order].astype(np.float64)
+            gap_s = np.full(n, np.inf, dtype=np.float64)
+            if n > 1:
+                same = lane_s[1:] == lane_s[:-1]
+                gap_s[1:] = np.where(same, dist_s[1:] - dist_s[:-1], np.inf)
+            gap = np.empty(n, dtype=np.float64)
+            gap[order] = gap_s
+
+            key = self._sensor_key_u64[sim._world_of_lane[lane]]
+            det = detect_vehicles(dist, veh.v[:n], veh.uid[:n], gap, self.quality, key, tick)
+            seen = det.detected
+            dl = lane[seen]
+            dd = det.dist_meas[seen].astype(np.float32)
+            ds = det.speed_meas[seen].astype(np.float32)
+            counts = np.bincount(dl, minlength=n_lanes)
+            queue = np.bincount(dl[ds < V_WAIT_MPS], minlength=n_lanes)
+            near = np.bincount(dl[dd <= DETECTOR_LEN_M], minlength=n_lanes)
+            np.minimum.at(min_dist, dl, dd.astype(np.float64))
+
+        present, fp_dist = false_positives(
+            self._app_base_local, self._app_len, self.quality, self._app_key_u64, tick
+        )
+        if present.any():
+            pl = self._app_lane[present]
+            pd = fp_dist[present].astype(np.float32)  # phantom = a stopped return
+            np.add.at(queue, pl, 1)  # speed 0 < V_WAIT -> counts as queued
+            within = pd <= DETECTOR_LEN_M
+            if within.any():
+                np.add.at(near, pl[within], 1)
+            np.minimum.at(min_dist, pl, pd.astype(np.float64))
+        return counts, queue, near, min_dist
 
     # -- action masks (ADR 0004 §1) ------------------------------------------------
 
@@ -280,10 +380,16 @@ class SingleTrafficEnv(gym.Env[np.ndarray, np.ndarray]):
         episode_s: float = 900.0,
         decision_interval_s: float = 1.0,
         comm: bool = True,
+        quality: float = 1.0,
     ) -> None:
         self.metadata = {"render_modes": []}
         self._venv = TrafficEnv(
-            cfg, num_envs=1, episode_s=episode_s, decision_interval_s=decision_interval_s, comm=comm
+            cfg,
+            num_envs=1,
+            episode_s=episode_s,
+            decision_interval_s=decision_interval_s,
+            comm=comm,
+            quality=quality,
         )
         self.observation_space = self._venv.single_observation_space
         self.action_space = self._venv.single_action_space

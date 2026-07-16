@@ -93,9 +93,8 @@ def test_quality_one_has_no_false_positives() -> None:
     lanes = np.arange(64, dtype=np.int64)
     lengths = np.full(64, 200.0)
     for tick in range(200):
-        fp_lanes, fp_dist = false_positives(lanes, lengths, quality=1.0, key=7, tick=tick)
-        assert fp_lanes.size == 0
-        assert fp_dist.size == 0
+        present, _ = false_positives(lanes, lengths, quality=1.0, key=7, tick=tick)
+        assert not present.any()
 
 
 def test_quality_one_detects_all_peds() -> None:
@@ -195,12 +194,33 @@ def test_false_positive_rate_matches_the_dial() -> None:
     hits = 0
     ticks = 50_000
     for tick in range(ticks):
-        fp_lanes, fp_dist = false_positives(lanes, lengths, quality=0.5, key=8, tick=tick)
-        hits += fp_lanes.size
-        assert np.all(fp_dist >= 0.0)
-        assert np.all(fp_dist < 200.0)
+        present, fp_dist = false_positives(lanes, lengths, quality=0.5, key=8, tick=tick)
+        hits += int(present.sum())
+        assert np.all(fp_dist[present] >= 0.0)
+        assert np.all(fp_dist[present] < 200.0)
     rate = hits / (ticks * lanes.size)
     assert abs(rate - sensors.FP_RATE * 0.5) < 0.005
+
+
+def test_detect_accepts_a_per_vehicle_key_array() -> None:
+    """A per-vehicle key array (how the batched env senses many worlds at once)
+    equals calling the scalar-key kernel on each world's slice."""
+    n = 2000
+    dist = np.full(n, 80.0)
+    speed = np.zeros(n)
+    uid = np.arange(n, dtype=np.int64)
+    gap = np.full(n, np.inf)
+    keys = np.array([sensor_key(0), sensor_key(1), sensor_key(2)], dtype=np.uint64)
+    who = uid % 3  # three interleaved worlds
+    combined = detect_vehicles(dist, speed, uid, gap, 0.5, keys[who], tick=3)
+    for w in range(3):
+        mask = who == w
+        solo = detect_vehicles(
+            dist[mask], speed[mask], uid[mask], gap[mask], 0.5, int(keys[w]), tick=3
+        )
+        np.testing.assert_array_equal(combined.detected[mask], solo.detected)
+        np.testing.assert_array_equal(combined.dist_meas[mask], solo.dist_meas)
+        np.testing.assert_array_equal(combined.speed_meas[mask], solo.speed_meas)
 
 
 def test_ped_detection_rate_is_the_quality_dial() -> None:

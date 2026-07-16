@@ -3,8 +3,8 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-15 (later) — PHASE-3 PART B: B2 (sensing kernel + uid spine) + B3
-(NoisyDetection) LANDED:**
+**As of 2026-07-15 (later) — PHASE-3 PART B: B2 (kernel + uid) + B3 (NoisyDetection) + B4
+(env noise + parity pin) LANDED:**
 
 ADR 0005 is **accepted** (Stepan confirmed; the [REC] defaults stand). Part B opened with
 B2, the determinism spine of ADR 0005 §1:
@@ -31,15 +31,26 @@ Then B3, the World/leaderboard observation path:
   the q=1.0 equivalence pin (`tests/control/test_observation_noisy.py`) proves it reproduces
   PerfectObservation field-by-field on a corridor AND a grid, every node, 800 ticks — plus
   same-seed reproducibility and a q=0.5 queue-undercount. `flow` and the occupancy
-  mid-crossing term stay omniscient by construction (documented, == q=1). **207 tests green**
-  (+24 over the phase-2 baseline), 5 gates green. Local/unpushed.
+  mid-crossing term stay omniscient by construction (documented, == q=1).
 
-**Next action: B4 — noise in `TrafficEnv._observe` via the same kernel with per-world keys
-(leader gaps by lexsort, detected-only bincounts, false positives), and extend
-`tests/rl/test_features.py` with the bit-exact NOISY parity pin (q ∈ {1.0, 0.5}) + the
-grid-corner-after-WALK base q=1.0 pin (probe-7 finding). This is the drift tripwire the
-phase was designed around.** Grid PPO (A2) + all Part C trainings stay PARKED until Stepan
-schedules compute.
+Then B4, the drift tripwire — the phase's central risk closed:
+
+- **`TrafficEnv._observe` under noise** — `quality < 1.0` routes the env's vectorized
+  observation through the SAME kernel with a **per-vehicle world key**, so the batched env
+  and the World/leaderboard path produce bit-identical noisy observations. The extended
+  `tests/rl/test_features.py` proves it channel-by-channel: NOISY parity (q ∈ {1.0, 0.5}),
+  the grid-corner-after-WALK BASE pin (closes probe-7), and a **multi-world** pin (world b
+  of a B=3 batch == a standalone World at that seed under noise — the per-world key gather).
+  The q=1 fast path is untouched (zero leaderboard regression). **212 tests green** (+29
+  over the phase-2 baseline), 5 gates green. Local/unpushed.
+
+**Next action: B5 — `SensingConfig(quality=1.0)` on SimConfig; `World` builds
+`NoisyDetection` when `quality < 1`; `run_cell(sensing_quality)` + a `quality` row column;
+RL-row checkpoint-provenance columns (algo/comm/path/git_sha, probe-8); `--quality` on the
+`run`/`train-dqn`/`train-ppo` CLI. This wires the dial end-to-end so the Part C sweep can
+run.** Grid PPO (A2) + all Part C trainings stay PARKED until Stepan schedules compute.
+B6 (frame-stack) ∥ B7 (filtered max-pressure) are disjoint-file subagent candidates once
+B5 lands.
 
 ---
 
