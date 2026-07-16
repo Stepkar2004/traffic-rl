@@ -133,6 +133,52 @@ eastbound bias. Note the green wave is now the *worst* adaptive-tier option (48.
 wave tuned for one-way progression actively hurts when demand is symmetric, which is
 exactly the trap a learned, reactive policy avoids.
 
+## Reversed-asymmetry probe — where the transfer breaks (a generalization probe)
+
+The balanced-transfer result above is reassuring but incomplete: symmetric demand has no
+dominant direction, so it cannot punish a policy that quietly favors eastbound. To test
+whether the training direction is baked in, evaluate the same `corridor-rush`-trained
+checkpoints, unchanged, on `corridor-rush-wb` — `corridor-rush` with only the two arterial
+arrival rates swapped (westbound 600 veh/h heavy, eastbound 250 light; cross streets,
+geometry, and timing all identical). **This is a generalization probe, not a fair
+head-to-head: the policy never trained on a westbound surge, so it is a transfer test, not
+a method comparison.** Matched eval seeds 1000-1019; every controller re-run on that same
+seed set. (A built-in sanity check: the direction-agnostic classical controllers reproduce
+their `corridor-rush` numbers here up to seed noise — actuated 34.6 vs 34.7, webster 48.8
+vs 52.1 — confirming the swap changed only the direction, not the load.)
+
+#### corridor-rush-wb (n=20 matched eval seeds 1000-1019)
+
+| controller | p95 wait (s) | mean wait (s) | throughput (veh/h) | stops/veh | unserved (veh) | refused |
+|---|---|---|---|---|---|---|
+| PPO comm (learned) | 339.7 [280.0, 399.2] | 76.1 [65.4, 86.4] | 1465 | 3.17 | 51.5 | 0 |
+| PPO no-comm (learned) | 331.6 [277.3, 385.5] | 75.5 [65.0, 86.2] | 1467 | 3.25 | 48.1 | 0 |
+| actuated | 34.6 [34.0, 35.3] | 11.6 [11.3, 11.9] | 1543 | 0.92 | 0.2 | 0 |
+| webster | 48.8 [44.7, 53.8] | 16.4 [15.6, 17.2] | 1551 | 1.18 | 0.2 | 0 |
+| fixed-time | 332.2 [277.8, 387.0] | 81.9 [71.2, 92.8] | 1474 | 2.62 | 44.7 | 0 |
+| coordinated (green wave) | 348.1 [290.5, 405.9] | 84.7 [73.5, 95.9] | 1473 | 2.70 | 45.5 | 0 |
+| max-pressure | 592.8 [525.6, 654.7] | 121.0 [109.7, 131.7] | 1409 | 4.05 | 102.2 | 0 |
+
+**The training direction is baked in — the honest counterweight to the balanced result.**
+On `corridor-rush` the policy ties actuated for first (34.9 vs 34.7); mirror the demand and
+it collapses to 340 s p95 and strands ~50 cars, while actuated — which has no coordination
+to get wrong — is unmoved at 34.6 with nothing stranded. By the CI-overlap rule PPO's p95
+is statistically indistinguishable from **fixed-time (332) and the green wave (348)** and
+fully out of the adaptive band that actuated (34.6) and webster (48.8) hold. Asked to serve
+a westbound rush, the eastbound-trained policy does no better than a dumb fixed plan.
+
+The mechanism is the one that sinks the hand-built green wave elsewhere in this writeup:
+PPO did not learn direction-agnostic reactive control, it learned an implicit eastbound
+progression — a *schedule* in disguise. That schedule is harmless on symmetric demand
+(nothing to lose by favoring a direction when both are equal), which is why the
+`corridor-balanced` transfer looked like clean generalization. Reverse the heavy flow and
+the learned timing desynchronizes every westbound platoon, the queue never recovers, and
+coordination-that-cannot-react gridlocks exactly as fixed offsets do. Comm is still a wash
+(339.7 vs 331.6). So read the balanced-transfer claim narrowly: the policy generalizes
+across demand *magnitude* and to *symmetric* profiles, but not across demand *direction* —
+the concrete motivation for a demand-generalist policy trained across mirrored profiles
+(phase 3, the C5 arm), whose fix for a baked-in direction is to stop training on one.
+
 ## The demand-density sweep — where the learned policy pulls ahead
 
 The headline experiment, and the one the first cut got wrong. Scaling `corridor-rush`'s
@@ -188,7 +234,65 @@ saturate the features — the policy is partly blind to *how* bad it is and stil
 Demand-adaptive feature scaling (a phase-2.1 idea) could only help it; it is not the
 reason for the win.
 
+## The emergence probe — does PPO phase-lock the corridor, or progress opportunistically?
+
+ADR 0004 §6's probe finally ran (corridor-rush, 10 seeds × 900 s). It asks a sharp
+question the p95-wait tables cannot: when PPO matched actuated on the corridor, did it do
+so by building a *green wave* — locking each intersection's green to fire one
+platoon-travel-time after its upstream neighbor — or by reacting to whatever demand showed
+up, with no fixed schedule at all?
+
+The metric is `offset_score = r_travel / r_best`: the green-onset cross-correlation of an
+adjacent signal pair *at the platoon travel lag* (11.2 s here), divided by its correlation
+at the best lag anywhere. 1.0 means the pair's greens are offset by exactly the travel time
+— a phase-locked wave. The hand-built `coordinated` controller is the **reference only**:
+it scores ~1 by construction (its offsets *are* distance ÷ speed limit), calibrating what a
+perfect wave reads as on this metric — it is not a comparator here. Scored over the probe's
+own 10 seeds, the same set for every arm.
+
+#### corridor-rush (10 seeds × 900 s, offset_score mean [95% bootstrap CI])
+
+| controller | offset_score | r at travel lag | r at best lag |
+|---|---|---|---|
+| coordinated (reference, wave by construction) | 0.94 [0.93, 0.96] | 0.72 | 0.76 |
+| PPO comm (learned) | 0.20 [-0.02, 0.44] | 0.10 | 0.41 |
+| PPO no-comm (learned) | 0.38 [0.19, 0.57] | 0.17 | 0.37 |
+| fixed-time (uncoordinated clock) | 0.29 [0.26, 0.32] | 0.23 | 0.79 |
+
+Figure: [phase-2-emergence.png](../assets/phase-2-emergence.png).
+
+**The wave did not emerge — and that is the interesting result.** Both PPO arms score low
+(0.20, 0.38), statistically indistinguishable from the uncoordinated fixed-time clock
+(0.29) and nowhere near the phase-locked reference (0.94). At the platoon travel lag PPO's
+adjacent greens are essentially uncorrelated (r_travel ≈ 0.1-0.2), and the sign flips from
+seed to seed (r_travel < 0 in 4-7 of 20 pair-seeds), which is why the CIs are wide and
+cross zero: there is no stable offset to lock to.
+
+Put next to the committed corridor table — where PPO *ties actuated* on p95 wait — this is
+the honest, non-obvious finding: **the learned policy matches the best adaptive control
+without ever building a schedule.** It coordinates the corridor opportunistically, releasing
+platoons when demand calls for it rather than on a fixed clock offset. A telling detail:
+PPO's *r_best* is also low (0.37-0.41) while fixed-time's is high (0.79) — two rigid clocks
+are strongly correlated at *some* lag even when uncoordinated, but PPO's greens are not
+strongly periodic at any lag at all. That is what demand-triggered progression looks like:
+not a wave, and not a clock.
+
+**Communication did not buy coordination either.** PPO comm (0.20) and no-comm (0.38)
+overlap — if anything comm is numerically lower — so the channel bought no phase-locking,
+matching the null from the comm ablation above. On a homogeneous sim a neighbor's phase is
+inferable from your own inflow, so an explicit "when am I going green" signal is redundant;
+whether it earns its keep is re-tested once phase 4/5 break that homogeneity.
+
+The one-line reading: **the corridor's coordination is emergent and reactive, not a learned
+green wave.** A hand-built wave is a schedule that assumes platoons arrive on its clock (and
+breaks when they don't — see the green wave's collapse at saturation above); PPO throws the
+schedule away and coordinates on what it sees.
+
 ## What did not run this session (honest gaps)
+
+> **Updated 2026-07-15 (phase-3 session):** the emergence probe and adversarial probes 5-8
+> have since closed (folded in above / recorded in [now.md](../state/now.md)); PPO on the
+> grid remains the one parked owed item.
 
 - **PPO on the grid** (`grid-rush-diag`, `grid-balanced`) — ADR budget 10M steps x 3
   seeds x 2 arms, ~22 h sequential. Deferred: the corridor headline + the demand sweep
@@ -196,11 +300,12 @@ reason for the win.
   classical grid rows are in the [leaderboard](../leaderboard.md); the RL grid rows are
   the first item for the next run session. Budget amendments are downward-only (ADR §5);
   this is a deferral, not a reduction.
-- **The emergence probe** (ADR 0004 §6, the green-onset cross-correlation) was not run
-  as a protocol experiment here. The corridor result already shows PPO matching actuated
-  without the encoded wave; whether it does so by *phase-locking* (the probe's periodic
-  metric) or by opportunistic, demand-triggered progression is the open question the
-  probe answers, and it is the headline of a focused follow-up. Flagged, not claimed.
+- **The emergence probe** — CLOSED 2026-07-15. It ran as a protocol experiment (10 seeds);
+  see the "emergence probe" section above. PPO does not phase-lock — it coordinates
+  reactively, matching actuated without a schedule.
+- **The reversed-asymmetry (mirrored-demand) transfer test** — CLOSED 2026-07-15. See the
+  "reversed-asymmetry probe" section above: the training direction is baked in, motivating
+  the phase-3 demand-generalist arm.
 - **Adversarial probe-review probes 5-8** ran clean at the top of the phase-3 session
   (2026-07-15), as four parallel probe-not-read subagents — **all four PASS** (probes
   1-4 had already run clean). Measured: coordinated offsets == travel-time arithmetic

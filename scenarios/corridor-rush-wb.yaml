@@ -1,0 +1,49 @@
+# Scenario: WESTBOUND MIRROR of corridor-rush (A5 generalization probe). This is
+# corridor-rush with ONLY the arterial arrival rates swapped: westbound (from
+# east) is now the heavy platoon direction, eastbound (from west) is the light
+# counter-direction. Cross streets, topology, timing, episode, and all other
+# parameters are byte-for-byte identical to corridor-rush.yaml. Its sole purpose
+# is a zero-shot transfer test of the eastbound-trained PPO onto reversed
+# asymmetry: is the training direction baked into the policy?
+# Westbound 600 veh/h vs ~720 veh/h of green-share capacity (sat 1440 at a
+# 50/50 split): near saturation, same load as the original, mirrored.
+name: corridor-rush-wb
+description: "1x3 corridor, WESTBOUND-heavy mirror of corridor-rush (600 veh/h), light cross streets."
+
+episode:
+  warmup_s: 300
+  measure_s: 3600
+  dt_s: 0.1
+
+topology:
+  kind: corridor
+  n_intersections: 3
+  block_length_m: 150
+  speed_limit_mph: 30
+  approach_length_m: 300
+  lanes_per_approach: 1
+  lane_width_m: 3.5
+  crosswalk_length_m: 9.0
+
+demand:
+  vehicles:
+    profile:
+      - t0_s: 0
+        rate_veh_h:
+          west: 250      # eastbound counter-direction (was 600)
+          east: 600      # the westbound platoon direction (was 250)
+          north_0: 120
+          south_0: 120
+          north_1: 120
+          south_1: 120
+          north_2: 120
+          south_2: 120
+  pedestrians:
+    profile:   # per LEG, applied at every intersection's crosswalk on that leg
+      - {t0_s: 0, rate_ped_h: {north: 50, south: 50, east: 60, west: 60}}
+
+controller:
+  kind: coordinated
+  params:
+    cycle_s: 60
+    split_ns: 0.4    # arterial (EW phase) gets the larger share

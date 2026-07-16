@@ -3,6 +3,35 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
+**As of 2026-07-15 (late night) — PART A ESSENTIALLY CLOSED; ADR 0005 drafted; phase-3 code next:**
+
+Since the A1 gate (below), the phase-3 session drafted **ADR 0005** (the sensing-noise
+contract, committed 2c1426d, proposed for async review) and ran the two cheap owed phase-2
+experiments as parallel subagents — both verified against committed artifacts before
+transcription:
+
+- **Emergence probe (A3):** the green wave did NOT emerge. PPO offset_score 0.20 (comm) /
+  0.38 (nocomm) sit with the uncoordinated fixed-time clock (0.29), far from the
+  phase-locked coordinated reference (0.94) — the policy that ties actuated on p95 does it
+  WITHOUT a schedule (opportunistic, demand-triggered progression); comm bought no
+  phase-locking. Section + figure (docs/assets/phase-2-emergence.png) in results/phase-2.md.
+- **Mirrored-demand probe (A5):** the training direction IS baked in. The eastbound-trained
+  PPO collapses zero-shot on the westbound mirror (new scenarios/corridor-rush-wb.yaml):
+  p95 340 s vs actuated 34.6, strands ~50 cars, drops to the fixed-time tier — while
+  direction-agnostic classics are unmoved. The balanced-transfer "it generalizes" claim
+  holds across MAGNITUDE and SYMMETRIC profiles only, not DIRECTION. Motivates the phase-3
+  C5 demand-generalist arm.
+
+Both matched-seed (A5 on eval seeds 1000-1019; A3 on the probe's 10 seeds, same set per
+arm). **The only owed phase-2 item still open is PPO on the grid (A2) — PARKED until Stepan
+schedules the compute.**
+
+**Next action: begin Part B (phase-3 code) — B2, the counter-based shared-noise kernel +
+uid plumbing (`core/sensors.py`), the determinism spine ADR 0005 §1 specifies. Hold at that
+boundary for Stepan's pace call.** Nothing pushed (docs commits ahead).
+
+---
+
 **As of 2026-07-15 (night) — A1 GATE GREEN: adversarial probes 5-8 all PASS:**
 
 The phase-3 implementation session opened by running the four owed adversarial

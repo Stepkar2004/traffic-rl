@@ -2,6 +2,18 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-15 · Phase-2 finish-up experiments: emergence + mirrored-demand (A3, A5).**
+  Ran the two cheap owed phase-2 experiments as parallel subagents, both verified against
+  committed artifacts before transcription. Emergence probe (corridor-rush, 10 seeds):
+  offset_score coordinated 0.94 [reference], PPO comm 0.20 / nocomm 0.38, fixed-time 0.29 —
+  the wave did NOT emerge; PPO ties actuated WITHOUT phase-locking (reactive progression,
+  not a schedule), comm bought no coordination. Mirrored-demand probe (new
+  scenarios/corridor-rush-wb.yaml, matched seeds 1000-1019): the eastbound-trained PPO
+  collapses on the westbound mirror (p95 340 vs actuated 34.6, ~50 stranded) — the training
+  direction is baked in; balanced transfer holds only across magnitude + symmetric profiles,
+  not direction (motivates the C5 demand-generalist arm). Added the emergence figure
+  (docs/assets/phase-2-emergence.png) + two results/phase-2.md sections; the gaps section
+  now lists only PPO-on-the-grid (A2, parked) as open. Docs-only (runs/ gitignored); not pushed.
 - **2026-07-15 · ADR 0005 drafted: the sensing-noise contract (phase-3 B1).**
   [decisions/0005-sensing-noise.md](../decisions/0005-sensing-noise.md), proposed for
   Stepan's async review. Locks (as [REC] defaults): the counter-based shared-kernel
