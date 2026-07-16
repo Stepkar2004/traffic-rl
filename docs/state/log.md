@@ -2,6 +2,23 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-15 · Phase-3 B3: NoisyDetection + the q=1.0 equivalence pin (ADR 0005 §3).**
+  Added `NoisyDetection` to control/observation.py as a **subclass** of `PerfectObservation`
+  — it inherits `reset` and the omniscient `_arrival_count`/`flow` and overrides only
+  `observe`, routing each approach's vehicles (and the exit lane, and waiting peds) through
+  the `core.sensors` kernel: undetected objects vanish, detected ones carry measured
+  dist/speed, dense queues undercount via occlusion, false positives add phantom stopped
+  returns, downstream is a detected count. Written TEST-FIRST per the ADR: the equivalence
+  pin (`tests/control/test_observation_noisy.py`) drives NoisyDetection(q=1.0) and
+  PerfectObservation in lockstep over a busy corridor AND grid, EVERY node, 800 ticks, and
+  demands bit-exact field-by-field agreement (incl. stateful recency + flow window) — it
+  passes, so the phase-3 model provably does not move the phase-1/2 baselines at q=1. Also
+  pinned: same-seed reproducibility (the hash is a pure function of world-local keys) and a
+  q=0.5 queue-undercount on an oversaturated approach. Two channels stay omniscient by
+  construction and are documented as such (== q=1): `flow` (inherited) and occupancy's
+  mid-crossing term (detector dwell is an ADR-deferred item). The kernel is NOT
+  short-circuited at q=1 so the pin exercises real arithmetic. 207 tests (+4), 5 gates
+  green. Not pushed.
 - **2026-07-15 · Phase-3 B2: the sensing kernel + uid spine (ADR 0005 §1 accepted).**
   Stepan confirmed ADR 0005 (status proposed → accepted, [REC] defaults adopted). Built
   `core/sensors.py` — sensing noise as a PURE counter-based hash (splitmix64 over

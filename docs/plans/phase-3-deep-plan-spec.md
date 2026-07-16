@@ -367,6 +367,19 @@ ways once to prove the arithmetic).
 
 ## B3. `NoisyDetection` (control/observation.py)
 
+> **DONE 2026-07-15.** `NoisyDetection` is a **subclass** of `PerfectObservation` (inherits
+> `reset` + the omniscient `_arrival_count`/`flow`; overrides only `observe`), routing
+> vehicles/peds through the `core.sensors` kernel per approach: detected-only measured
+> dist/speed, occlusion-aware detection, false positives (phantom stopped return),
+> detected-count downstream, detected peds. The kernel is NOT short-circuited at q=1 so the
+> pin exercises the arithmetic. `tests/control/test_observation_noisy.py`: the q=1.0
+> equivalence pin (field-by-field == PerfectObservation, corridor + grid, EVERY node, 800
+> ticks) + same-seed reproducibility + q=0.5 queue-undercount. Two channels stay omniscient
+> by construction (documented, == q=1): `flow` (inherited) and occupancy's mid-crossing term
+> (detector dwell is an ADR-deferred item). 207 tests + 5 gates green. NEXT: B4.
+
+
+
 Same protocol, same constructor surface as `PerfectObservation` plus
 `quality: float` and `seed: int`. `observe()` mirrors PerfectObservation but:
 vehicles pass through `detect_vehicles` (undetected vehicles vanish from

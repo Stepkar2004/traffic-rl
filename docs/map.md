@@ -146,8 +146,9 @@ src/traffic_rl/
 │   │                      node)) + the Observation contract incl. downstream
 │   │                      channel
 │   ├── observation.py     ObservationModel protocol + PerfectObservation
-│   │                      (omniscient, per-intersection; phase 3's noise
-│   │                      drops in here)
+│   │                      (omniscient) + NoisyDetection (phase 3: subclass that
+│   │                      routes vehicles/peds through the core.sensors kernel;
+│   │                      q=1.0 == PerfectObservation bit-exact)
 │   ├── fixed_time.py      the floor: a clock + legally-required patience
 │   ├── coordinated.py     CoordinatedFixedTime: travel-time offsets = the
 │   │                      hand-built green wave (phase-2 emergence foil)
@@ -218,6 +219,9 @@ tests/
 │         pedestrians,recorder,world}.py   one module each, same-named
 ├── control/
 │   ├── factory.py         crafted-Observation builder for controller tests
+│   ├── test_observation_noisy.py   NoisyDetection: the q=1.0 equivalence pin
+│   │                      (== PerfectObservation, corridor + grid, every node,
+│   │                      many ticks) + reproducibility + queue undercount
 │   └── test_{fixed_time,webster,actuated,max_pressure,observation}.py
 ├── envs/
 │   ├── test_batching.py   batched == sequential; world isolation; the anchor:

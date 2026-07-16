@@ -3,7 +3,8 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-15 (later) — PHASE-3 PART B STARTED: B2 (sensing kernel + uid spine) LANDED:**
+**As of 2026-07-15 (later) — PHASE-3 PART B: B2 (sensing kernel + uid spine) + B3
+(NoisyDetection) LANDED:**
 
 ADR 0005 is **accepted** (Stepan confirmed; the [REC] defaults stand). Part B opened with
 B2, the determinism spine of ADR 0005 §1:
@@ -19,14 +20,26 @@ B2, the determinism spine of ADR 0005 §1:
   assigned from monotone per-world counters in `World` and `BatchedWorlds` alike. A test
   proves world b in a B=3 batch carries the SAME (uid, origin, demand_t) per vehicle as a
   standalone World at that world's seed — so the shared hash keys identically on the
-  train-time and eval-time paths. Goldens unchanged (uid never touches dynamics); all
-  **203 tests green** (+20 new), 5 gates green. Local/unpushed.
+  train-time and eval-time paths. Goldens unchanged (uid never touches dynamics).
 
-**Next action: B3 ∥ B4 — `NoisyDetection` in control/observation.py with the q=1.0
-equivalence pin written TEST-FIRST, in parallel with the TrafficEnv `_observe` noise path
-+ the extended bit-exact parity pin (tests/rl/test_features.py, incl. the grid+WALK base
-pin from probe 7). B2's kernel is the shared dependency both call.** Grid PPO (A2) + all
-Part C trainings stay PARKED until Stepan schedules compute.
+Then B3, the World/leaderboard observation path:
+
+- **`NoisyDetection`** (control/observation.py) — a **subclass** of `PerfectObservation`
+  (inherits `reset` + the omniscient `flow` channel; overrides only `observe`) that routes
+  vehicles and peds through the `core.sensors` kernel: detected-only measured dist/speed,
+  occlusion, false positives, detected-count downstream, detected peds. Written **test-first**:
+  the q=1.0 equivalence pin (`tests/control/test_observation_noisy.py`) proves it reproduces
+  PerfectObservation field-by-field on a corridor AND a grid, every node, 800 ticks — plus
+  same-seed reproducibility and a q=0.5 queue-undercount. `flow` and the occupancy
+  mid-crossing term stay omniscient by construction (documented, == q=1). **207 tests green**
+  (+24 over the phase-2 baseline), 5 gates green. Local/unpushed.
+
+**Next action: B4 — noise in `TrafficEnv._observe` via the same kernel with per-world keys
+(leader gaps by lexsort, detected-only bincounts, false positives), and extend
+`tests/rl/test_features.py` with the bit-exact NOISY parity pin (q ∈ {1.0, 0.5}) + the
+grid-corner-after-WALK base q=1.0 pin (probe-7 finding). This is the drift tripwire the
+phase was designed around.** Grid PPO (A2) + all Part C trainings stay PARKED until Stepan
+schedules compute.
 
 ---
 
