@@ -159,3 +159,55 @@ def run_matrix(
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(rows, indent=1), encoding="utf-8")
     return rows
+
+
+#: The phase-3 C1 quality sweep — the money-plot axis. q=1.0 is re-run IN the
+#: sweep (matched seeds beat recycling the committed board, and it also gives the
+#: filtered-MP arm a q=1.0 anchor the committed classical board never had).
+QUALITY_SWEEP: tuple[float, ...] = (1.0, 0.9, 0.75, 0.5, 0.25)
+SWEEP_SCENARIOS: tuple[str, ...] = ("single-rush-ns", "corridor-rush", "grid-rush-diag")
+
+
+def run_quality_sweep(
+    scenario_dir: Path,
+    calibration: dict[str, float],
+    qualities: tuple[float, ...] = QUALITY_SWEEP,
+    scenarios: tuple[str, ...] = SWEEP_SCENARIOS,
+    controllers: tuple[str, ...] | None = None,
+    n_seeds: int = 20,
+    workers: int | None = None,
+    measure_s: float | None = None,
+    out_path: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Classical noise sweep (C1): every topology-appropriate controller (incl.
+    ``max_pressure_filtered``) x scenario x sensing quality x seed -> one metric row.
+
+    The leaderboard protocol, one axis wider. Rows self-describe their ``quality``
+    (ADR 0005 §4), so the money-plot reads p95 vs q per controller straight off the
+    JSON. ``fixed_time``/``coordinated`` are noise-immune by construction — their
+    rows must stay flat across q; a drift there is a bug, not a finding.
+    """
+    cells: list[tuple[str, str, dict[str, Any], int, float]] = []
+    for sc in scenarios:
+        path = str(scenario_dir / f"{sc}.yaml")
+        for kind, params in controllers_for(Path(path), calibration):
+            if controllers is not None and kind not in controllers:
+                continue
+            cells += [(path, kind, params, seed, q) for q in qualities for seed in range(n_seeds)]
+    rows: list[dict[str, Any]] = []
+    t0 = time.perf_counter()
+    with ProcessPoolExecutor(max_workers=workers) as pool:
+        futures = [
+            pool.submit(run_cell, path, kind, params, seed, measure_s, q)
+            for path, kind, params, seed, q in cells
+        ]
+        for i, fut in enumerate(as_completed(futures), 1):
+            rows.append(fut.result())
+            if i % 40 == 0 or i == len(cells):
+                elapsed = time.perf_counter() - t0
+                print(f"  quality-sweep: {i}/{len(cells)} cells ({elapsed:,.0f}s)", flush=True)
+    rows.sort(key=lambda r: (r["scenario"], r["controller"], -r["quality"], r["seed"]))
+    if out_path is not None:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(rows, indent=1), encoding="utf-8")
+    return rows

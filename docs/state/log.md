@@ -2,6 +2,15 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-17 · Phase-3 C1 driver: the classical sensing-noise sweep (money-plot substrate).**
+  `run_quality_sweep` (experiments/runner.py) + `traffic-rl quality-sweep`: the leaderboard
+  protocol one axis wider — every topology-appropriate controller (incl. `max_pressure_filtered`)
+  × {single-rush-ns, corridor-rush, grid-rush-diag} × quality {1.0, 0.9, 0.75, 0.5, 0.25} × 20
+  seeds. q=1.0 is re-run in-sweep so all q share one seed set (matched > recycling; also gives
+  filtered-MP a q=1.0 anchor the committed board lacks). Rows self-describe `quality`; the
+  `fixed_time`/`coordinated` rows stay flat across q (the blind-controller invariant, pinned).
+  Build-only — the ~2-3 h CPU run happens once the training wave frees cores. Tests: q coverage +
+  JSON write + flat-fixed_time / actuated-bites. 243 tests, 5 gates green. Not pushed.
 - **2026-07-17 · Phase-3 C3 prep: per-episode, per-world quality randomization (the DR arm).**
   `QualityRandomization(quality_lo, quality_hi)` in `core/config.py` + `TrafficEnv(quality_rand=)`:
   each training episode every world draws its own sensing quality `q ~ U(lo, hi)` from a

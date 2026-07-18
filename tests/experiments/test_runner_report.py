@@ -2,7 +2,13 @@ import json
 from pathlib import Path
 
 from traffic_rl.experiments.report import aggregate, ci_bar_chart, leaderboard_markdown
-from traffic_rl.experiments.runner import _rl_provenance, controllers_for, run_cell, run_matrix
+from traffic_rl.experiments.runner import (
+    _rl_provenance,
+    controllers_for,
+    run_cell,
+    run_matrix,
+    run_quality_sweep,
+)
 
 SCENARIOS = Path(__file__).parents[2] / "scenarios"
 CAL = {"saturation_flow_veh_h": 1440.0, "startup_lost_time_s": 1.6}
@@ -77,6 +83,37 @@ def test_run_cell_records_sensing_quality() -> None:
         sensing_quality=0.5,
     )
     assert noisy["quality"] == 0.5
+
+
+def test_quality_sweep_spans_q_and_bites_only_sensing_controllers(tmp_path: Path) -> None:
+    """C1: rows cover every quality, the JSON lands, and the sweep actually bites —
+    fixed_time (blind to sensing) is byte-identical across q, actuated (reads noisy
+    detectors) is not."""
+    rows = run_quality_sweep(
+        scenario_dir=SCENARIOS,
+        calibration=CAL,
+        qualities=(1.0, 0.5),
+        scenarios=("single-rush-ns",),
+        controllers=("fixed_time", "actuated"),
+        n_seeds=2,
+        workers=2,
+        measure_s=120.0,
+        out_path=tmp_path / "sweep.json",
+    )
+    assert len(rows) == 2 * 2 * 2  # 2 controllers x 2 q x 2 seeds
+    assert {r["quality"] for r in rows} == {1.0, 0.5}
+    assert (tmp_path / "sweep.json").exists()
+
+    def metrics(ctrl: str, q: float, seed: int) -> dict[str, object]:
+        row = next(
+            r for r in rows if r["controller"] == ctrl and r["quality"] == q and r["seed"] == seed
+        )
+        return {k: v for k, v in row.items() if k != "quality"}
+
+    for seed in (0, 1):  # blind to sensing => identical episode across q
+        assert metrics("fixed_time", 1.0, seed) == metrics("fixed_time", 0.5, seed)
+    # detector-based => noise changes at least one seed's episode
+    assert any(metrics("actuated", 1.0, s) != metrics("actuated", 0.5, s) for s in (0, 1))
 
 
 def test_rl_provenance_reads_the_checkpoint_config(tmp_path: Path) -> None:

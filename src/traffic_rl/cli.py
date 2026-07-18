@@ -171,6 +171,46 @@ def leaderboard(
 
 
 @app.command()
+def quality_sweep(
+    n_seeds: Annotated[int, typer.Option(help="Seeds per (controller, scenario, quality).")] = 20,
+    workers: Annotated[int | None, typer.Option(help="Process-pool size (default: cores).")] = None,
+    scenario_dir: Annotated[Path, typer.Option(help="Scenario YAML directory.")] = Path(
+        "scenarios"
+    ),
+    out: Annotated[Path, typer.Option(help="Raw rows JSON.")] = Path(
+        "runs/sweep/phase3-quality.json"
+    ),
+) -> None:
+    """Phase-3 C1: the classical sensing-noise sweep (the money-plot substrate).
+
+    Every topology-appropriate controller (incl. max_pressure_filtered) over
+    {single-rush-ns, corridor-rush, grid-rush-diag} x quality {1.0, 0.9, 0.75,
+    0.5, 0.25} x 20 seeds, full leaderboard protocol. Auto-calibrates first so
+    Webster never runs on defaults. Rows land in <out>; figures + interpretation
+    are Part D. Matched seeds across every q (q=1.0 is re-run in-sweep).
+    """
+    import json
+
+    from traffic_rl.experiments.calibrate import run_calibration
+    from traffic_rl.experiments.runner import run_quality_sweep
+
+    cal_path = Path("runs/calibration.json")
+    if not cal_path.exists():
+        typer.echo("no calibration found - running the queue-discharge bench first")
+        run_calibration(out_path=cal_path)
+    calibration = json.loads(cal_path.read_text(encoding="utf-8"))
+
+    rows = run_quality_sweep(
+        scenario_dir=scenario_dir,
+        calibration=calibration,
+        n_seeds=n_seeds,
+        workers=workers,
+        out_path=out,
+    )
+    typer.echo(f"quality-sweep: {len(rows)} rows -> {out}")
+
+
+@app.command()
 def train_dqn(
     scenario: Annotated[Path, typer.Argument(help="Single-intersection scenario YAML.")],
     out: Annotated[Path, typer.Option(help="Run directory root.")] = Path("runs/rl/dqn"),

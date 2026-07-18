@@ -98,6 +98,20 @@ re-check any number quoted in README, the leaderboard, or a post.
 Restrict a run: `run_matrix` accepts `scenarios`/`controllers` (used by tests);
 the CLI always runs the full default matrix.
 
+### `traffic-rl quality-sweep [--n-seeds N] [--workers N] [--scenario-dir dir] [--out path]`
+
+**Current as of phase 3, C1.** The classical sensing-noise sweep — the money-plot
+substrate. Every topology-appropriate controller (the phase-1 four on singles;
+corridors/grids add `coordinated` + `max_pressure_filtered`) over `single-rush-ns`,
+`corridor-rush`, `grid-rush-diag` × quality {1.0, 0.9, 0.75, 0.5, 0.25} × 20 seeds,
+each cell the full leaderboard protocol (300 s warmup + 3600 s measure). q=1.0 is
+re-run IN the sweep so every quality shares one seed set (matched seeds beat
+recycling the committed board, and the filtered-MP arm gets its q=1.0 anchor).
+Auto-calibrates first. Rows land in `runs/sweep/phase3-quality.json` (gitignored;
+each self-describes its `quality` per ADR 0005). `fixed_time`/`coordinated` are
+noise-immune, so their rows stay flat across q (a drift there is a bug). Figures +
+interpretation are Part D. Measured cost: ~2-3 h CPU pool.
+
 ### `traffic-rl train-dqn <scenario.yaml> [--seed N] [--steps N] [--out dir] [--device auto|cuda|cpu] [--quality Q]`
 
 **Current as of phase 3, B5** (`--quality` added; core loop phase-2 chunk 5). Double DQN on a SINGLE intersection (the
