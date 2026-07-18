@@ -10,9 +10,11 @@ seeding) is LOCKED in ADR 0004 — change it there first.
 
 from traffic_rl.envs.batching import BatchedWorlds, replicate_topology, world_seed
 from traffic_rl.envs.traffic_env import SingleTrafficEnv, TrafficEnv
+from traffic_rl.envs.wrappers import FrameStack
 
 __all__ = [
     "BatchedWorlds",
+    "FrameStack",
     "SingleTrafficEnv",
     "TrafficEnv",
     "replicate_topology",
