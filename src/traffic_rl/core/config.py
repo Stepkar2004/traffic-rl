@@ -251,6 +251,32 @@ class DemandRandomization:
 
 
 @dataclass(frozen=True)
+class QualityRandomization:
+    """Per-episode, per-world training-quality randomization (phase-3 C3 DR arm).
+
+    A TRAINING-side knob, never an eval knob (eval stays at a fixed sensing
+    quality so head-to-heads compare on identical eyes — comparison integrity).
+    Each episode every world draws its own sensing quality
+    ``q ~ U(quality_lo, quality_hi)``, so one policy trains across the whole noise
+    dial and a SINGLE gradient update sees a mix of qualities (domain
+    randomization, not a per-run constant). The draw is env-side and deterministic
+    in ``(root_seed, episode)``; it never touches world dynamics (goldens
+    unchanged) — quality only fogs what a controller observes — and
+    ``quality_rand=None`` leaves observations bit-identical to a fixed-quality run.
+    """
+
+    quality_lo: float
+    quality_hi: float
+
+    def __post_init__(self) -> None:
+        if not (0.0 < self.quality_lo <= self.quality_hi <= 1.0):
+            raise ValueError(
+                "quality-rand bounds must satisfy 0 < lo <= hi <= 1, got "
+                f"lo={self.quality_lo}, hi={self.quality_hi}"
+            )
+
+
+@dataclass(frozen=True)
 class SimConfig:
     name: str
     description: str

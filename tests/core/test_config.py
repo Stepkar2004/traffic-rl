@@ -6,6 +6,7 @@ from traffic_rl.core.config import (
     APPROACHES,
     DemandRandomization,
     DemandSegment,
+    QualityRandomization,
     ScenarioError,
     load_scenario,
 )
@@ -126,6 +127,17 @@ def test_demand_randomization_validation() -> None:
         DemandRandomization(rate_lo_veh_h=-1.0, rate_hi_veh_h=400.0)
     with pytest.raises(ValueError, match="mirror_p"):
         DemandRandomization(rate_lo_veh_h=400.0, rate_hi_veh_h=1200.0, mirror_p=1.5)
+
+
+def test_quality_randomization_validation() -> None:
+    QualityRandomization(quality_lo=0.25, quality_hi=1.0)  # ok
+    QualityRandomization(quality_lo=0.5, quality_hi=0.5)  # lo == hi ok
+    with pytest.raises(ValueError, match="lo <= hi"):
+        QualityRandomization(quality_lo=0.8, quality_hi=0.4)
+    with pytest.raises(ValueError, match="0 < lo"):
+        QualityRandomization(quality_lo=0.0, quality_hi=0.5)
+    with pytest.raises(ValueError, match="hi <= 1"):
+        QualityRandomization(quality_lo=0.5, quality_hi=1.5)
 
 
 def test_demand_randomization_apply_axis_and_mirror() -> None:

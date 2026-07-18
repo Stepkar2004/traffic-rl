@@ -146,7 +146,7 @@ def detect_vehicles(
     speed: npt.ArrayLike,
     uid: npt.ArrayLike,
     leader_gap_m: npt.ArrayLike,
-    quality: float,
+    quality: float | F64,
     key: npt.ArrayLike,
     tick: int,
 ) -> VehicleDetections:
@@ -184,7 +184,7 @@ def detect_vehicles(
 def false_positives(
     approach_lane_local: npt.ArrayLike,
     lane_length_m: npt.ArrayLike,
-    quality: float,
+    quality: float | F64,
     key: npt.ArrayLike,
     tick: int,
 ) -> tuple[BOOL, F64]:
@@ -207,7 +207,7 @@ def false_positives(
 def detect_peds(
     crosswalk_local: npt.ArrayLike,
     uid: npt.ArrayLike,
-    quality: float,
+    quality: float | F64,
     key: npt.ArrayLike,
     tick: int,
 ) -> BOOL:

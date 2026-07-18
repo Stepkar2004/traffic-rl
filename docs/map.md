@@ -119,7 +119,8 @@ src/traffic_rl/
 │   ├── config.py          frozen dataclasses + strict YAML scenario loader;
 │   │                      SensingConfig(quality) is the ADR-0005 noise dial
 │   │                      (optional `sensing:` block; default 1.0 = omniscient);
-│   │                      DemandRandomization(lo,hi,mirror_p) is the B9 training knob
+│   │                      DemandRandomization(lo,hi,mirror_p) is the B9 training knob;
+│   │                      QualityRandomization(lo,hi) is the C3 per-episode quality-DR knob
 │   ├── topology.py        graph tables: nodes/edges/lanes/movements/crosswalks +
 │   │                      movement-conflict matrix; builders: 4-way, corridor
 │   │                      (1xN arterial), NxN grid — through-only chains
@@ -175,7 +176,8 @@ src/traffic_rl/
 │   ├── traffic_env.py     TrafficEnv (batched VectorEnv: 48-channel obs,
 │   │                      action masks, ADR 0004 reward, NEXT_STEP autoreset;
 │   │                      quality<1 routes _observe through the sensors kernel
-│   │                      with per-vehicle world keys) + SingleTrafficEnv (B=1)
+│   │                      with per-vehicle world keys; quality_rand draws per-
+│   │                      episode per-world q for the C3 DR arm) + SingleTrafficEnv (B=1)
 │   └── wrappers.py        FrameStack(env, k): stack last k obs on the channel
 │                          axis (k·48), reseed on NEXT_STEP autoreset; the
 │                          controller-side deque (rl/controller.py) mirrors it
@@ -240,9 +242,12 @@ tests/
 ├── envs/
 │   ├── test_batching.py   batched == sequential; world isolation; the anchor:
 │   │                      B=1 BatchedWorlds step-for-step == World (same seed)
+│   ├── test_quality_rand.py  per-episode per-world quality DR (C3): None-parity,
+│   │                         reproducible draw, per-world variation, resample,
+│   │                         engages the noisy path
 │   ├── test_traffic_env.py   ADR 0004 contract: masks never refused, autoreset
 │   │                         off-by-one, determinism, comm-ablation zeroing,
-│   │                         gymnasium checker
+│   │                         demand_rand re-applies across autoreset, gym checker
 │   └── test_wrappers.py   FrameStack semantics + the parity pin: the wrapper's
 │                          stacked channels == RLController's stack_k deque,
 │                          frame-for-frame, incl. reset + autoreset reseed

@@ -3,6 +3,31 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
+**As of 2026-07-17 (evening) — PHASE-3 PART C UNDERWAY (Stepan greenlit full Part C compute).**
+
+Part C launched; two code fixes landed first (both LOCAL/UNPUSHED, on top of Part B):
+
+- **Bug fix (`3602762`) — demand_rand (B9) now re-draws across the NEXT_STEP autoreset.**
+  `TrafficEnv`'s autoreset called `sim.reset()` WITHOUT `demand_rand`, so B9 randomized episode 0
+  only (training reaches every later episode via the autoreset, not `reset()`). Found while wiring
+  C3, before any C5 run finished — the 2 running C5 runs were killed and relaunched on the fixed
+  path. Differential pin: episode 1 via autoreset == episode 1 via unseeded `reset()`.
+- **C3 prep (this commit) — per-episode, per-world quality randomization (the DR arm).**
+  `QualityRandomization(quality_lo, quality_hi)` + `TrafficEnv(quality_rand=)`: each episode every
+  world draws `q ~ U(lo, hi)`, redrawn on autoreset, so one policy trains across the whole noise
+  dial and a single update sees a mix of qualities. Kernels already broadcast per-element quality
+  (free beyond a type widening); `None` stays bit-identical. `train-ppo --quality-rand`. 242 tests,
+  5 gates green.
+
+**Compute in flight:** 6 C3 fixed-q PPO runs (corridor-rush `--comm --quality {0.75,0.5,0.25}` ×
+seeds {0,1}) training in the background (~90 min). Relaunching next: C5 demand-generalist (2 runs,
+now on the fixed autoreset) + the C3 DR-quality arm (2 runs). Then the CPU-pool sweeps — C1
+(classical × q) + C2 (zero-shot phase-2 ckpts × q) — C4 iff its pre-registered trigger fires,
+C5-eval vs the committed specialist frontier, and Part D (money plot + results/phase-3.md + post
+#3). All LOCAL/UNPUSHED. Do NOT push.
+
+---
+
 **As of 2026-07-17 (later) — PHASE-3 PART B COMPLETE: B9 landed; B2-B9 all in.**
 
 The whole phase-3 code surface is built and pinned. What remains (Part C) is compute-gated

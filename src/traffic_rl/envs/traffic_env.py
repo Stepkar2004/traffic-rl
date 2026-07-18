@@ -24,7 +24,7 @@ from gymnasium.vector import VectorEnv
 from gymnasium.vector.utils import batch_space
 
 from traffic_rl.core.arrays import BOOL, F32, F64, I32, I64, VehicleArrays
-from traffic_rl.core.config import V_WAIT_MPS, DemandRandomization, SimConfig
+from traffic_rl.core.config import V_WAIT_MPS, DemandRandomization, QualityRandomization, SimConfig
 from traffic_rl.core.sensors import detect_peds, detect_vehicles, false_positives
 from traffic_rl.core.signals import Indication, PedIndication
 from traffic_rl.core.topology import N_PHASES
@@ -46,6 +46,9 @@ W_PED_WEIGHT = 1.0
 BETA_TAIL = 2.0
 R_NORM = 100.0
 
+#: salt separating the per-episode quality-DR draw (C3) from any other seeded use
+_QUALITY_RAND_TAG = 0x0C3D2A11
+
 
 class TrafficEnv(VectorEnv[Any, Any, Any]):
     """B stacked worlds, one process, one set of kernels (ADR 0004 §1)."""
@@ -59,6 +62,7 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         comm: bool = True,
         quality: float = 1.0,
         demand_rand: DemandRandomization | None = None,
+        quality_rand: QualityRandomization | None = None,
     ) -> None:
         self.metadata = {"autoreset_mode": gym.vector.AutoresetMode.NEXT_STEP}
         self.num_envs = num_envs
@@ -67,6 +71,10 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         self.quality = quality  # < 1.0 routes _observe through the sensing kernel
         # training-only per-episode demand randomization (B9); None on eval envs
         self._demand_rand = demand_rand
+        # training-only per-episode, per-world quality randomization (C3 DR arm);
+        # None on eval envs. When set, _quality_w holds this episode's per-world q.
+        self._quality_rand = quality_rand
+        self._quality_w: F64 | None = None
         dt = cfg.episode.dt_s
         self._substeps = max(1, round(decision_interval_s / dt))
         if abs(self._substeps * dt - decision_interval_s) > 1e-9:
@@ -148,14 +156,41 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         self._pending_autoreset = False
         self._last_occupied_t[:] = -1.0e9
         self._flow_hist = []
+        self._draw_episode_quality()
         self._refresh_sensor_keys()
         obs = self._observe()
         return obs, {"action_mask": self._action_masks()}
 
+    def _draw_episode_quality(self) -> None:
+        """Redraw each world's sensing quality for the new episode (C3 DR arm).
+
+        ``q ~ U(lo, hi)`` per world from a SeedSequence keyed on
+        ``(root_seed, episode)`` — reproducible and independent of the sim's
+        demand/sensor streams. No-op (``_quality_w`` stays None) when DR is off, so
+        the fixed-quality path is byte-unchanged."""
+        if self._quality_rand is None:
+            self._quality_w = None
+            return
+        qr = self._quality_rand
+        rng = np.random.default_rng(
+            np.random.SeedSequence([self._root_seed, self._episode, _QUALITY_RAND_TAG])
+        )
+        self._quality_w = rng.uniform(qr.quality_lo, qr.quality_hi, self.num_envs)
+
+    def _q_for(self, world_idx: I64) -> float | F64:
+        """This tick's sensing quality for the given world indices: the fixed
+        scalar, or the per-world episode draw when quality-DR is on."""
+        qw = self._quality_w
+        if qw is None:
+            return self.quality
+        out: F64 = qw[world_idx]
+        return out
+
     def _refresh_sensor_keys(self) -> None:
         """Rebuild the per-world / per-approach sensing keys for the new episode
-        (the keys derive from the fresh per-world seeds). No-op when omniscient."""
-        if self.quality >= 1.0:
+        (the keys derive from the fresh per-world seeds). No-op when omniscient
+        (fixed q=1.0 and no quality-DR)."""
+        if self._quality_w is None and self.quality >= 1.0:
             return
         self._sensor_key_u64 = np.array(self.sim._sensor_seed, dtype=np.uint64)
         self._app_key_u64 = self._sensor_key_u64[self._app_world]
@@ -177,6 +212,7 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
             self._pending_autoreset = False
             self._last_occupied_t[:] = -1.0e9
             self._flow_hist = []
+            self._draw_episode_quality()
             self._refresh_sensor_keys()
             obs = self._observe()
             return obs, zeros, false, false, {"action_mask": self._action_masks()}
@@ -211,7 +247,7 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         # NoisyDetection's occupancy mid-crossing check (ADR 0005 §2, detector
         # dwell deferred).
         over_start = np.bincount(lane[(veh.s[:n] - veh.length[:n]) < 0.0], minlength=n_lanes)
-        if self.quality >= 1.0:
+        if self._quality_w is None and self.quality >= 1.0:
             dist = sim._lane_length[lane] - veh.s[:n]
             counts = np.bincount(lane, minlength=n_lanes)
             slow = veh.v[:n] < V_WAIT_MPS
@@ -274,12 +310,14 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         if m:
             waiting_mask = peds.state[:m] == 0
             cw = peds.crosswalk[:m][waiting_mask]
-            if self.quality >= 1.0:
+            if self._quality_w is None and self.quality >= 1.0:
                 ped_counts = np.bincount(cw, minlength=n_cw)
             else:
-                pkey = self._sensor_key_u64[sim._world_of_cw[cw]]
+                cw_world = sim._world_of_cw[cw]
+                pkey = self._sensor_key_u64[cw_world]
+                q_ped = self._q_for(cw_world)
                 seen = detect_peds(
-                    cw % self._n_cw_base, peds.uid[:m][waiting_mask], self.quality, pkey, tick
+                    cw % self._n_cw_base, peds.uid[:m][waiting_mask], q_ped, pkey, tick
                 )
                 ped_counts = np.bincount(cw[seen], minlength=n_cw)
         else:
@@ -334,8 +372,10 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
             gap = np.empty(n, dtype=np.float64)
             gap[order] = gap_s
 
-            key = self._sensor_key_u64[sim._world_of_lane[lane]]
-            det = detect_vehicles(dist, veh.v[:n], veh.uid[:n], gap, self.quality, key, tick)
+            world = sim._world_of_lane[lane]
+            key = self._sensor_key_u64[world]
+            q_veh = self._q_for(world)
+            det = detect_vehicles(dist, veh.v[:n], veh.uid[:n], gap, q_veh, key, tick)
             seen = det.detected
             dl = lane[seen]
             dd = det.dist_meas[seen].astype(np.float32)
@@ -345,8 +385,9 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
             near = np.bincount(dl[dd <= DETECTOR_LEN_M], minlength=n_lanes)
             np.minimum.at(min_dist, dl, dd.astype(np.float64))
 
+        q_app = self._q_for(self._app_world)
         present, fp_dist = false_positives(
-            self._app_base_local, self._app_len, self.quality, self._app_key_u64, tick
+            self._app_base_local, self._app_len, q_app, self._app_key_u64, tick
         )
         if present.any():
             pl = self._app_lane[present]
@@ -387,6 +428,7 @@ class SingleTrafficEnv(gym.Env[np.ndarray, np.ndarray]):
         decision_interval_s: float = 1.0,
         comm: bool = True,
         quality: float = 1.0,
+        quality_rand: QualityRandomization | None = None,
     ) -> None:
         self.metadata = {"render_modes": []}
         self._venv = TrafficEnv(
@@ -396,6 +438,7 @@ class SingleTrafficEnv(gym.Env[np.ndarray, np.ndarray]):
             decision_interval_s=decision_interval_s,
             comm=comm,
             quality=quality,
+            quality_rand=quality_rand,
         )
         self.observation_space = self._venv.single_observation_space
         self.action_space = self._venv.single_action_space

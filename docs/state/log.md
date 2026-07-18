@@ -2,6 +2,19 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-17 · Phase-3 C3 prep: per-episode, per-world quality randomization (the DR arm).**
+  `QualityRandomization(quality_lo, quality_hi)` in `core/config.py` + `TrafficEnv(quality_rand=)`:
+  each training episode every world draws its own sensing quality `q ~ U(lo, hi)` from a
+  SeedSequence keyed on `(root_seed, episode)`, redrawn on the autoreset — so ONE policy trains
+  across the whole noise dial and a single PPO update sees a MIX of qualities (proper domain
+  randomization: the "which training regime generalizes across the dial" arm, vs C3's fixed-q
+  specialists). The sensing kernels already broadcast a per-element quality (`one_m_q = 1 - q`),
+  so per-world quality cost no kernel change beyond a `float | F64` type widening; `_q_for` gathers
+  the world's q for vehicles/peds/false-positives. `quality_rand=None` is byte-identical to a fixed
+  `--quality` (goldens + the q=1.0/0.5 env↔World parity pins unchanged) — quality only fogs what a
+  controller observes, never dynamics. `train-ppo --quality-rand '{...}'`, recorded in config.json
+  (verified live). Tests: None-parity, reproducible draw, per-world variation, per-episode resample,
+  engages-the-noisy-path, config validation. 242 tests, 5 gates green. Not pushed.
 - **2026-07-17 · Phase-3 fix: demand_rand (B9) now re-draws across the autoreset.**
   `TrafficEnv`'s NEXT_STEP autoreset called `sim.reset(...)` WITHOUT `demand_rand`, so B9's
   per-episode randomization only ever hit episode 0 — training reaches every later episode

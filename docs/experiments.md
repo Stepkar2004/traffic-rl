@@ -116,9 +116,9 @@ Evaluate a checkpoint on the leaderboard protocol via controller kind `rl`:
 `config.json` so the checkpoint self-describes its training quality (the training
 env observes noisily, the reward stays true-state).
 
-### `traffic-rl train-ppo <scenario.yaml> [--seed N] [--steps N] [--comm/--no-comm] [--out dir] [--device auto|cuda|cpu] [--quality Q] [--demand-rand JSON]`
+### `traffic-rl train-ppo <scenario.yaml> [--seed N] [--steps N] [--comm/--no-comm] [--out dir] [--device auto|cuda|cpu] [--quality Q] [--demand-rand JSON] [--quality-rand JSON]`
 
-**Current as of phase 3, B9** (`--demand-rand` added; `--quality` at B5; core loop phase-2 chunk 6). Parameter-shared PPO on a corridor or grid
+**Current as of phase 3, C3** (`--quality-rand` added; `--demand-rand` at B9; `--quality` at B5; core loop phase-2 chunk 6). Parameter-shared PPO on a corridor or grid
 (ADR 0004 §5): one Actor/Critic applied to every intersection's 48-channel row,
 team reward per world, GAE cut at truncation boundaries. Defaults are the locked
 hyperparameters (5M steps — pass `--steps 10000000` for grids per the ADR budget
@@ -130,7 +130,13 @@ EPISODE during TRAINING only: each world draws its arterial-axis rate ~U(lo, hi)
 with probability `mirror_p`, swaps the eastbound/westbound rates (direction blindness).
 It is recorded in `config.json` and drawn from a dedicated RNG stream, so omitting it
 leaves schedules bit-identical to before; eval always stays the fixed scenario
-(comparability). This is the C5 demand-generalist substrate. Artifacts land in
+(comparability). This is the C5 demand-generalist substrate. `--quality-rand
+'{"quality_lo": 0.25, "quality_hi": 1.0}'` (phase 3, C3) is the SENSING analog:
+each TRAINING episode every world draws its own sensing quality `q ~ U(lo, hi)`,
+so one policy trains across the whole noise dial (the C3 domain-randomization arm)
+and a single update sees a mix of qualities. It is env-side and deterministic in
+(seed, episode); omitting it is bit-identical to a fixed `--quality`, and eval
+stays a fixed quality. Artifacts land in
 `<out>/<comm|nocomm>/seed<k>/`: `config.json`, `curves.csv` (env_steps, wall_s,
 train_return, eval_return, eval_p95_wait, policy_loss, value_loss, entropy),
 `ckpt_best/final.pt` + `critic_best/final.pt`. Measured wall time (run session
