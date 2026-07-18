@@ -331,6 +331,64 @@ class BatchedWorlds:
         active = self.signals.active.reshape(self.num_worlds, self.n_i_base)
         self.decision_step(active.astype(np.int32), substeps)
 
+    # -- eval-time stepping (bit-exact to World's per-interval order) -------------
+    #
+    # ``decision_step`` (training) observes at the DECISION BOUNDARY. ``World`` +
+    # its controller loop observe ONE ``signals.advance`` (0.1 s) FRESHER: World's
+    # decision tick advances the signals FIRST, THEN observes/decides/requests.
+    # These two methods split ``decision_step``'s body at exactly that seam so an
+    # eval caller can observe between the leading advance and the request, making
+    # the batched RL/classical eval bit-exact to a single-world ``run_cell``. The
+    # training ``decision_step`` above is byte-unchanged.
+
+    def eval_advance_signals(self) -> None:
+        """The decision substep's LEADING ``signals.advance`` (eval only).
+
+        Runs exactly one advance WITHOUT touching ``step_count``, so a caller
+        that observes right after sees the signal machine post-advance but with
+        vehicles still at their end-of-previous-interval positions — World's
+        exact decision-tick observation state (post-advance, pre-vehicle-move).
+        """
+        dt = self.cfg.episode.dt_s
+        self.signals.advance(dt, self._demand_by_phase(), self._ped_calls())
+
+    def eval_apply_and_run(self, desired_phase: I32, substeps: int) -> I64:
+        """Apply one action per intersection, then finish the interval (eval only).
+
+        Precondition: ``eval_advance_signals`` has already run substep 0's leading
+        advance. This applies the request against that advanced state and runs the
+        REST of substep 0, then ``substeps - 1`` FULL plain substeps — the same
+        sub-step order and kernels as ``decision_step``, only with substep 0's
+        advance elided (the caller ran it). Returns per-world refused.
+        """
+        dt = self.cfg.episode.dt_s
+        # substep 0 (signals already advanced by eval_advance_signals): request,
+        # then the rest of the substep.
+        accepted = self.signals.request_batch(desired_phase.reshape(-1).astype(np.int32))
+        refused: I64 = (~accepted).reshape(self.num_worlds, self.n_i_base).sum(axis=1)
+        self._update_walls()
+        self._spawn_vehicles()
+        self._advance_vehicles()
+        self._spawn_peds()
+        self._advance_peds()
+        accumulate_step(self.vehicles, dt)
+        self._accumulate_wait(dt)
+        self.step_count += 1
+        # substeps 1..N-1: full plain substeps (advance included, no request).
+        for _ in range(1, substeps):
+            self.signals.advance(dt, self._demand_by_phase(), self._ped_calls())
+            self._update_walls()
+            self._spawn_vehicles()
+            self._advance_vehicles()
+            self._spawn_peds()
+            self._advance_peds()
+            accumulate_step(self.vehicles, dt)
+            self._accumulate_wait(dt)
+            self.step_count += 1
+        if self._collectors is not None:
+            self._refused_by_world += refused
+        return refused
+
     # -- sub-steps (mirrors World, merged arrays) --------------------------------
 
     def _demand_by_phase(self) -> BOOL:

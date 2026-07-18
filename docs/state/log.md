@@ -2,6 +2,19 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-18 · Phase-3 batching B2: batched RL eval, bit-exact to run_cell (~7x on 4/5 stages).**
+  New `experiments/batched_eval.py::eval_rl_batched` evaluates one checkpoint over B eval seeds in
+  ONE batched episode → B rows in `run_cell`'s schema. Stepan's eval-timing call: reproduce the
+  documented eval-time skew so batched == single-world `run_cell` BIT-EXACT (not the training-time
+  decision-boundary observation). Achieved via a new eval driver on `BatchedWorlds`
+  (`eval_advance_signals` does the decision tick's leading `signals.advance`; `eval_apply_and_run`
+  requests + finishes the interval — body-for-body `decision_step` with substep-0's advance elided;
+  training `decision_step` byte-unchanged) + a reset-pollution fix (clear `_flow_hist`/`_last_occupied_t`
+  after reset so the per-interval observe cadence matches World). `TrafficEnv` gains additive
+  `collect_metrics=` + `options={"world_seeds"}` (so batched worlds use the exact EVAL_SEEDS).
+  `run_rl_quality_sweep` now dispatches one batched cell per (scenario, ckpt, q). Pins: run_cell
+  parity BIT-EXACT q∈{1.0,0.5}, batching-invariance, mask-parity, split-sanity (eval driver leaves
+  the sim in the same state as decision_step). 254 tests, 5 gates green. Not pushed.
 - **2026-07-18 · Phase-3 batching B1: batched ADR-0002 metrics on `BatchedWorlds`.**
   Opt-in `collect_metrics` (OFF by default → training + single-world paths byte-unchanged):
   per-world completion collectors (veh via the reused `MetricsCollector.on_vehicles_completed`;

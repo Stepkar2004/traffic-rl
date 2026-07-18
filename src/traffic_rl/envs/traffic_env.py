@@ -63,6 +63,7 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         quality: float = 1.0,
         demand_rand: DemandRandomization | None = None,
         quality_rand: QualityRandomization | None = None,
+        collect_metrics: bool = False,
     ) -> None:
         self.metadata = {"autoreset_mode": gym.vector.AutoresetMode.NEXT_STEP}
         self.num_envs = num_envs
@@ -80,7 +81,13 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         if abs(self._substeps * dt - decision_interval_s) > 1e-9:
             raise ValueError(f"decision interval {decision_interval_s}s not a multiple of dt")
         self.episode_steps = round(episode_s / decision_interval_s)
-        self.sim = BatchedWorlds(cfg, num_envs, episode_s=episode_s, tail_theta_s=TAIL_THETA_S)
+        self.sim = BatchedWorlds(
+            cfg,
+            num_envs,
+            episode_s=episode_s,
+            tail_theta_s=TAIL_THETA_S,
+            collect_metrics=collect_metrics,
+        )
         self.n_i = self.sim.n_i_base
 
         self.single_observation_space = gym.spaces.Box(
@@ -150,7 +157,17 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
             # an unseeded reset is a fresh episode: demand advances, and the
             # whole sequence stays deterministic given the last seed
             self._episode += 1
-        self.sim.reset(self._root_seed, self._episode, demand_rand=self._demand_rand)
+        # An explicit per-world seed set (batched eval, phase-3 B2) reproduces the
+        # exact EVAL_SEEDS a single-world ``run_cell`` used, so each batched world
+        # matches ``World(seed=EVAL_SEEDS[b])`` bit-for-bit. Absent => today's
+        # ``world_seed(root, episode, b)`` derivation, byte-unchanged.
+        world_seeds = options.get("world_seeds") if options else None
+        self.sim.reset(
+            self._root_seed,
+            self._episode,
+            world_seeds=world_seeds,
+            demand_rand=self._demand_rand,
+        )
         self._elapsed = 0
         self._needs_reset = False
         self._pending_autoreset = False

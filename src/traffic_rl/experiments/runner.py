@@ -236,19 +236,29 @@ def run_rl_quality_sweep(
     the classical sweep, so the money plot is matched-seed. C2 is a GENERALIZATION
     probe (labelled as such in the writeup), never a head-to-head against a policy
     trained for the noise it is judged in.
+
+    Phase-3 B2: each pool task is ONE batched cell — one (scenario, params, q)
+    evaluated over ALL ``seeds`` at once via ``eval_rl_batched`` (num_worlds=B),
+    ~7x faster than one process per seed. Rows keep the same schema and are
+    BIT-EXACT to the per-seed ``run_cell`` they replace: the batched eval driver
+    reproduces World's eval-time observation timing (observe one signals.advance
+    fresher), pinned in ``test_batched_eval.py``.
     """
-    cells: list[tuple[str, dict[str, Any], int, float]] = [
-        (sc, params, seed, q) for sc, params in checkpoints for q in qualities for seed in seeds
+    # local import: batched_eval imports _rl_provenance from this module, so a
+    # top-level import here would be circular.
+    from traffic_rl.experiments.batched_eval import eval_rl_batched
+
+    cells: list[tuple[str, dict[str, Any], float]] = [
+        (sc, params, q) for sc, params in checkpoints for q in qualities
     ]
     rows: list[dict[str, Any]] = []
     t0 = time.perf_counter()
     with ProcessPoolExecutor(max_workers=workers) as pool:
         futures = [
-            pool.submit(run_cell, sc, "rl", params, seed, measure_s, q)
-            for sc, params, seed, q in cells
+            pool.submit(eval_rl_batched, sc, params, seeds, q, measure_s) for sc, params, q in cells
         ]
         for i, fut in enumerate(as_completed(futures), 1):
-            rows.append(fut.result())
+            rows.extend(fut.result())
             if i % 40 == 0 or i == len(cells):
                 elapsed = time.perf_counter() - t0
                 print(f"  rl-quality-sweep: {i}/{len(cells)} cells ({elapsed:,.0f}s)", flush=True)

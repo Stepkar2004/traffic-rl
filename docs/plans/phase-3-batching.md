@@ -117,11 +117,44 @@ unchanged (an existing `demand_rand=None` B=1 parity test still passes untouched
 
 ---
 
+## THE EVAL-TIMING DECISION (Stepan, 2026-07-18): bit-exact to run_cell
+
+A subagent's first B2 pass discovered the batched `TrafficEnv.step` observes at the
+DECISION BOUNDARY, but the single-world `run_cell` path (`World`+controller loop) observes
+one `signals.advance` (0.1s) FRESHER — the documented eval-time skew (RLController docstring).
+So `TrafficEnv.step` timing is NOT bit-exact to `run_cell` (it occasionally flips a near-tied
+greedy argmax; only the signal-timer channels differ). **Stepan chose: reproduce the eval-time
+timing so batched == run_cell bit-exact** (faithful accelerator; keeps phase-3 comparable to
+phase-1/2 + the classical arms; satisfies the "bit-exact or it does not ship" rule).
+
+### The shared eval driver (B2 + B3 both use it) — mirror World.step's per-interval order
+
+Add EVAL-ONLY methods to `BatchedWorlds` (training `decision_step` UNTOUCHED / byte-unchanged):
+- `eval_advance_signals()`: one `self.signals.advance(dt, self._demand_by_phase(), self._ped_calls())`
+  — the decision substep's LEADING advance, so the caller observes at eval-time (post-advance,
+  pre-vehicle-move), exactly as `World.step`.
+- `eval_apply_and_run(desired_phase, substeps) -> refused`: `request_batch(desired_phase)`, then
+  finish THIS substep (walls, spawn, advance_veh, spawn_peds, advance_peds, accumulate_step,
+  _accumulate_wait, step_count+=1), then `substeps-1` FULL plain substeps (each: advance, walls,
+  spawn, advance_veh, peds, accumulate, step_count+=1). Accumulate `_refused_by_world` when
+  collecting. Sanity pin: `eval_advance_signals()+eval_apply_and_run(a)` leaves the sim in the
+  SAME state as `decision_step(a)` for the same action (proves the split didn't change dynamics).
+
+The eval loop (per interval, mirrors World): `eval_advance_signals()` -> `env._observe()`
+(eval-time obs) -> decide (RL policy / classical controller) -> `eval_apply_and_run(action)`.
+**Reset-pollution fix:** `TrafficEnv.reset()` calls `_observe()` once (t=0, pre-advance), which
+appends a stray `_flow_hist` entry + touches `_last_occupied_t`; World starts those EMPTY and its
+first observe is the first entry. So after `env.reset(options={world_seeds})`, clear
+`env._last_occupied_t[:] = -1e9; env._flow_hist = []` BEFORE the loop, so the per-interval observe
+sequence matches World's 1-entry-per-decision-tick cadence. Every decision (incl. the first at
+t=0) uses the POST-advance obs — no pre-advance obs is ever used for a decision.
+
 ## Chunk B2 — batched RL eval (+ wire the RL sweep stages)
 
-**Goal.** Evaluate an RL checkpoint over B seeds in one batched episode, producing B metric
-rows == B single-world `run_cell(..., "rl", ...)` rows, bit-exact. Wire
-`run_rl_quality_sweep` to run each (scenario, checkpoint, q) cell's B seeds batched.
+**Goal.** Evaluate an RL checkpoint over B seeds in one batched episode via the eval driver
+above, producing B metric rows == B single-world `run_cell(..., "rl", ...)` rows, BIT-EXACT
+(now achievable with eval-time timing). Wire `run_rl_quality_sweep` to run each (scenario,
+checkpoint, q) cell's B seeds batched.
 
 **Design.**
 - New `experiments/batched_eval.py::eval_rl_batched(scenario_cfg, params, seeds, quality)`:

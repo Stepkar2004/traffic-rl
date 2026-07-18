@@ -3,7 +3,7 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-18 — BATCHING BUILD UNDERWAY (plan: [phase-3-batching.md](../plans/phase-3-batching.md)). B1 LANDED.**
+**As of 2026-07-18 — BATCHING BUILD UNDERWAY (plan: [phase-3-batching.md](../plans/phase-3-batching.md)). B1 + B2 LANDED.**
 
 Goal: make the phase-3 sweeps ~7x faster by evaluating a cell's 20 eval seeds as one
 `BatchedWorlds` instead of 20 single-world processes. Three gated, bit-exact-pinned chunks:
@@ -17,7 +17,20 @@ not ship (a batched cell feeds the money plot). Return point: checkpoint `d68282
   §6 cohort math is now ONE shared helper (`metrics.finalize_episode_metrics`) both paths
   call. Pin (`tests/envs/test_batched_metrics.py`, written first): a B=4 batched run's
   per-world metrics == 4 standalone `World` runs FIELD-BY-FIELD BIT-EXACT (corridor + grid,
-  two half-cycles exercising the refused + forced arms). **248 tests, 5 gates green.** NEXT: B2.
+  two half-cycles exercising the refused + forced arms). **248 tests, 5 gates green.**
+- **EVAL-TIMING DECISION (Stepan): bit-exact to `run_cell`.** The batched `TrafficEnv.step`
+  observes at the decision boundary; the single-world `run_cell` path observes one
+  `signals.advance` (0.1s) fresher (the documented eval-time skew). Stepan chose to reproduce
+  the eval-time timing so batched == `run_cell` bit-exact (faithful accelerator; keeps phase-3
+  comparable to phase-1/2 + the classical arms). Shapes B2 AND B3.
+- **B2 DONE — batched RL eval (~7x on C2/C3/DR/C5).** New `experiments/batched_eval.py`
+  ::`eval_rl_batched` runs a checkpoint over B eval seeds in ONE batched episode via a new
+  eval driver on `BatchedWorlds` (`eval_advance_signals` → `_observe` → greedy → `eval_apply_and_run`,
+  mirroring `World.step`'s per-interval order; training `decision_step` byte-unchanged). Additive
+  `TrafficEnv(collect_metrics=, options={world_seeds})`. `run_rl_quality_sweep` now runs one
+  batched cell per (scenario, ckpt, q). Pins: **run_cell parity BIT-EXACT** (q∈{1.0,0.5}),
+  batching-invariance, mask-parity, split-sanity (eval driver == decision_step dynamics).
+  **254 tests, 5 gates green.** NEXT: B3 (batched classical — reuses the eval driver).
 
 ---
 
