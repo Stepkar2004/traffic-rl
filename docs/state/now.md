@@ -3,6 +3,25 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
+**As of 2026-07-18 — PERF INVESTIGATION DONE; BATCHING GREENLIT; this commit is a CHECKPOINT before the batching build.**
+
+Part C's post-training sweeps were relaunched (15 workers) then CANCELLED — no stage JSON had
+landed, nothing lost. A perf investigation (why the sweeps take ~2.5-3 h) found the sim is
+per-step NumPy-dispatch-bound on small single-world arrays; the win is BATCHING the eval seeds
+into one `BatchedWorlds` (measured **~7.2-7.4x per core**, fixed-time driver). Numba-JIT and the
+dispatch-removal micro-opts A-H were both TESTED and REJECTED (subsumed by batching /
+non-reproducible); all recorded in [watchout-later.md](watchout-later.md) (Performance section),
+with `J` (physically lane-sorted SoA to kill the per-step `lexsort`) flagged as the one hot-loop
+lever that still pays under batching — deferred.
+
+**Stepan's call (2026-07-18): implement batching FIRST** (a real feature — batched classical
+controllers + batched ADR-0002 metrics + batched noisy observation, all pinned bit-exact against
+the single-world path), **THEN rerun the Part C sweeps (~30 min batched), THEN Part D.** This
+commit is the marked CHECKPOINT to return to before that work begins. Part C sweeps + Part D still
+pending (report code NOT yet written). All LOCAL/UNPUSHED (Stepan pushes). Do NOT push.
+
+---
+
 **As of 2026-07-17 (evening) — PHASE-3 PART C UNDERWAY (Stepan greenlit full Part C compute).**
 
 Part C launched; two code fixes landed first (both LOCAL/UNPUSHED, on top of Part B):
@@ -19,14 +38,20 @@ Part C launched; two code fixes landed first (both LOCAL/UNPUSHED, on top of Par
   (free beyond a type widening); `None` stays bit-identical. `train-ppo --quality-rand`. 242 tests,
   5 gates green.
 
-**Compute in flight:** all 10 Part-C training runs are in the background — 6 C3 fixed-q
-(corridor-rush `--comm --quality {0.75,0.5,0.25}` × seeds 0,1) + 2 C5 demand-generalist +
-2 C3 DR-quality (`--quality-rand`). The **C1** (classical) and **C2** (zero-shot RL) sweep
-drivers are built + committed build-only, both on shared held-out seeds 1000-1019 so classical +
-RL overlay matched-seed (`traffic-rl quality-sweep` / `zero-shot-sweep`). Pending training
-completion (the orchestrator notifies): run C1 + C2 on the CPU pool, eval the trained-at-q + DR +
-generalist checkpoints, check the C4 trigger (plain PPO@q=0.5 vs actuated@q=0.5, non-overlapping
-CIs), then Part D (money plot + results/phase-3.md + post #3). All LOCAL/UNPUSHED. Do NOT push.
+**Trainings DONE; eval sweeps RUNNING.** All 10 Part-C runs finished to ~5M steps (ckpt_best +
+final, no crashes): 6 C3 fixed-q (`ppo-c3-q{0.75,0.5,0.25}`) + 2 C5 demand-generalist
+(`ppo-c5-demandgen`) + 2 C3 DR-quality (`ppo-c3-qrand`), all `comm/seed{0,1}` under `runs/rl/`.
+The post-training eval pipeline is running in the background (task `b2y6feaw5`, ETA ~2h, monitor
+`bontid78p`) via `<scratchpad>/phase3_sweeps.py` — 5 stages writing `runs/sweep/phase3-*.json`:
+C1 classical + C2 zero-shot + C3 trained-at-q + DR + C5 demand. (First launch fork-bombed on a
+Windows `multiprocessing` `__main__`-guard bug in the ad-hoc script — found, fixed, validated,
+relaunched; committed code untouched.)
+
+**Pending — Part D (build when the sweeps finish; report code NOT yet written):** money plot
+(p95 vs quality, corridor-rush; fixed-time floor, NO coordinated line), C4 trigger check (plain
+PPO@q=0.5 vs actuated@q=0.5, non-overlapping CIs), C5 generalist-vs-specialist chart, single/grid
+panels, `results/phase-3.md`, README para + post #3 draft, then delete the deep-plan spec. All
+LOCAL/UNPUSHED (16 commits ahead, incl. the B9 autoreset fix). Do NOT push.
 
 ---
 

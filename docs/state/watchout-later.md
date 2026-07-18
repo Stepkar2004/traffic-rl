@@ -75,3 +75,63 @@
   now a standing stress axis, named in the phase-4 section of
   [phases-4-5-draft.md](../plans/phases-4-5-draft.md) for the re-run under
   heterogeneity.
+
+## Performance — deferred / rejected optimizations
+
+> Not realism concerns — sweep/sim throughput ideas surfaced 2026-07-18 while probing why
+> the phase-3 post-training sweeps take ~2-3 h. Recorded here so they are not re-litigated.
+> **The finding:** the sim is per-step NumPy-dispatch-bound on small single-world arrays.
+> **The win = BATCHING** (run the eval seeds as one `BatchedWorlds`, num_envs>1): measured
+> **~7.2-7.4x per core** end-to-end (reuses `envs/batching.py`; needs the classical
+> controllers vectorized across worlds + batched-vs-sequential determinism re-verified).
+> **Rejected: Numba-JIT** the hot kernel — 12.8x on the isolated kernel but only ~1.15x
+> once batched, requires downgrading numpy (2.5.1 -> <=2.4, numba incompat) AND breaks
+> bit-exactness (float reassoc). **Rejected: the dispatch-removal micro-opts A-H** — TESTED
+> in isolation and combined on the batched substrate (all bit-exact-verified): each ~1.00x,
+> combined only **~1.05x batched** (~1.12x single-world). Batching amortizes the exact
+> dispatch overhead they target, so they are subsumed by it. Do NOT re-test A-H.
+> Probe scripts: session scratchpad `probe_perf.py`, `probe_opts.py`.
+
+### D — drop redundant `.astype(np.float32)` guards in the vehicle kernels — deferred (flagged)
+- **What.** ~6 defensive `.astype(np.float32)` copies/step in `idm_acceleration`,
+  `ballistic_update`, `apply_walls` (`core/vehicles.py`) and `wall_active` (`core/world.py`)
+  return arrays that are already float32 under NEP-50 scalar promotion.
+- **Why deferred (not done).** Near-noise payoff, AND **phase 4 reworks exactly these
+  kernels** (bounded brakes, crash detection) — new physics terms are how float64
+  promotion sneaks back, so the guards may become load-bearing again; removing them now
+  risks a phase-4 re-add. Do only behind an explicit dtype audit.
+- **Which phase / hook.** Phase 4 (bounded brakes); `core/vehicles.py` kernels. If ever
+  removed, assert `out.dtype == np.float32` first and re-run the golden traces.
+
+### F — `functools.lru_cache` on `load_scenario` in the sweep runner — deferred (orthogonal)
+- **What.** `run_cell` re-parses the scenario YAML + rebuilds topology on every one of
+  ~1600 cells (`experiments/runner.py`, `core/config.load_scenario`).
+- **Why deferred.** The 39k-step episode dwarfs the per-cell setup, and it is OUTSIDE the
+  batched hot loop (does not stack with batching). Only worth it if per-cell setup ever
+  dominates (e.g. very short episodes). Bit-exact (SimConfig is only `dataclasses.replace`d).
+- **Hook / trigger.** `runner.py`; revisit if sweep-setup shows up in a profile.
+
+### I — `Observation.observe` cleanup — deferred (single-world classical path only)
+- **What.** `_flow_hist` Python list with `pop(0)` -> `deque`; the 4 per-approach full-lane
+  `veh.lane == lane_id` scans -> one `lane_order` grouping; `earliest_switch_wait(node)`
+  builds the full vector to read one element (`control/observation.py`, `signals.py:159`).
+- **Why deferred.** Matters for the classical sweep's `actuated`/`max_pressure` arms, which
+  are single-world (controllers are per-intersection Python objects, NOT batched). If those
+  arms are ever batched across worlds, this is moot; if not, it is a modest single-world win.
+- **Hook / trigger.** `control/observation.py`; revisit WHEN batching the classical
+  controllers (decide: batch the Observation vs. keep single-world + this cleanup).
+
+### J — keep the SoA physically lane-sorted; kill the per-step `lexsort` + gather/scatter — deferred (HARD, highest ceiling)
+- **What.** `step_vehicles` rebuilds the CSR order via `np.lexsort` and gathers ~10 columns
+  into order-space every step (`core/arrays.py::lane_order`, `core/vehicles.py:260-282`).
+  IDM forbids in-lane overtaking, so within-lane order is stable between steps — maintain it
+  incrementally on spawn/transfer/compact and run the kernel on `[:n]` directly.
+- **Why this one is different (and worth a future chunk).** Unlike A-H, `lexsort` is
+  `O(n log n)` + the gathers are `O(n)` — they scale WITH the data, so **batching does NOT
+  dilute this** (at num_envs=20 the sort is over ~1300 elements/step). This is the only
+  hot-loop optimization expected to still pay off ON the batched substrate.
+- **Why deferred.** HIGH determinism risk — the incremental order must reproduce lexsort's
+  stable tie-break bit-for-bit or golden traces move; do it as a dedicated perf chunk behind
+  the determinism suite, and profile the lexsort/gather fraction of `step_vehicles` first.
+- **Which phase / hook.** A dedicated perf chunk (post-batching); `core/arrays.py` +
+  `core/vehicles.py`.

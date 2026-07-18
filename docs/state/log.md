@@ -2,6 +2,17 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-18 · Perf investigation + CHECKPOINT (no src change): batching is the sweep win.**
+  Probed why the phase-3 sweeps take ~2.5-3 h — the sim is per-step NumPy-dispatch-bound on small
+  single-world arrays. Measured (real `BatchedWorlds`, fixed-time driver): batching the 20 eval
+  seeds into one vectorized world = **~7.2-7.4x per core**. Numba-JIT REJECTED (12.8x on the
+  isolated kernel but ~1.15x once batched; needs numpy<=2.4; breaks bit-exactness). The 6
+  dispatch-removal micro-opts A-H REJECTED (each reimplemented bit-exact + measured on the batched
+  substrate: combined ~1.05x — batching already amortizes the dispatch overhead they target). All
+  recorded in watchout-later.md (Performance section) incl. deferred D/F/I/J (J = kill the per-step
+  `lexsort`, the one lever that still pays under batching). Stepan greenlit implementing batching
+  before rerunning Part C. This commit CHECKPOINTs the pre-batching tree (docs only; gates green).
+  Not pushed.
 - **2026-07-17 · Phase-3 C2 driver + matched-seed alignment: the zero-shot noise probe.**
   `run_rl_quality_sweep(checkpoints, ...)` (experiments/runner.py) + `traffic-rl zero-shot-sweep`:
   evaluates fixed RL checkpoints (each tied to its training scenario) across the quality dial on
