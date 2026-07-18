@@ -32,10 +32,40 @@ rerun Part C + Part D. Governing rule: bit-exact vs the single-world path or it 
     four, a grid guard, + batching invariance. Probe (per-core, B=20): 1.0s controllers ~24x,
     actuated ~61x — far above the ~7x target, so no controller vectorization needed.
   - **281 tests, 5 gates green.** All batching (B1-B3) is bit-exact vs the single-world path.
-  **NEXT — B4:** rerun the 5 Part-C sweep stages batched (RL via `run_rl_quality_sweep`, classical
-  via `run_quality_sweep`; writes `runs/sweep/phase3-*.json`), then build Part D (money plot, C4
-  trigger, C5 chart, single/grid panels, `results/phase-3.md`, README + post #3), then absorb +
-  delete the deep-plan spec AND phase-3-batching.md. Do NOT push.
+
+- **B4 SWEEPS DONE (2026-07-18) — all 5 Part-C stages rerun BATCHED, data landed + validated.**
+  Ran `<scratchpad>/phase3_sweeps.py` (resumable, skips a stage whose JSON exists). All 5 JSONs in
+  `runs/sweep/` (gitignored): `phase3-quality.json` (C1 classical, 1600 rows), `phase3-zeroshot.json`
+  (C2, 300), `phase3-trained-at-q.json` (C3, 600), `phase3-dr.json` (DR, 200), `phase3-c5-demand.json`
+  (C5, 400). Total ~30-37 min (vs old ~2.5-3h). Real-data validation: fixed_time byte-FLAT across q
+  (noise-immune, as required); max_pressure degrades monotonically as sensors fog. **CPU note:** run
+  at 12 workers then relaunched at 6 (Stepan gaming); the driver is now resumable so C1 was not redone.
+  - **C4 TRIGGER FIRES (flag for Stepan — needs a training decision):** train-for-condition PPO@q=0.5
+    LOSES to actuated@q=0.5 on matched seeds, non-overlapping CIs — actuated 35.3 [34.6,35.9] vs
+    PPO-c3-q0.5 seed0 63.4 [57.5,70.8], seed1 44.1 [40.7,47.8]. Per the pre-registered protocol this
+    warrants training the k=4 frame-stack (memory) arm (comm, 2 seeds, q=0.5, ~1.5h). NOT auto-run
+    (compute; Stepan gaming) — his call when to schedule. Alternative: record "trigger fired, memory
+    arm pending" and ship Part D without it, adding it later.
+
+**NEXT — Part D (the phase-3 writeup + figures; all sweep data ready on disk). Best as a FOCUSED
+fresh session** (public deliverable — figures + `results/phase-3.md` + post #3 interpret each other;
+judgment-heavy, so keep it out of a long tail-context). Build order + design notes:
+- **Money plot** `docs/assets/phase-3-quality-sweep.png`: corridor-rush, p95 wait vs quality, per
+  controller. **Use a LOG y-axis** (data spans ~35s to ~800s). Lines: fixed_time (floor, flat 312s),
+  actuated (robust ~35s flat), webster (flat ~52s — omniscient flow, ADR 0005 §2), max_pressure
+  (549→668), max_pressure_filtered (515→805 — NOTE the filter HELPS at q=1 but HURTS under heavy
+  noise here, an honest surprise worth examining); RL arms — zero-shot PPO (C2: ~35s to q=0.5 then
+  cliff to 74s@q0.25), trained-at-q diagonal (each C3 ckpt at ITS train-q; q=1.0 anchor = phase-2
+  ppo/comm/seed0 @ C2 q=1.0), DR PPO (from phase3-dr.json across q). **NO coordinated line** (narrative
+  rule). Crossovers are the findings.
+- **C4 outcome:** trigger FIRED (above) — write it up; decide on the frame-stack training with Stepan.
+- **C5 chart:** generalist-vs-specialist per-demand (phase3-c5-demand.json; same axes as the phase-2
+  demand-sweep fig, no green-wave line). **Secondary:** single + grid classical panels.
+- **`docs/results/phase-3.md`** (matched seeds, CIs via `stats.bootstrap_ci`/`CI.overlaps`, zero-shot
+  vs trained-at-q contrast, DR claim, filtered-MP verdict, C4 outcome, honest negatives incl. PPO
+  losing to actuated under noise on the corridor). README para + post #3 draft (docs/posts, gitignored,
+  no em dashes). Then experiments.md/map.md currency, now.md/log.md, and **absorb + delete BOTH
+  `docs/plans/phase-3-deep-plan-spec.md` AND `docs/plans/phase-3-batching.md`**. Do NOT push.
 
 - **B1 DONE — batched ADR-0002 metrics on `BatchedWorlds`** (opt-in `collect_metrics`, OFF
   by default so training + single-world paths are byte-unchanged). Per-world completion

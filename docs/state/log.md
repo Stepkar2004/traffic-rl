@@ -2,6 +2,17 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-18 · Phase-3 B4: Part-C sweeps rerun BATCHED — all 5 stages, data landed + validated.**
+  Ran the batched sweep driver (resumable — skips a stage whose JSON exists). 5 JSONs in `runs/sweep/`
+  (gitignored): C1 classical (1600 rows), C2 zero-shot (300), C3 trained-at-q (600), DR (200), C5
+  demand (400). ~30-37 min total (vs the old ~2.5-3h single-world estimate) — the batching payoff,
+  realized end to end. Validation: fixed_time byte-FLAT across q (noise-immune, as required);
+  max_pressure degrades monotonically as sensors fog. Run at 12 workers then relaunched at 6 mid-run
+  (Stepan gaming); the resumable driver preserved the completed C1. **C4 trigger FIRES:**
+  train-for-condition PPO@q=0.5 loses to actuated@q=0.5 on matched seeds, non-overlapping CIs
+  (actuated 35.3 [34.6,35.9] vs PPO seeds 44.1 / 63.4) — per protocol warrants the k=4 frame-stack
+  arm (~1.5h training, flagged for Stepan, not auto-run). Docs-only commit; NEXT = Part D (figures +
+  writeup, best as a focused fresh session — see now.md for design notes). Not pushed.
 - **2026-07-18 · Phase-3 batching B3b: batched classical eval, bit-exact to run_cell (~24-61x).**
   New `experiments/batched_eval.py::eval_classical_batched` evaluates one classical controller
   over B eval seeds in ONE batched episode → B rows in `run_cell`'s schema, BIT-EXACT. The
