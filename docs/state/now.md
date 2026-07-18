@@ -19,12 +19,14 @@ Part C launched; two code fixes landed first (both LOCAL/UNPUSHED, on top of Par
   (free beyond a type widening); `None` stays bit-identical. `train-ppo --quality-rand`. 242 tests,
   5 gates green.
 
-**Compute in flight:** 6 C3 fixed-q PPO runs (corridor-rush `--comm --quality {0.75,0.5,0.25}` ×
-seeds {0,1}) training in the background (~90 min). Relaunching next: C5 demand-generalist (2 runs,
-now on the fixed autoreset) + the C3 DR-quality arm (2 runs). Then the CPU-pool sweeps — C1
-(classical × q) + C2 (zero-shot phase-2 ckpts × q) — C4 iff its pre-registered trigger fires,
-C5-eval vs the committed specialist frontier, and Part D (money plot + results/phase-3.md + post
-#3). All LOCAL/UNPUSHED. Do NOT push.
+**Compute in flight:** all 10 Part-C training runs are in the background — 6 C3 fixed-q
+(corridor-rush `--comm --quality {0.75,0.5,0.25}` × seeds 0,1) + 2 C5 demand-generalist +
+2 C3 DR-quality (`--quality-rand`). The **C1** (classical) and **C2** (zero-shot RL) sweep
+drivers are built + committed build-only, both on shared held-out seeds 1000-1019 so classical +
+RL overlay matched-seed (`traffic-rl quality-sweep` / `zero-shot-sweep`). Pending training
+completion (the orchestrator notifies): run C1 + C2 on the CPU pool, eval the trained-at-q + DR +
+generalist checkpoints, check the C4 trigger (plain PPO@q=0.5 vs actuated@q=0.5, non-overlapping
+CIs), then Part D (money plot + results/phase-3.md + post #3). All LOCAL/UNPUSHED. Do NOT push.
 
 ---
 

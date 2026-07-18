@@ -172,7 +172,6 @@ def leaderboard(
 
 @app.command()
 def quality_sweep(
-    n_seeds: Annotated[int, typer.Option(help="Seeds per (controller, scenario, quality).")] = 20,
     workers: Annotated[int | None, typer.Option(help="Process-pool size (default: cores).")] = None,
     scenario_dir: Annotated[Path, typer.Option(help="Scenario YAML directory.")] = Path(
         "scenarios"
@@ -203,11 +202,65 @@ def quality_sweep(
     rows = run_quality_sweep(
         scenario_dir=scenario_dir,
         calibration=calibration,
-        n_seeds=n_seeds,
         workers=workers,
         out_path=out,
     )
     typer.echo(f"quality-sweep: {len(rows)} rows -> {out}")
+
+
+@app.command()
+def zero_shot_sweep(
+    runs_dir: Annotated[Path, typer.Option(help="Where phase-2 checkpoints live.")] = Path(
+        "runs/rl"
+    ),
+    workers: Annotated[int | None, typer.Option(help="Process-pool size (default: cores).")] = None,
+    scenario_dir: Annotated[Path, typer.Option(help="Scenario YAML directory.")] = Path(
+        "scenarios"
+    ),
+    out: Annotated[Path, typer.Option(help="Raw rows JSON.")] = Path(
+        "runs/sweep/phase3-zeroshot.json"
+    ),
+) -> None:
+    """Phase-3 C2: the zero-shot omniscience-overfit probe.
+
+    Evaluate the q=1.0-trained phase-2 checkpoints (PPO comm/nocomm on
+    corridor-rush, DQN on single-rush-ns) across quality {1.0, 0.9, 0.75, 0.5,
+    0.25} on the held-out eval seeds. A GENERALIZATION probe, labelled as such
+    (comparison integrity): does a policy trained on perfect eyes fall off a cliff
+    when they fog? Missing checkpoints are skipped. Rows land in <out>.
+    """
+    from traffic_rl.experiments.runner import run_rl_quality_sweep
+
+    corridor = str(scenario_dir / "corridor-rush.yaml")
+    single = str(scenario_dir / "single-rush-ns.yaml")
+    candidates: list[tuple[str, dict[str, Any]]] = [
+        (
+            corridor,
+            {
+                "checkpoint": str(runs_dir / "ppo/comm/seed0/ckpt_best.pt"),
+                "algo": "ppo",
+                "comm": True,
+            },
+        ),
+        (
+            corridor,
+            {
+                "checkpoint": str(runs_dir / "ppo/nocomm/seed0/ckpt_best.pt"),
+                "algo": "ppo",
+                "comm": False,
+            },
+        ),
+        (single, {"checkpoint": str(runs_dir / "dqn/seed0/ckpt_best.pt"), "algo": "dqn"}),
+    ]
+    checkpoints = [(sc, p) for sc, p in candidates if Path(str(p["checkpoint"])).exists()]
+    for _sc, p in candidates:
+        if not Path(str(p["checkpoint"])).exists():
+            typer.echo(f"  (skip: checkpoint not found {p['checkpoint']})")
+    if not checkpoints:
+        typer.echo("no phase-2 checkpoints found under runs_dir; nothing to sweep")
+        raise typer.Exit(1)
+    rows = run_rl_quality_sweep(checkpoints=checkpoints, workers=workers, out_path=out)
+    typer.echo(f"zero-shot-sweep: {len(rows)} rows -> {out}")
 
 
 @app.command()

@@ -8,6 +8,7 @@ from traffic_rl.experiments.runner import (
     run_cell,
     run_matrix,
     run_quality_sweep,
+    run_rl_quality_sweep,
 )
 
 SCENARIOS = Path(__file__).parents[2] / "scenarios"
@@ -95,7 +96,7 @@ def test_quality_sweep_spans_q_and_bites_only_sensing_controllers(tmp_path: Path
         qualities=(1.0, 0.5),
         scenarios=("single-rush-ns",),
         controllers=("fixed_time", "actuated"),
-        n_seeds=2,
+        seeds=(0, 1),
         workers=2,
         measure_s=120.0,
         out_path=tmp_path / "sweep.json",
@@ -114,6 +115,47 @@ def test_quality_sweep_spans_q_and_bites_only_sensing_controllers(tmp_path: Path
         assert metrics("fixed_time", 1.0, seed) == metrics("fixed_time", 0.5, seed)
     # detector-based => noise changes at least one seed's episode
     assert any(metrics("actuated", 1.0, s) != metrics("actuated", 0.5, s) for s in (0, 1))
+
+
+def test_rl_quality_sweep_evals_a_checkpoint_across_q(tmp_path: Path) -> None:
+    """C2: a checkpoint is evaluated at each quality on matched seeds; rows carry
+    provenance and self-describe their quality."""
+    from traffic_rl.rl.ppo import PPOConfig, train_ppo
+
+    run_dir = train_ppo(
+        PPOConfig(
+            scenario=SCENARIOS / "corridor-rush.yaml",
+            out_dir=tmp_path / "ppo",
+            seed=0,
+            total_steps=256,
+            num_envs=2,
+            episode_s=20.0,
+            rollout_len=16,
+            minibatches=2,
+            epochs=1,
+            eval_every=256,
+            device="cpu",
+        )
+    )
+    ckpt = run_dir / "ckpt_final.pt"
+    rows = run_rl_quality_sweep(
+        checkpoints=[
+            (
+                str(SCENARIOS / "corridor-rush.yaml"),
+                {"checkpoint": str(ckpt), "algo": "ppo", "comm": True},
+            )
+        ],
+        qualities=(1.0, 0.5),
+        seeds=(1000, 1001),
+        measure_s=60.0,
+        workers=2,
+        out_path=tmp_path / "zs.json",
+    )
+    assert len(rows) == 1 * 2 * 2  # 1 checkpoint x 2 q x 2 seeds
+    assert {r["quality"] for r in rows} == {1.0, 0.5}
+    assert all(r["controller"] == "rl" and r["algo"] == "ppo" for r in rows)
+    assert all(r["checkpoint"] == str(ckpt) for r in rows)
+    assert (tmp_path / "zs.json").exists()
 
 
 def test_rl_provenance_reads_the_checkpoint_config(tmp_path: Path) -> None:

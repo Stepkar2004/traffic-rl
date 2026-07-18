@@ -166,6 +166,10 @@ def run_matrix(
 #: filtered-MP arm a q=1.0 anchor the committed classical board never had).
 QUALITY_SWEEP: tuple[float, ...] = (1.0, 0.9, 0.75, 0.5, 0.25)
 SWEEP_SCENARIOS: tuple[str, ...] = ("single-rush-ns", "corridor-rush", "grid-rush-diag")
+#: Held-out eval seeds (the phase-2 RL convention). The classical sweep AND every
+#: RL checkpoint eval share this set, so the money plot is matched-seed by
+#: construction — the phase-2 cross-seed near-miss is designed out here.
+EVAL_SEEDS: tuple[int, ...] = tuple(range(1000, 1020))
 
 
 def run_quality_sweep(
@@ -174,7 +178,7 @@ def run_quality_sweep(
     qualities: tuple[float, ...] = QUALITY_SWEEP,
     scenarios: tuple[str, ...] = SWEEP_SCENARIOS,
     controllers: tuple[str, ...] | None = None,
-    n_seeds: int = 20,
+    seeds: tuple[int, ...] = EVAL_SEEDS,
     workers: int | None = None,
     measure_s: float | None = None,
     out_path: Path | None = None,
@@ -193,7 +197,7 @@ def run_quality_sweep(
         for kind, params in controllers_for(Path(path), calibration):
             if controllers is not None and kind not in controllers:
                 continue
-            cells += [(path, kind, params, seed, q) for q in qualities for seed in range(n_seeds)]
+            cells += [(path, kind, params, seed, q) for q in qualities for seed in seeds]
     rows: list[dict[str, Any]] = []
     t0 = time.perf_counter()
     with ProcessPoolExecutor(max_workers=workers) as pool:
@@ -207,6 +211,48 @@ def run_quality_sweep(
                 elapsed = time.perf_counter() - t0
                 print(f"  quality-sweep: {i}/{len(cells)} cells ({elapsed:,.0f}s)", flush=True)
     rows.sort(key=lambda r: (r["scenario"], r["controller"], -r["quality"], r["seed"]))
+    if out_path is not None:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(json.dumps(rows, indent=1), encoding="utf-8")
+    return rows
+
+
+def run_rl_quality_sweep(
+    checkpoints: list[tuple[str, dict[str, Any]]],
+    qualities: tuple[float, ...] = QUALITY_SWEEP,
+    seeds: tuple[int, ...] = EVAL_SEEDS,
+    workers: int | None = None,
+    measure_s: float | None = None,
+    out_path: Path | None = None,
+) -> list[dict[str, Any]]:
+    """Evaluate fixed RL checkpoints across the quality dial on matched seeds.
+
+    ``checkpoints`` is ``[(scenario_path, params), ...]`` where ``params`` carries
+    ``checkpoint``/``algo``/``comm`` — each checkpoint tied to the scenario it was
+    trained on (DQN -> single, PPO -> corridor). Powers C2 (the zero-shot
+    omniscience-overfit probe: q=1.0-trained policies evaluated under noise) and,
+    in Part D, the trained-at-q and DR checkpoints. Rows carry provenance
+    (algo/comm/checkpoint/train_git_sha) via ``run_cell`` and share ``seeds`` with
+    the classical sweep, so the money plot is matched-seed. C2 is a GENERALIZATION
+    probe (labelled as such in the writeup), never a head-to-head against a policy
+    trained for the noise it is judged in.
+    """
+    cells: list[tuple[str, dict[str, Any], int, float]] = [
+        (sc, params, seed, q) for sc, params in checkpoints for q in qualities for seed in seeds
+    ]
+    rows: list[dict[str, Any]] = []
+    t0 = time.perf_counter()
+    with ProcessPoolExecutor(max_workers=workers) as pool:
+        futures = [
+            pool.submit(run_cell, sc, "rl", params, seed, measure_s, q)
+            for sc, params, seed, q in cells
+        ]
+        for i, fut in enumerate(as_completed(futures), 1):
+            rows.append(fut.result())
+            if i % 40 == 0 or i == len(cells):
+                elapsed = time.perf_counter() - t0
+                print(f"  rl-quality-sweep: {i}/{len(cells)} cells ({elapsed:,.0f}s)", flush=True)
+    rows.sort(key=lambda r: (r["scenario"], r["checkpoint"], -r["quality"], r["seed"]))
     if out_path is not None:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(json.dumps(rows, indent=1), encoding="utf-8")

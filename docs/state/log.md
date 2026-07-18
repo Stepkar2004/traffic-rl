@@ -2,6 +2,16 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-17 · Phase-3 C2 driver + matched-seed alignment: the zero-shot noise probe.**
+  `run_rl_quality_sweep(checkpoints, ...)` (experiments/runner.py) + `traffic-rl zero-shot-sweep`:
+  evaluates fixed RL checkpoints (each tied to its training scenario) across the quality dial on
+  held-out `EVAL_SEEDS` (1000-1019). C2 = the q=1.0-trained phase-2 checkpoints (PPO comm/nocomm on
+  corridor-rush, DQN on single-rush-ns) under noise — a GENERALIZATION probe, labelled as such,
+  never a head-to-head vs a noise-trained policy. Rows carry checkpoint provenance via `run_cell`.
+  Also aligned `run_quality_sweep` (C1) to the SAME `EVAL_SEEDS`, so classical + every RL arm
+  overlay matched-seed on the money plot — the phase-2 cross-seed near-miss designed out. Build-only
+  (the ~1 h CPU run rides with the C1 sweep once training frees cores). Test: a tiny real checkpoint
+  evaluated across q (provenance + quality + JSON). 244 tests, 5 gates green. Not pushed.
 - **2026-07-17 · Phase-3 C1 driver: the classical sensing-noise sweep (money-plot substrate).**
   `run_quality_sweep` (experiments/runner.py) + `traffic-rl quality-sweep`: the leaderboard
   protocol one axis wider — every topology-appropriate controller (incl. `max_pressure_filtered`)
