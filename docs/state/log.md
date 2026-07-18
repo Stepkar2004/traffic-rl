@@ -2,6 +2,23 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-18 · Phase-3 batching B3a: batched raw classical observation (bit-exact channels).**
+  Stepan chose "batched observation ~7x" for B3. Factored `TrafficEnv._observe`'s per-approach
+  aggregation into a shared `_aggregate_channels()` (+ `_ped_counts()`) — ONE computation both
+  eval paths read (RL normalizes it into the 48-ch features; classical packs it raw), so they
+  cannot drift; `_observe` stays byte-identical (B4 feature-parity + B2 + B1 pins still green).
+  New `TrafficEnv.classical_channels() -> ClassicalChannels`: the raw per-approach channels the
+  6 classical controllers read (queue_len, downstream_count, detector_occupied,
+  time_since_actuation_s, flow_veh_h) + per-cw ped_waiting; `min_dist_m` is float32 (exact min of
+  the float32 detected distances) so actuated's `any(dist <= advance_detector_m)` reduces to a
+  scalar compare bit-for-bit. Key finding: no controller reads `speed_mps` or the full distance
+  array, so a lightweight per-node Observation (six scalars + `[min_dist]`) fed to the UNCHANGED
+  controllers is bit-exact — controller correctness is free, not a new risk. Pin written to test
+  the accessor (`tests/envs/test_classical_channels.py`): batched channels == single-world
+  `ApproachChannel` fields FIELD-BY-FIELD BIT-EXACT under a hold policy in lock-step (a recording
+  controller captures World's exact eval-time observation), q∈{1.0,0.5}, single + corridor + grid,
+  150 intervals past max-red, + a q<1 non-vacuity pin. 261 tests, 5 gates green. Not pushed.
+  NEXT: B3-probe (hybrid speed per controller, esp. actuated) → B3b (eval driver + row pin + wire).
 - **2026-07-18 · Phase-3 batching B2: batched RL eval, bit-exact to run_cell (~7x on 4/5 stages).**
   New `experiments/batched_eval.py::eval_rl_batched` evaluates one checkpoint over B eval seeds in
   ONE batched episode → B rows in `run_cell`'s schema. Stepan's eval-timing call: reproduce the

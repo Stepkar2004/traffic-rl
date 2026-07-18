@@ -198,42 +198,89 @@ batched path with the SAME asserted numbers).
 
 ---
 
-## Chunk B3 — batched classical controllers + observation (the big one)
+## Chunk B3 — batched classical eval (the big one) — REFINED 2026-07-18
 
-**Goal.** A batched classical `Observation` + batched twins of the 6 controllers
-(`fixed_time`, `webster`, `actuated`, `max_pressure`, `coordinated`, `max_pressure_filtered`)
-so a batched classical cell's B rows == B `run_cell(scenario, kind, params, seed, q)` rows.
+**Stepan's call: "batched observation ~7x"** (option a over the looped ~3x). The refinement
+below (found while orienting on the real code) delivers that WHILE collapsing the plan's
+original "HIGH risk (new observation path)": the observation IS batched (the expensive
+per-step dispatch — what Stepan chose), but the CONTROLLERS stay the unchanged single-world
+classes, so controller bit-exactness is FREE (same code), not a new risk surface.
 
-**Design (sketch — refine in-chunk after B1/B2 land).**
-- The batched observation must reproduce the `ApproachChannel`/`Observation` values per
-  (world, node). Much of the aggregation already exists in `TrafficEnv._observe` /
-  `_noisy_aggregates` (detected counts, queue, occupancy, min_dist, flow, downstream) — but
-  the classical `Observation` needs the per-approach detected `dist_to_stop_m`/`speed_mps`
-  ARRAYS and `queue_len`/`detector_occupied`/`time_since_actuation_s`/`flow_veh_h` shaped
-  as the controllers read them. Build a batched observation producing per-(world,node)
-  `Observation` objects OR a vectorized controller that consumes batched aggregates.
-- **Two candidate architectures — measure before committing:**
-  (a) **Vectorize each controller across worlds** (max speed ~7x, HIGH effort/risk): batched
-      Observation aggregates + batched decide. Pin each controller bit-exact.
-  (b) **Per-world loop reusing the EXISTING controllers/observation** (bit-exact by
-      construction, ~3x — the observation loop at 1 Hz x B is not batched): slice each
-      world's state into a lightweight `World`-like view, call the unchanged
-      `PerfectObservation`/`NoisyDetection.observe` + the unchanged controller. Lower risk,
-      lower speed. **Recommended first pass** if (a) is too costly — 3x still turns 2.5h into
-      ~50 min, and it reuses trusted code so the pin is a formality.
-  Decide with a quick throughput probe once B1/B2 exist.
-- Noisy path (q<1.0): the batched observation must route detection through the SAME
-  `core.sensors` kernel with per-world keys (as `_noisy_aggregates` does) so classical
-  noisy cells match `NoisyDetection`.
+**Goal.** A batched classical cell (B seeds in one `TrafficEnv`) whose per-world rows ==
+B `run_cell(scenario, kind, params, seed, q)` rows, bit-exact, for all 6 controllers
+(`fixed_time`, `webster`, `actuated`, `max_pressure`, `coordinated`, `max_pressure_filtered`).
 
-**Equivalence pin (write FIRST).** Per controller kind, per q in {1.0, 0.5}, on
-single-rush-ns + corridor-rush + grid-rush-diag: batched per-world row ==
-`run_cell(scenario, kind, params, seed, q)`, bit-exact.
+### Three findings that reshape the chunk (from reading the code)
 
-**Files.** likely `experiments/batched_eval.py` (+classical path), a batched-observation
-module, `experiments/runner.py` (`run_quality_sweep` batched), tests.
+1. **`TrafficEnv._observe` already computes every per-approach aggregate the classical
+   controllers need** — `queue_by_lane`, `counts` (downstream), `near`/`over_start`
+   (occupancy), `_last_occupied_t` (recency), `flow`, `min_dist` — as per-lane arrays
+   indexed by `_app_lane`/`_app_next`, at q=1.0 (true counts) AND q<1.0 (through the SAME
+   `core.sensors` kernel as `NoisyDetection`, per-world keys). B4's parity pin already
+   blesses these — but only NORMALIZED (clamped). B3 needs the RAW values, so the raw-channel
+   pin (below) is NOT redundant with B4 (a raw flow > FLOW_NORM=1800 would pass B4 clamped
+   yet change Webster's plan).
+2. **No controller reads `speed_mps` or the full `dist_to_stop_m` array.** They read six
+   scalars per approach — `queue_len`, `downstream_count`, `detector_occupied`,
+   `time_since_actuation_s`, `flow_veh_h` — plus actuated's `any(dist_to_stop_m <=
+   advance_detector_m)`, which equals `min_dist <= advance_detector_m` (a scalar). Plus the
+   per-node scalar signal fields (already batched in `SignalState`) and `ped_waiting` per cw.
+   So a LIGHTWEIGHT `Observation` (per approach: the 6 scalars + a 1-element `[min_dist]`
+   dist array; `speed_mps` empty) fed to the UNCHANGED controller is bit-exact for all 6.
+3. **Actuated decides every dt (0.1s); the other five every 1.0s.** So the eval loop must
+   observe + decide at the controller's cadence — every substep for actuated, once per
+   1.0s interval for the rest. The B2 eval driver (`eval_advance_signals` +
+   `eval_apply_and_run(substeps)`) only decides once per interval; B3 needs a per-substep
+   variant for actuated (mirror `World.step`: advance, observe-if-decision-tick, decide,
+   request, then one dt of dynamics).
 
-**Acceptance.** All 6 controllers pinned bit-exact at 2 qualities x 3 scenarios; 5 gates green.
+### Architecture (hybrid: batched observation + unchanged controllers)
+
+Batch the observation (the dispatch win); reconstruct lightweight per-node `Observation`s
+from the batched raw arrays; call the UNCHANGED `FixedTime`/`Webster`/`ActuatedGapOut`/
+`MaxPressure`/`CoordinatedFixedTime`. Controllers are per-node Python objects with their own
+state (Webster's plan, MaxPressure's EMA, actuated's phase maps) — one instance per
+(world, node), reset once, reused across the episode, exactly as `World` holds them. The
+only NEW bit-exact-risk surface is the batched RAW observation (B3a).
+
+**Speed caveat + probe (per the plan's "measure before committing").** The per-node
+controller loop is the SAME total number of `decide` calls as the single-world sweep (batching
+can't reduce decisions — each node decides for itself); it just runs them while the dynamics
+are batched. For the 1.0s controllers this is a small fraction → ~7x holds. For actuated
+(0.1s → 10x more decides + Observation reconstructions) it may erode. **B3-probe:** after B3a,
+measure the hybrid's speedup per controller. If actuated lags badly, vectorize JUST actuated
+(a batched `decide` over the raw arrays, pinned decision-for-decision vs the single-world
+class). Do not pre-optimize the five that don't need it.
+
+### Sub-chunks (gate + commit each)
+
+- **B3a — batched raw classical observation. DONE (2026-07-18).** Factored `_observe`'s
+  aggregation into a shared `_aggregate_channels()` (+ `_ped_counts()`) — the ONE computation
+  both eval paths read (RL normalizes it, classical packs it raw), so they cannot drift;
+  `_observe` byte-unchanged (B4/B2/B1 pins still green). Added `TrafficEnv.classical_channels()
+  -> ClassicalChannels` (raw per-approach `queue_len`/`downstream_count`/`detector_occupied`/
+  `time_since_actuation_s`/`flow_veh_h`/`min_dist_m` + per-cw `ped_waiting`); `min_dist_m` is
+  float32 (exact min of the float32 detected distances) so actuated's `any(dist <= adv)`
+  reduces to `min_dist_m <= adv` bit-for-bit. Pin (`tests/envs/test_classical_channels.py`,
+  written to test the accessor): batched channels == single-world `ApproachChannel` fields
+  FIELD-BY-FIELD BIT-EXACT under a hold policy in lock-step (recording controller captures
+  World's exact eval-time obs), q in {1.0, 0.5}, single + corridor + grid, 150 intervals past
+  max-red, + a q<1 non-vacuity pin. 261 tests, 5 gates green.
+- **B3-probe (scratchpad, no commit).** Hybrid speed per controller; decide actuated.
+- **B3b — `eval_classical_batched` + wire `run_quality_sweep`.** The eval driver: per
+  decision interval, `eval_advance_signals()` -> reconstruct Observations -> per-node
+  `decide` -> `request_batch` -> finish the interval; a per-substep variant for the 0.1s
+  actuated cadence. `run_quality_sweep` dispatches one batched cell per (scenario, kind,
+  params, q). **Row pin FIRST:** batched per-world row == `run_cell(scenario, kind, params,
+  seed, q)` bit-exact, per controller x q in {1.0, 0.5} x {single, corridor, grid}.
+
+**Files.** `envs/traffic_env.py` (factor aggregation + classical accessor),
+`experiments/batched_eval.py` (+`eval_classical_batched`), `experiments/runner.py`
+(`run_quality_sweep` batched), `tests/**` (raw-channel pin + row pin). Possibly a small
+`envs/batching.py` per-substep eval helper for actuated.
+
+**Acceptance.** Both pins pass; all 6 controllers bit-exact at 2 qualities x 3 scenarios;
+5 gates green; training + single-world paths byte-unchanged.
 
 ---
 

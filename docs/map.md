@@ -242,6 +242,11 @@ tests/
 ├── envs/
 │   ├── test_batching.py   batched == sequential; world isolation; the anchor:
 │   │                      B=1 BatchedWorlds step-for-step == World (same seed)
+│   ├── test_batched_metrics.py  B1 pin: B=4 batched per-world EpisodeMetrics ==
+│   │                         4 standalone World runs, field-by-field bit-exact
+│   ├── test_classical_channels.py  B3a pin: batched classical_channels() ==
+│   │                         single-world ApproachChannel fields bit-exact (hold,
+│   │                         lock-step, q∈{1,0.5}, single+corridor+grid)
 │   ├── test_quality_rand.py  per-episode per-world quality DR (C3): None-parity,
 │   │                         reproducible draw, per-world variation, resample,
 │   │                         engages the noisy path

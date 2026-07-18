@@ -15,6 +15,7 @@ changes between arms (checkpoints stay comparable, the ablation is a pure
 information delta).
 """
 
+from dataclasses import dataclass
 from typing import Any
 
 import gymnasium as gym
@@ -48,6 +49,50 @@ R_NORM = 100.0
 
 #: salt separating the per-episode quality-DR draw (C3) from any other seeded use
 _QUALITY_RAND_TAG = 0x0C3D2A11
+
+
+@dataclass(frozen=True)
+class _RawChannels:
+    """The un-normalized per-lane / per-approach aggregation both eval paths read.
+
+    Extracted from ``_observe`` so the RL feature observation (normalized) and the
+    classical-controller channels (raw) come from ONE computation and cannot drift.
+    Per-lane arrays (indexed by ``_app_lane`` / ``_app_next``): ``counts`` (detected
+    downstream count), ``queue_by_lane`` (detected vehicles slower than V_WAIT),
+    ``min_dist`` (nearest detected distance, +inf when none). Per-approach-slot
+    arrays (shape ``n_nodes*4``): ``occupied``, ``recency_raw`` (t - last-occupied),
+    ``flow`` (veh/h). Computing it advances the stateful detector recency +
+    flow window, so it runs once per decision tick (the caller's cadence).
+    """
+
+    counts: I64
+    queue_by_lane: I64
+    min_dist: F64
+    occupied: BOOL
+    recency_raw: F64
+    flow: F64
+
+
+@dataclass(frozen=True)
+class ClassicalChannels:
+    """Raw per-approach classical-controller channels over the merged worlds — the
+    batched twin of ``PerfectObservation`` / ``NoisyDetection``'s ``ApproachChannel``
+    fields (phase-3 B3). All approach arrays are shape ``(n_nodes*4,)`` in
+    (node, approach) order; ``ped_waiting`` is per crosswalk (``n_cw`` total).
+
+    ``min_dist_m`` is float32 (an exact min of the float32 detected distances) so a
+    controller's ``any(dist <= advance_detector_m)`` reduces to ``min_dist_m <=
+    advance_detector_m`` bit-for-bit. No controller reads ``speed_mps`` or the full
+    distance array, so those never need materializing.
+    """
+
+    queue_len: I64
+    downstream_count: I64
+    detector_occupied: BOOL
+    time_since_actuation_s: F64
+    flow_veh_h: F64
+    min_dist_m: F32
+    ped_waiting: I64
 
 
 class TrafficEnv(VectorEnv[Any, Any, Any]):
@@ -248,15 +293,22 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
 
     # -- observation (ADR 0004 §2, exactly) ---------------------------------------
 
-    def _observe(self) -> F32:
+    def _aggregate_channels(self) -> _RawChannels:
+        """Per-lane detected counts/queue/min-dist + per-approach occupancy,
+        recency and flow, advancing the stateful detector recency + rolling flow
+        window (mirrors ``PerfectObservation`` / ``NoisyDetection.observe``).
+
+        The single source both eval paths read from: ``_observe`` normalizes it
+        into the RL features, ``classical_channels`` packs it raw for the classical
+        controllers — so the two paths cannot drift. q=1.0 uses true counts; q<1.0
+        routes through the ``core.sensors`` kernel via ``_noisy_aggregates`` with
+        per-world keys. Runs once per decision tick (the caller's cadence).
+        """
         sim = self.sim
-        sig = sim.signals
         veh = sim.vehicles
         n = veh.n
         t = sim.t
-        n_nodes = self.num_envs * self.n_i
         n_lanes = sim.topology.n_lanes
-
         tick = round(t)
         lane = veh.lane[:n]
         # a vehicle straddling the stop line into the junction (rear not cleared)
@@ -277,7 +329,7 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
 
         occupied = (near[self._app_lane] > 0) | (over_start[self._app_next] > 0)
         self._last_occupied_t[occupied] = t
-        recency = np.minimum(t - self._last_occupied_t, TIME_NORM) / TIME_NORM
+        recency_raw = t - self._last_occupied_t
 
         arrivals = np.where(
             self._app_origin >= 0,
@@ -291,15 +343,67 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         flow = np.zeros_like(arrivals, dtype=np.float64)
         if t > t0:
             flow = (3600.0 * (arrivals - c0) / (t - t0)).astype(np.float64)
+        return _RawChannels(counts, queue_by_lane, min_dist, occupied, recency_raw, flow)
+
+    def _ped_counts(self) -> I64:
+        """Per-crosswalk waiting-pedestrian counts (detected under noise), the
+        shared source for the RL ped block and the classical ``ped_waiting``."""
+        sim = self.sim
+        peds = sim.peds
+        m = peds.n
+        n_cw = len(sim.topology.crosswalks)
+        if not m:
+            return np.zeros(n_cw, dtype=np.int64)
+        waiting_mask = peds.state[:m] == 0
+        cw = peds.crosswalk[:m][waiting_mask]
+        if self._quality_w is None and self.quality >= 1.0:
+            return np.bincount(cw, minlength=n_cw)
+        tick = round(sim.t)
+        cw_world = sim._world_of_cw[cw]
+        pkey = self._sensor_key_u64[cw_world]
+        q_ped = self._q_for(cw_world)
+        seen = detect_peds(cw % self._n_cw_base, peds.uid[:m][waiting_mask], q_ped, pkey, tick)
+        return np.bincount(cw[seen], minlength=n_cw)
+
+    def classical_channels(self) -> ClassicalChannels:
+        """Raw per-approach classical-controller channels over the merged worlds
+        (phase-3 B3) — the batched twin of the single-world ``ApproachChannel``.
+
+        Advances the SAME stateful detector recency + flow window as ``_observe``,
+        so the caller must invoke it once per decision tick at the controller's
+        cadence (every dt for the 0.1 s actuated controller, every 1.0 s for the
+        rest) exactly as ``World`` calls its observation model — otherwise recency
+        and flow desync from the single-world path.
+        """
+        rc = self._aggregate_channels()
+        app_next = self._app_next
+        downstream = np.where(app_next >= 0, rc.counts[np.maximum(app_next, 0)], 0)
+        return ClassicalChannels(
+            queue_len=rc.queue_by_lane[self._app_lane],
+            downstream_count=downstream,
+            detector_occupied=rc.occupied,
+            time_since_actuation_s=rc.recency_raw,
+            flow_veh_h=rc.flow,
+            min_dist_m=rc.min_dist[self._app_lane].astype(np.float32),
+            ped_waiting=self._ped_counts(),
+        )
+
+    def _observe(self) -> F32:
+        sim = self.sim
+        sig = sim.signals
+        n_nodes = self.num_envs * self.n_i
+
+        rc = self._aggregate_channels()
+        recency = np.minimum(rc.recency_raw, TIME_NORM) / TIME_NORM
 
         # per-approach block: (n_nodes*4, 5)
         app = np.stack(
             [
-                np.minimum(queue_by_lane[self._app_lane] / QUEUE_NORM, 1.0),
-                occupied.astype(np.float64),
+                np.minimum(rc.queue_by_lane[self._app_lane] / QUEUE_NORM, 1.0),
+                rc.occupied.astype(np.float64),
                 recency,
-                np.minimum(flow / FLOW_NORM, 1.0),
-                np.minimum(np.minimum(min_dist[self._app_lane], DIST_NORM) / DIST_NORM, 1.0),
+                np.minimum(rc.flow / FLOW_NORM, 1.0),
+                np.minimum(np.minimum(rc.min_dist[self._app_lane], DIST_NORM) / DIST_NORM, 1.0),
             ],
             axis=1,
         ).reshape(n_nodes, 20)
@@ -321,24 +425,7 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         signal[:, 11] = np.minimum(sig.state_t / TIME_NORM, 1.0)
 
         # pedestrian block: (n_nodes, 8) — per crosswalk: waiting norm, WALK/CLEAR
-        peds = sim.peds
-        m = peds.n
-        n_cw = len(sim.topology.crosswalks)
-        if m:
-            waiting_mask = peds.state[:m] == 0
-            cw = peds.crosswalk[:m][waiting_mask]
-            if self._quality_w is None and self.quality >= 1.0:
-                ped_counts = np.bincount(cw, minlength=n_cw)
-            else:
-                cw_world = sim._world_of_cw[cw]
-                pkey = self._sensor_key_u64[cw_world]
-                q_ped = self._q_for(cw_world)
-                seen = detect_peds(
-                    cw % self._n_cw_base, peds.uid[:m][waiting_mask], q_ped, pkey, tick
-                )
-                ped_counts = np.bincount(cw[seen], minlength=n_cw)
-        else:
-            ped_counts = np.zeros(n_cw, dtype=np.int64)
+        ped_counts = self._ped_counts()
         walk_active = (sig.ped_ind != int(PedIndication.DONT_WALK)).astype(np.float64)
         ped_block = np.stack([np.minimum(ped_counts / PED_NORM, 1.0), walk_active], axis=1).reshape(
             n_nodes, 8
@@ -348,7 +435,7 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         neighbor_exists = self._app_neighbor >= 0
         neighbor_active = active[np.maximum(self._app_neighbor, 0)]
         agree = (neighbor_exists & (neighbor_active == self._app_phase)).astype(np.float64)
-        down_occ = np.minimum(counts[self._app_next] / self._down_cap, 1.0)
+        down_occ = np.minimum(rc.counts[self._app_next] / self._down_cap, 1.0)
         comm = np.stack([agree, down_occ], axis=1).reshape(n_nodes, 8)
         if not self.comm:
             comm[:] = 0.0
