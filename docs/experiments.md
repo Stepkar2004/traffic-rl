@@ -116,15 +116,21 @@ Evaluate a checkpoint on the leaderboard protocol via controller kind `rl`:
 `config.json` so the checkpoint self-describes its training quality (the training
 env observes noisily, the reward stays true-state).
 
-### `traffic-rl train-ppo <scenario.yaml> [--seed N] [--steps N] [--comm/--no-comm] [--out dir] [--device auto|cuda|cpu] [--quality Q]`
+### `traffic-rl train-ppo <scenario.yaml> [--seed N] [--steps N] [--comm/--no-comm] [--out dir] [--device auto|cuda|cpu] [--quality Q] [--demand-rand JSON]`
 
-**Current as of phase 3, B5** (`--quality` added; core loop phase-2 chunk 6). Parameter-shared PPO on a corridor or grid
+**Current as of phase 3, B9** (`--demand-rand` added; `--quality` at B5; core loop phase-2 chunk 6). Parameter-shared PPO on a corridor or grid
 (ADR 0004 §5): one Actor/Critic applied to every intersection's 48-channel row,
 team reward per world, GAE cut at truncation boundaries. Defaults are the locked
 hyperparameters (5M steps — pass `--steps 10000000` for grids per the ADR budget
 table; 16 batched worlds; 900 s training episodes). `--comm/--no-comm` is the
 communication ablation: the nocomm arm zeroes neighbor channels 40-47 in
-training AND eval, and writes to its own directory. Artifacts land in
+training AND eval, and writes to its own directory. `--demand-rand '{"rate_lo_veh_h":
+400, "rate_hi_veh_h": 1200, "mirror_p": 0.5}'` (phase 3, B9) randomizes demand PER
+EPISODE during TRAINING only: each world draws its arterial-axis rate ~U(lo, hi) and,
+with probability `mirror_p`, swaps the eastbound/westbound rates (direction blindness).
+It is recorded in `config.json` and drawn from a dedicated RNG stream, so omitting it
+leaves schedules bit-identical to before; eval always stays the fixed scenario
+(comparability). This is the C5 demand-generalist substrate. Artifacts land in
 `<out>/<comm|nocomm>/seed<k>/`: `config.json`, `curves.csv` (env_steps, wall_s,
 train_return, eval_return, eval_p95_wait, policy_loss, value_loss, entropy),
 `ckpt_best/final.pt` + `critic_best/final.pt`. Measured wall time (run session

@@ -21,7 +21,7 @@ from dataclasses import replace
 import numpy as np
 
 from traffic_rl.core.arrays import BOOL, F32, F64, I32, I64, PedArrays, VehicleArrays
-from traffic_rl.core.config import APPROACHES, V_WAIT_MPS, SimConfig
+from traffic_rl.core.config import APPROACHES, V_WAIT_MPS, DemandRandomization, SimConfig
 from traffic_rl.core.demand import build_arrival_schedule
 from traffic_rl.core.metrics import accumulate_step
 from traffic_rl.core.pedestrians import step_pedestrians
@@ -206,11 +206,20 @@ class BatchedWorlds:
 
     # -- episode lifecycle -----------------------------------------------------
 
-    def reset(self, root_seed: int, episode: int, world_seeds: list[int] | None = None) -> None:
+    def reset(
+        self,
+        root_seed: int,
+        episode: int,
+        world_seeds: list[int] | None = None,
+        demand_rand: DemandRandomization | None = None,
+    ) -> None:
         """Fresh empty worlds; per-world demand from ``world_seed`` (ADR 0004).
 
         ``world_seeds`` overrides the derivation (equivalence tests pin a
         specific world's demand to a specific ``World(seed=...)`` run).
+        ``demand_rand`` (training only) randomizes the axis rate + direction per
+        world per episode; ``None`` (eval, and every path before phase-3 B9)
+        leaves the demand stream consumed exactly as before.
         """
         topo = self.topology
         self.vehicles = VehicleArrays()
@@ -242,9 +251,19 @@ class BatchedWorlds:
         for b in range(self.num_worlds):
             # World's exact scheme, per world: vehicles first, then peds, from
             # ONE demand stream — B = 1 therefore matches World(seed) draws.
-            rng = spawn_streams(world_seeds[b])["demand"]
+            streams = spawn_streams(world_seeds[b])
+            rng = streams["demand"]
+            veh_profile = self.cfg.demand.vehicle_profile
+            if demand_rand is not None:
+                # axis rate + mirror come from a SEPARATE stream, so the demand
+                # stream (hence any demand_rand=None schedule) is consumed
+                # byte-for-byte as it was before B9. Draw order is fixed.
+                rr = streams["demand_rand"]
+                rate = float(rr.uniform(demand_rand.rate_lo_veh_h, demand_rand.rate_hi_veh_h))
+                mirror = bool(rr.random() < demand_rand.mirror_p)
+                veh_profile = demand_rand.apply(veh_profile, rate, mirror)
             self._veh_arrivals += build_arrival_schedule(
-                self.cfg.demand.vehicle_profile, self.episode_s, rng, base.origins
+                veh_profile, self.episode_s, rng, base.origins
             )
             self._ped_arrivals += build_arrival_schedule(
                 self.cfg.demand.ped_profile, self.episode_s, rng, ped_keys

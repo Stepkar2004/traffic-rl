@@ -195,6 +195,62 @@ class SensingConfig:
 
 
 @dataclass(frozen=True)
+class DemandRandomization:
+    """Per-episode training-demand randomization (phase-3 B9).
+
+    A TRAINING-side knob, never an eval knob: eval scenarios stay fixed so
+    head-to-heads compare on identical demand (comparison integrity). Each
+    episode, per world, the heavy-axis origin's arrival rate is drawn
+    ``R ~ U(rate_lo_veh_h, rate_hi_veh_h)`` and, with probability ``mirror_p``,
+    the axis and counter origins swap so the policy sees the rush running in
+    either direction (the fix for the A5 direction bake-in). Cross-street rates
+    are untouched. The draws come from a dedicated ``demand_rand`` RNG stream
+    keyed on the world's demand seed, so a run with ``demand_rand=None`` produces
+    schedules bit-identical to one built before this feature existed.
+
+    ``axis_key`` is the origin set to ``R`` (corridor-rush: ``west`` = eastbound);
+    ``mirror_key`` is the counter origin swapped with it (``east`` = westbound).
+    Segments lacking ``axis_key`` pass through unchanged, so a profile whose
+    origins don't include it is a no-op rather than an error.
+    """
+
+    rate_lo_veh_h: float
+    rate_hi_veh_h: float
+    mirror_p: float = 0.5
+    axis_key: str = "west"
+    mirror_key: str = "east"
+
+    def __post_init__(self) -> None:
+        if self.rate_lo_veh_h < 0.0 or self.rate_hi_veh_h < self.rate_lo_veh_h:
+            raise ValueError(
+                "demand-rand rates must satisfy 0 <= lo <= hi, got "
+                f"lo={self.rate_lo_veh_h}, hi={self.rate_hi_veh_h}"
+            )
+        if not (0.0 <= self.mirror_p <= 1.0):
+            raise ValueError(f"demand-rand mirror_p must be in [0, 1], got {self.mirror_p}")
+
+    def apply(
+        self, profile: tuple[DemandSegment, ...], rate: float, mirror: bool
+    ) -> tuple[DemandSegment, ...]:
+        """``profile`` with the axis origin set to ``rate`` (and, if ``mirror``,
+        the axis/counter rates swapped). The counter keeps its own base magnitude;
+        only which physical direction carries ``rate`` changes. Cross-street keys
+        are never touched, and segments without ``axis_key`` are returned as-is."""
+        out: list[DemandSegment] = []
+        for seg in profile:
+            if self.axis_key not in seg.rates_per_h:
+                out.append(seg)
+                continue
+            rates = dict(seg.rates_per_h)
+            counter = rates.get(self.mirror_key, 0.0)
+            rates[self.axis_key] = counter if mirror else rate
+            if self.mirror_key in seg.rates_per_h:
+                rates[self.mirror_key] = rate if mirror else counter
+            out.append(DemandSegment(t0_s=seg.t0_s, rates_per_h=rates))
+        return tuple(out)
+
+
+@dataclass(frozen=True)
 class SimConfig:
     name: str
     description: str

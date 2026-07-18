@@ -25,7 +25,7 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from traffic_rl.core.config import SimConfig, load_scenario
+from traffic_rl.core.config import DemandRandomization, SimConfig, load_scenario
 from traffic_rl.core.topology import N_PHASES
 from traffic_rl.envs.traffic_env import TrafficEnv
 from traffic_rl.rl.controller import Policy, quick_episode_metrics
@@ -58,6 +58,7 @@ class PPOConfig:
     eval_every: int = 100_000  # env steps
     device: str = "auto"
     quality: float = 1.0  # sensing quality the agent trains under (ADR 0005)
+    demand_rand: DemandRandomization | None = None  # per-episode demand (B9); eval stays fixed
 
 
 def train_ppo(ppo: PPOConfig) -> Path:
@@ -67,7 +68,12 @@ def train_ppo(ppo: PPOConfig) -> Path:
     torch.manual_seed(ppo.seed)
 
     env = TrafficEnv(
-        scenario, num_envs=ppo.num_envs, episode_s=ppo.episode_s, comm=ppo.comm, quality=ppo.quality
+        scenario,
+        num_envs=ppo.num_envs,
+        episode_s=ppo.episode_s,
+        comm=ppo.comm,
+        quality=ppo.quality,
+        demand_rand=ppo.demand_rand,  # training only; the eval env below stays fixed
     )
     n_i = env.n_i
     rows = ppo.num_envs * n_i  # parameter sharing: one row per intersection

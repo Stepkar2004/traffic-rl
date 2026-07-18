@@ -15,6 +15,7 @@ from traffic_rl.core.config import (
     APPROACHES,
     ControllerConfig,
     DemandConfig,
+    DemandRandomization,
     DemandSegment,
     EpisodeConfig,
     SimConfig,
@@ -155,3 +156,43 @@ def test_reset_produces_fresh_independent_episodes() -> None:
     sim.reset(1, 0)
     again = sim._veh_arrivals
     assert all(np.array_equal(a, b) for a, b in zip(ep0, again, strict=True))
+
+
+def test_demand_rand_is_deterministic_per_seed() -> None:
+    """Same (root_seed, episode, demand_rand) => the same sampled schedules."""
+    cfg = _cfg()
+    dr = DemandRandomization(rate_lo_veh_h=400.0, rate_hi_veh_h=1200.0, mirror_p=0.5)
+    a = BatchedWorlds(cfg, num_worlds=3, episode_s=EPISODE_S)
+    a.reset(11, 0, demand_rand=dr)
+    b = BatchedWorlds(cfg, num_worlds=3, episode_s=EPISODE_S)
+    b.reset(11, 0, demand_rand=dr)
+    assert all(np.array_equal(x, y) for x, y in zip(a._veh_arrivals, b._veh_arrivals, strict=True))
+
+
+def test_demand_rand_none_is_bit_identical_to_plain_world() -> None:
+    """demand_rand=None consumes the demand stream exactly as before B9: a B=1
+    world still matches a standalone World at that seed. This is the pin that
+    would fire if appending the demand_rand RNG stream had perturbed `demand`."""
+    cfg = _cfg()
+    sim = BatchedWorlds(cfg, num_worlds=1, episode_s=EPISODE_S)
+    sim.reset(42, 0, demand_rand=None)
+    world = World(cfg, seed=world_seed(42, 0, 0), controller=[_Hold() for _ in range(sim.n_i_base)])
+    assert all(
+        np.array_equal(a, b) for a, b in zip(sim._veh_arrivals, world._veh_arrivals, strict=True)
+    )
+
+
+def test_demand_rand_mirror_swaps_the_heavy_direction() -> None:
+    """With lo == hi the axis rate is fixed, so mirror_p=0 vs 1 swaps which of the
+    arterial ends (west/east) carries the heavy platoon — the A5 bake-in fix."""
+    cfg = _cfg()  # every origin base rate 300 veh/h; axis 'west', counter 'east'
+    idx = {name: i for i, name in enumerate(origin_names(cfg.topology))}
+    no_mirror = DemandRandomization(rate_lo_veh_h=1500.0, rate_hi_veh_h=1500.0, mirror_p=0.0)
+    always = DemandRandomization(rate_lo_veh_h=1500.0, rate_hi_veh_h=1500.0, mirror_p=1.0)
+    a = BatchedWorlds(cfg, num_worlds=1, episode_s=EPISODE_S)
+    a.reset(3, 0, demand_rand=no_mirror)
+    b = BatchedWorlds(cfg, num_worlds=1, episode_s=EPISODE_S)
+    b.reset(3, 0, demand_rand=always)
+    # heavy on the axis (west) without mirror; heavy on the counter (east) with it
+    assert a._veh_arrivals[idx["west"]].size > a._veh_arrivals[idx["east"]].size
+    assert b._veh_arrivals[idx["east"]].size > b._veh_arrivals[idx["west"]].size

@@ -11,8 +11,11 @@ import numpy as np
 
 #: Subsystems that get their own independent stream. Order matters (spawning is
 #: positional); append new names at the end, never reorder (that would silently
-#: reseed every subsystem and break golden traces).
-STREAM_NAMES: tuple[str, ...] = ("demand", "behavior", "sensors")
+#: reseed every subsystem and break golden traces). ``demand_rand`` (phase-3 B9)
+#: drives per-episode training-demand randomization from a stream distinct from
+#: ``demand`` — appended last, so the demand/behavior/sensors children keep their
+#: spawn keys and every golden trace is byte-unchanged.
+STREAM_NAMES: tuple[str, ...] = ("demand", "behavior", "sensors", "demand_rand")
 
 
 @dataclass(frozen=True)

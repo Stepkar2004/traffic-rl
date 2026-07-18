@@ -2,7 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from traffic_rl.core.config import APPROACHES, ScenarioError, load_scenario
+from traffic_rl.core.config import (
+    APPROACHES,
+    DemandRandomization,
+    DemandSegment,
+    ScenarioError,
+    load_scenario,
+)
 
 SCENARIOS = Path(__file__).parents[2] / "scenarios"
 
@@ -109,3 +115,34 @@ def test_out_of_range_quality_raises(tmp_path: Path, bad: str) -> None:
 def test_unknown_sensing_key_raises(tmp_path: Path) -> None:
     with pytest.raises(ScenarioError, match="unknown keys"):
         load_scenario(_write(tmp_path, MINIMAL + "\nsensing: {quality: 0.5, fog: 1}\n"))
+
+
+def test_demand_randomization_validation() -> None:
+    DemandRandomization(rate_lo_veh_h=400.0, rate_hi_veh_h=1200.0)  # ok
+    DemandRandomization(rate_lo_veh_h=500.0, rate_hi_veh_h=500.0, mirror_p=0.0)  # lo == hi ok
+    with pytest.raises(ValueError, match="lo <= hi"):
+        DemandRandomization(rate_lo_veh_h=1200.0, rate_hi_veh_h=400.0)
+    with pytest.raises(ValueError, match="lo <= hi"):
+        DemandRandomization(rate_lo_veh_h=-1.0, rate_hi_veh_h=400.0)
+    with pytest.raises(ValueError, match="mirror_p"):
+        DemandRandomization(rate_lo_veh_h=400.0, rate_hi_veh_h=1200.0, mirror_p=1.5)
+
+
+def test_demand_randomization_apply_axis_and_mirror() -> None:
+    dr = DemandRandomization(rate_lo_veh_h=400.0, rate_hi_veh_h=1200.0)  # axis west, counter east
+    base = (DemandSegment(t0_s=0.0, rates_per_h={"west": 600.0, "east": 250.0, "north_0": 120.0}),)
+    # no mirror: axis (west) := R, the counter (east) keeps its base, cross unchanged
+    no_mirror = dr.apply(base, rate=800.0, mirror=False)
+    assert no_mirror[0].rates_per_h == {"west": 800.0, "east": 250.0, "north_0": 120.0}
+    # mirror: the heavy rate moves to the counter direction (east), west takes the counter base
+    mirror = dr.apply(base, rate=800.0, mirror=True)
+    assert mirror[0].rates_per_h == {"west": 250.0, "east": 800.0, "north_0": 120.0}
+    # inputs are frozen and untouched (a fresh tuple/dict is returned)
+    assert base[0].rates_per_h == {"west": 600.0, "east": 250.0, "north_0": 120.0}
+
+
+def test_demand_randomization_apply_is_noop_without_axis_key() -> None:
+    dr = DemandRandomization(rate_lo_veh_h=400.0, rate_hi_veh_h=1200.0)  # axis "west"
+    base = (DemandSegment(t0_s=0.0, rates_per_h={"north": 300.0, "south": 300.0}),)
+    out = dr.apply(base, rate=999.0, mirror=False)
+    assert out[0].rates_per_h == {"north": 300.0, "south": 300.0}

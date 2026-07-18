@@ -110,14 +110,16 @@ src/traffic_rl/
 │   ├── units.py           SI everywhere inside; imperial↔SI at the edges only
 │   ├── rng.py             root SeedSequence + child streams (demand/behavior;
 │   │                      the reserved `sensors` stream is UNUSED — sensing is
-│   │                      counter-based hashing, see sensors.py); determinism per seed
+│   │                      counter-based hashing, see sensors.py; `demand_rand`
+│   │                      drives B9 training-demand randomization); per-seed determinism
 │   ├── sensors.py         phase-3 sensing noise as a PURE counter-based hash of
 │   │                      (sensor_key, uid, tick): detect/miss, occlusion, 5 s
 │   │                      dropout, pos/speed error, false positives — bit-identical
 │   │                      across both observation paths; q=1.0 is the identity (ADR 0005)
 │   ├── config.py          frozen dataclasses + strict YAML scenario loader;
 │   │                      SensingConfig(quality) is the ADR-0005 noise dial
-│   │                      (optional `sensing:` block; default 1.0 = omniscient)
+│   │                      (optional `sensing:` block; default 1.0 = omniscient);
+│   │                      DemandRandomization(lo,hi,mirror_p) is the B9 training knob
 │   ├── topology.py        graph tables: nodes/edges/lanes/movements/crosswalks +
 │   │                      movement-conflict matrix; builders: 4-way, corridor
 │   │                      (1xN arterial), NxN grid — through-only chains
@@ -168,7 +170,8 @@ src/traffic_rl/
 │   │                      FrameStack
 │   ├── batching.py        replicate_topology (B copies, ids offset) +
 │   │                      BatchedWorlds: World's exact sub-step order over
-│   │                      merged arrays, per-world demand/reward accounting
+│   │                      merged arrays, per-world demand/reward accounting;
+│   │                      reset(demand_rand=) randomizes axis rate + direction (B9)
 │   ├── traffic_env.py     TrafficEnv (batched VectorEnv: 48-channel obs,
 │   │                      action masks, ADR 0004 reward, NEXT_STEP autoreset;
 │   │                      quality<1 routes _observe through the sensors kernel

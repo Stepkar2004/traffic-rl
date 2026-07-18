@@ -216,11 +216,23 @@ def train_ppo(
     quality: Annotated[
         float, typer.Option(help="Sensing quality to train under (ADR 0005; 1.0 = omniscient).")
     ] = 1.0,
+    demand_rand: Annotated[
+        str | None,
+        typer.Option(
+            help="Per-episode demand randomization as JSON, e.g. "
+            '\'{"rate_lo_veh_h": 400, "rate_hi_veh_h": 1200, "mirror_p": 0.5}\' '
+            "(training only; eval stays fixed for comparability).",
+        ),
+    ] = None,
 ) -> None:
     """Parameter-shared PPO on a corridor/grid (ADR 0004 §5)."""
+    import json
+
+    from traffic_rl.core.config import DemandRandomization
     from traffic_rl.rl.ppo import PPOConfig
     from traffic_rl.rl.ppo import train_ppo as _train
 
+    dr = DemandRandomization(**json.loads(demand_rand)) if demand_rand is not None else None
     run_dir = _train(
         PPOConfig(
             scenario=scenario,
@@ -231,6 +243,7 @@ def train_ppo(
             comm=comm,
             device=device,
             quality=quality,
+            demand_rand=dr,
         )
     )
     typer.echo(f"ppo: artifacts in {run_dir}")

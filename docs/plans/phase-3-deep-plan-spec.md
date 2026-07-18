@@ -527,6 +527,19 @@ middle ground between raw classics and RL.
 
 ## B9. Per-episode demand randomization (Stepan's "intelligent simulator", the core of it)
 
+> **DONE 2026-07-17** (main session). `DemandRandomization(rate_lo_veh_h, rate_hi_veh_h,
+> mirror_p, axis_key="west", mirror_key="east")` in `core/config.py`: each episode, per
+> world, the axis origin's rate is drawn `R ~ U(lo, hi)` and with prob `mirror_p` the
+> axis/counter (EB/WB) rates swap. Threaded PPOConfig → `TrafficEnv(demand_rand=)` →
+> `BatchedWorlds.reset(demand_rand=)`; the draws come from a NEW `demand_rand` RNG stream
+> (appended last in `STREAM_NAMES` — spawn keys are index-stable, so goldens are byte-
+> unchanged), so `demand_rand=None` is bit-identical to pre-B9 (pinned: a B=1 world still
+> matches a standalone `World`). `train-ppo --demand-rand '{...}'`, recorded in config.json
+> (verified with a live run). Eval is untouched (fixed scenarios → comparability). Tests:
+> validation, `apply` axis/mirror + no-op, per-seed determinism, None-parity,
+> mirror-swaps-direction. **235 tests + 5 gates green. Part B is COMPLETE (B2-B9); Part C
+> is the compute-gated experiments — PARKED for Stepan.**
+
 The idea: instead of one policy per demand level, ONE policy that trains under
 per-episode random demand and covers the whole range. The full version (an infinite
 nonstationary run with phased random events, curriculum) is phase-4 machinery —

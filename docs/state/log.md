@@ -2,6 +2,21 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-17 · Phase-3 B9: per-episode demand randomization — Part B COMPLETE.**
+  `DemandRandomization(rate_lo_veh_h, rate_hi_veh_h, mirror_p, axis_key="west",
+  mirror_key="east")` in `core/config.py`: each training episode, per world, the axis
+  origin's arrival rate is drawn `R ~ U(lo, hi)` and, with probability `mirror_p`, the
+  axis/counter (EB/WB) rates swap — one policy that trains across the whole demand range and
+  both directions (the fix for the A5 bake-in). Threaded PPOConfig → `TrafficEnv(demand_rand=)`
+  → `BatchedWorlds.reset(demand_rand=)`, with the axis rate + mirror coin drawn from a NEW
+  `demand_rand` RNG stream appended last in `STREAM_NAMES` — spawn keys are index-stable, so
+  the demand/behavior/sensors children (and every golden trace) are byte-unchanged, and
+  `demand_rand=None` is bit-identical to pre-B9 (pinned: a B=1 world still == a standalone
+  `World` at that seed). `train-ppo --demand-rand '{...}'`, recorded in config.json so a
+  checkpoint self-describes its training distribution (verified with a live run). Eval is
+  untouched (fixed scenarios → comparison integrity). Tests: validation, `apply` axis/mirror
+  + no-op, per-seed determinism, None-parity, mirror-swaps-direction. 235 tests, 5 gates
+  green. Part B (B2-B9) is done; Part C is compute-gated and PARKED. Not pushed.
 - **2026-07-17 · Phase-3 B7: filtered max-pressure, the cheap-state-estimation baseline.**
   `MaxPressure(filter_tau_s=0.0)` gains a per-approach EMA over the queue (and, under
   `downstream`, exit) counts it reads — `alpha = 1 - exp(-cadence_s/tau)`, seeded at the first

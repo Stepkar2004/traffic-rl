@@ -3,6 +3,34 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
+**As of 2026-07-17 (later) — PHASE-3 PART B COMPLETE: B9 landed; B2-B9 all in.**
+
+The whole phase-3 code surface is built and pinned. What remains (Part C) is compute-gated
+and PARKED for Stepan.
+
+- **B9 — `DemandRandomization(rate_lo, rate_hi, mirror_p)`** (`core/config.py`): each
+  training episode, per world, the arterial-axis origin rate is drawn `R ~ U(lo, hi)` and,
+  with probability `mirror_p`, the eastbound/westbound rates swap — so ONE policy can train
+  across the whole demand range AND both directions (the fix for the A5 direction bake-in).
+  Threaded PPOConfig → `TrafficEnv(demand_rand=)` → `BatchedWorlds.reset(demand_rand=)`;
+  drawn from a NEW `demand_rand` RNG stream appended last in `STREAM_NAMES` (spawn keys are
+  index-stable → goldens byte-unchanged), so `demand_rand=None` stays bit-identical to
+  pre-B9 (pinned: a B=1 world still == a standalone `World`). `train-ppo --demand-rand
+  '{...}'`, recorded in config.json (verified with a live run). Eval untouched (fixed
+  scenarios → comparability). **235 tests + 5 gates green.** This is the C5 substrate.
+
+**Local/unpushed** (Stepan pushes) — B2-B9 sit on top of pushed phase-2 (cfb1d24).
+
+**Next action — Part C (ALL PARKED until Stepan schedules compute; it burns training
+hours):** the noise sweep (C1 classical + C2 zero-shot), train-for-condition PPO (C3) + the
+pre-registered frame-stack trigger (C4), and the C5 demand-generalist run (`train-ppo
+--demand-rand` on corridor-rush, rate U(400,1200), mirror_p 0.5, judged against the
+committed per-demand specialist frontier). Grid PPO (A2) also PARKED. Open async items for
+Stepan unchanged (ADR 0005 [REC] scope confirmed; the phase-2 demand-sweep figure's
+green-wave line; post #2).
+
+---
+
 **As of 2026-07-17 — PHASE-3 PART B: B6 ∥ B7 LANDED (the parallel-subagent fan-out wave):**
 
 The plan's two disjoint-file chunks ran as two parallel subagents; the main session verified

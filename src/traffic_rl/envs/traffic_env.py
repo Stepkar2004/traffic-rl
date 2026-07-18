@@ -24,7 +24,7 @@ from gymnasium.vector import VectorEnv
 from gymnasium.vector.utils import batch_space
 
 from traffic_rl.core.arrays import BOOL, F32, F64, I32, I64, VehicleArrays
-from traffic_rl.core.config import V_WAIT_MPS, SimConfig
+from traffic_rl.core.config import V_WAIT_MPS, DemandRandomization, SimConfig
 from traffic_rl.core.sensors import detect_peds, detect_vehicles, false_positives
 from traffic_rl.core.signals import Indication, PedIndication
 from traffic_rl.core.topology import N_PHASES
@@ -58,12 +58,15 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         decision_interval_s: float = 1.0,
         comm: bool = True,
         quality: float = 1.0,
+        demand_rand: DemandRandomization | None = None,
     ) -> None:
         self.metadata = {"autoreset_mode": gym.vector.AutoresetMode.NEXT_STEP}
         self.num_envs = num_envs
         self.cfg = cfg
         self.comm = comm
         self.quality = quality  # < 1.0 routes _observe through the sensing kernel
+        # training-only per-episode demand randomization (B9); None on eval envs
+        self._demand_rand = demand_rand
         dt = cfg.episode.dt_s
         self._substeps = max(1, round(decision_interval_s / dt))
         if abs(self._substeps * dt - decision_interval_s) > 1e-9:
@@ -139,7 +142,7 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
             # an unseeded reset is a fresh episode: demand advances, and the
             # whole sequence stays deterministic given the last seed
             self._episode += 1
-        self.sim.reset(self._root_seed, self._episode)
+        self.sim.reset(self._root_seed, self._episode, demand_rand=self._demand_rand)
         self._elapsed = 0
         self._needs_reset = False
         self._pending_autoreset = False
