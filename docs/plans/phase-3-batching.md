@@ -266,13 +266,22 @@ class). Do not pre-optimize the five that don't need it.
   FIELD-BY-FIELD BIT-EXACT under a hold policy in lock-step (recording controller captures
   World's exact eval-time obs), q in {1.0, 0.5}, single + corridor + grid, 150 intervals past
   max-red, + a q<1 non-vacuity pin. 261 tests, 5 gates green.
-- **B3-probe (scratchpad, no commit).** Hybrid speed per controller; decide actuated.
-- **B3b — `eval_classical_batched` + wire `run_quality_sweep`.** The eval driver: per
-  decision interval, `eval_advance_signals()` -> reconstruct Observations -> per-node
-  `decide` -> `request_batch` -> finish the interval; a per-substep variant for the 0.1s
-  actuated cadence. `run_quality_sweep` dispatches one batched cell per (scenario, kind,
-  params, q). **Row pin FIRST:** batched per-world row == `run_cell(scenario, kind, params,
-  seed, q)` bit-exact, per controller x q in {1.0, 0.5} x {single, corridor, grid}.
+- **B3-probe (scratchpad, no commit). DONE.** Measured per-core speedup (corridor-rush,
+  q=0.5, B=20, measure_s=180): 1.0s controllers ~24x, **actuated 61x** (its 0.1s-cadence
+  single-world observe is exactly what batching amortizes) — all FAR above the ~7x target
+  (the single-world observe is a per-node Python loop; batching vectorizes it across
+  worlds+nodes, on top of the dynamics gain). Decision: the hybrid (unchanged controllers)
+  is more than fast enough; NO controller vectorization needed.
+- **B3b — `eval_classical_batched` + wire `run_quality_sweep`. DONE (2026-07-18).** The eval
+  driver is the B2 driver with the controller's cadence (`ctrl_every`=10 for 1.0s, 1 for
+  actuated): `eval_advance_signals()` -> `classical_channels()` -> reconstruct lightweight
+  Observations -> per-node `decide` -> `eval_apply_and_run(actions, ctrl_every)`, mirroring
+  `World.step` (advance every dt, request only at each decision tick) — so its dynamics are
+  the already-pinned B2 driver. `run_quality_sweep` now dispatches one batched cell per
+  (scenario, kind, params, q). **Row pin (ship-gate):** batched per-world row ==
+  `run_cell(scenario, kind, params, seed, q)` FIELD-BY-FIELD BIT-EXACT — all 6 controllers x
+  q in {1.0, 0.5} on corridor, the single-intersection four on single-rush-ns, a grid
+  max_pressure guard, + batching invariance. 281 tests, 5 gates green.
 
 **Files.** `envs/traffic_env.py` (factor aggregation + classical accessor),
 `experiments/batched_eval.py` (+`eval_classical_batched`), `experiments/runner.py`

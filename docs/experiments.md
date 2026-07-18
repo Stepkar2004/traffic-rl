@@ -105,14 +105,17 @@ substrate. Every topology-appropriate controller (the phase-1 four on singles;
 corridors/grids add `coordinated` + `max_pressure_filtered`) over `single-rush-ns`,
 `corridor-rush`, `grid-rush-diag` × quality {1.0, 0.9, 0.75, 0.5, 0.25} × the 20
 held-out eval seeds (1000-1019, shared with the RL sweeps so the money plot is
-matched-seed), each cell the full leaderboard protocol (300 s warmup + 3600 s
-measure). q=1.0 is
+matched-seed), the full leaderboard protocol (300 s warmup + 3600 s measure). q=1.0 is
 re-run IN the sweep so every quality shares one seed set (matched seeds beat
 recycling the committed board, and the filtered-MP arm gets its q=1.0 anchor).
-Auto-calibrates first. Rows land in `runs/sweep/phase3-quality.json` (gitignored;
-each self-describes its `quality` per ADR 0005). `fixed_time`/`coordinated` are
-noise-immune, so their rows stay flat across q (a drift there is a bug). Figures +
-interpretation are Part D. Measured cost: ~2-3 h CPU pool.
+**Phase-3 B3: each (controller, scenario, quality) cell is now ONE batched episode
+over all 20 seeds** (`eval_classical_batched`, batched observation + the unchanged
+controllers), BIT-EXACT to the per-seed `run_cell` it replaces (pinned). Auto-calibrates
+first. Rows land in `runs/sweep/phase3-quality.json` (gitignored; each self-describes its
+`quality` per ADR 0005). `fixed_time`/`coordinated` are noise-immune, so their rows stay
+flat across q (a drift there is a bug). Figures + interpretation are Part D. Cost: the old
+single-world estimate was ~2-3 h CPU pool; batching cut per-core work sharply (probe:
+~24x for 1.0 s controllers, ~61x for actuated) — B4 records the actual batched wall-clock.
 
 ### `traffic-rl zero-shot-sweep [--runs-dir dir] [--workers N] [--scenario-dir dir] [--out path]`
 

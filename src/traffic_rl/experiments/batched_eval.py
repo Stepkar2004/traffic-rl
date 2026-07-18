@@ -38,16 +38,21 @@ from typing import Any
 import numpy as np
 import torch
 
-from traffic_rl.core.config import load_scenario
+from traffic_rl.control.base import ApproachChannel, Observation
+from traffic_rl.core.config import ControllerConfig, load_scenario
 from traffic_rl.core.rng import spawn_streams
 from traffic_rl.core.topology import N_PHASES
-from traffic_rl.envs.traffic_env import TrafficEnv
+from traffic_rl.envs.traffic_env import ClassicalChannels, TrafficEnv
 from traffic_rl.experiments.runner import _rl_provenance
 from traffic_rl.rl.features import N_CHANNELS
 from traffic_rl.rl.nets import Actor, QNet
 
 #: masked greedy over a (rows, d_in) feature batch + (rows, N_PHASES) mask -> (rows,)
 GreedyFn = Callable[[torch.Tensor, torch.Tensor], torch.Tensor]
+
+#: shared empty speed array for reconstructed ApproachChannels — no classical
+#: controller reads speed_mps (queue_len is precomputed), so one instance is safe.
+_EMPTY_F32: np.ndarray = np.array([], dtype=np.float32)
 
 
 def _load_greedy(params: dict[str, Any], device: torch.device) -> tuple[GreedyFn, int]:
@@ -173,6 +178,164 @@ def eval_rl_batched(
             "measure_s": cfg.episode.measure_s,
         }
         row.update(prov)
+        row.update(dataclasses.asdict(mets[k]))
+        rows.append(row)
+    return rows
+
+
+def _reconstruct_observations(
+    env: TrafficEnv, ch: ClassicalChannels, t: float
+) -> list[Observation]:
+    """Lightweight per-node ``Observation``s from the batched raw channels (B3b).
+
+    One per merged (world, node), in the same field-for-field shape the
+    single-world ``PerfectObservation`` / ``NoisyDetection`` produce — but only
+    the fields the six classical controllers actually read carry real values;
+    ``speed_mps`` is empty and ``dist_to_stop_m`` is the 1-element ``[min_dist]``
+    (no controller reads more than ``any(dist <= advance_detector_m)``, which
+    equals ``min_dist <= advance_detector_m``). ``walk_active`` / ``neighbor_active``
+    stay at their dataclass defaults — unread by every classical controller.
+    """
+    sig = env.sim.signals
+    n_nodes = env.num_envs * env.n_i
+    active = sig.active
+    indication = sig.indication
+    pending = sig.pending
+    state_t = sig.state_t
+    green_t = sig.green_t
+    red_t = sig.red_t
+    esw = sig.earliest_switch_wait_all()
+    yellow_s = float(sig.yellow_s)
+    all_red_s = float(sig.all_red_s)
+    min_green = tuple(float(g) for g in sig.min_green_s)
+    ql, dc, occ = ch.queue_len, ch.downstream_count, ch.detector_occupied
+    rec, flw, mdist, ped = ch.time_since_actuation_s, ch.flow_veh_h, ch.min_dist_m, ch.ped_waiting
+
+    out: list[Observation] = []
+    for node in range(n_nodes):
+        base = 4 * node
+        approaches = tuple(
+            ApproachChannel(
+                dist_to_stop_m=np.array([mdist[base + a]], dtype=np.float32),
+                speed_mps=_EMPTY_F32,
+                detector_occupied=bool(occ[base + a]),
+                time_since_actuation_s=float(rec[base + a]),
+                flow_veh_h=float(flw[base + a]),
+                queue_len=int(ql[base + a]),
+                downstream_count=int(dc[base + a]),
+            )
+            for a in range(4)
+        )
+        out.append(
+            Observation(
+                t=t,
+                approaches=approaches,
+                active_phase=int(active[node]),
+                indication=int(indication[node]),
+                pending_phase=int(pending[node]),
+                time_in_state_s=float(state_t[node]),
+                green_elapsed_s=float(green_t[node]),
+                red_elapsed_s=tuple(float(red_t[node, p]) for p in range(N_PHASES)),
+                earliest_switch_s=float(esw[node]),
+                ped_waiting=tuple(int(ped[base + c]) for c in range(4)),
+                yellow_s=yellow_s,
+                all_red_s=all_red_s,
+                min_green_s=min_green,
+            )
+        )
+    return out
+
+
+def eval_classical_batched(
+    scenario_path: str,
+    kind: str,
+    params: dict[str, Any],
+    seeds: tuple[int, ...],
+    quality: float,
+    measure_s: float | None = None,
+) -> list[dict[str, Any]]:
+    """One classical controller over ``seeds`` at ``quality`` -> B metric rows,
+    BIT-EXACT to B ``run_cell(scenario, kind, params, seed, quality)`` rows (B3b).
+
+    The batched observation is the dispatch win (Stepan's "batched observation
+    ~7x"); the CONTROLLERS are the unchanged single-world classes, one instance
+    per (world, node) holding its own episode state (Webster's plan, MaxPressure's
+    EMA), fed lightweight ``Observation``s reconstructed from the batched raw
+    channels — so controller correctness is inherited, not re-derived. The eval
+    driver is the B2 driver with the controller's cadence: ``eval_advance_signals``
+    -> ``classical_channels`` -> per-node ``decide`` -> ``eval_apply_and_run(actions,
+    ctrl_every)``, mirroring ``World.step`` (advance every dt, request only at each
+    decision tick). Top-level (picklable) so the sweep dispatches one batched cell
+    per process.
+    """
+    cfg = load_scenario(Path(scenario_path))
+    if measure_s is not None:  # match run_cell's test/quick override
+        cfg = dataclasses.replace(
+            cfg, episode=dataclasses.replace(cfg.episode, measure_s=measure_s)
+        )
+    cfg = dataclasses.replace(cfg, sensing=dataclasses.replace(cfg.sensing, quality=quality))
+
+    b = len(seeds)
+    env = TrafficEnv(
+        cfg,
+        num_envs=b,
+        episode_s=cfg.episode.duration_s,
+        comm=True,
+        quality=quality,
+        collect_metrics=True,
+    )
+    n_i = env.n_i
+    dt = cfg.episode.dt_s
+    base_topo = env.sim.base_topo
+
+    # local import: control.make_controller is torch-free for classical kinds
+    # (RLController is imported lazily inside it), so this stays a classical path.
+    from traffic_rl.control import make_controller
+
+    # one controller instance per (world, node), reset to the BASE topology / node —
+    # exactly what run_cell(seed=seeds[b]) builds (World over the single-world topo).
+    ctrls = [
+        [make_controller(ControllerConfig(kind=kind, params=params)) for _ in range(n_i)]
+        for _ in range(b)
+    ]
+    for world_ctrls in ctrls:
+        for i, c in enumerate(world_ctrls):
+            c.reset(base_topo, i)
+    cadence_s = ctrls[0][0].cadence_s
+    ctrl_every = max(1, round(cadence_s / dt))
+    if abs(ctrl_every * dt - cadence_s) > 1e-9:
+        raise ValueError(f"controller cadence {cadence_s}s is not a multiple of dt={dt}s")
+    total_substeps = round(cfg.episode.duration_s / dt)
+    n_decisions = total_substeps // ctrl_every
+
+    env.reset(seed=0, options={"world_seeds": list(seeds)})
+    # reset-pollution fix (as in eval_rl_batched): discard reset()'s pre-advance
+    # observe so the per-decision observe cadence matches World's.
+    env._last_occupied_t[:] = -1.0e9
+    env._flow_hist = []
+    for _ in range(n_decisions):
+        env.sim.eval_advance_signals()
+        ch = env.classical_channels()
+        t = env.sim.t
+        obs = _reconstruct_observations(env, ch, t)
+        actions = np.empty((b, n_i), dtype=np.int32)
+        for bi in range(b):
+            for i in range(n_i):
+                actions[bi, i] = ctrls[bi][i].decide(obs[bi * n_i + i], t)
+        env.sim.eval_apply_and_run(actions, ctrl_every)
+
+    mets = env.sim.finalize_metrics()
+    rows: list[dict[str, Any]] = []
+    for k in range(b):
+        row: dict[str, Any] = {
+            "scenario": cfg.name,
+            "controller": kind,
+            "seed": seeds[k],
+            "entropy": str(spawn_streams(seeds[k]).entropy),
+            "quality": cfg.sensing.quality,  # self-describes its sensing (ADR 0005 §4)
+            "warmup_s": cfg.episode.warmup_s,
+            "measure_s": cfg.episode.measure_s,
+        }
         row.update(dataclasses.asdict(mets[k]))
         rows.append(row)
     return rows

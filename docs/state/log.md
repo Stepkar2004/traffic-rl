@@ -2,6 +2,23 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-18 · Phase-3 batching B3b: batched classical eval, bit-exact to run_cell (~24-61x).**
+  New `experiments/batched_eval.py::eval_classical_batched` evaluates one classical controller
+  over B eval seeds in ONE batched episode → B rows in `run_cell`'s schema, BIT-EXACT. The
+  batched observation is the dispatch win (Stepan's "batched observation ~7x"); the CONTROLLERS
+  are the UNCHANGED single-world classes, one instance per (world, node) holding its own episode
+  state, fed lightweight Observations reconstructed from the batched raw channels (six scalars +
+  `[min_dist]`; no controller reads more). The eval driver is the B2 driver with the controller's
+  cadence (`ctrl_every`=10 for 1.0s controllers, 1 for the 0.1s actuated): advance → observe →
+  decide → `eval_apply_and_run(actions, ctrl_every)`, mirroring `World.step` — so its dynamics are
+  already pinned by B2. `run_quality_sweep` now dispatches one batched cell per (scenario, kind,
+  params, q). Ship-gate pin (`tests/experiments/test_batched_classical_eval.py`): batched per-world
+  row == `run_cell(scenario, kind, params, seed, q)` FIELD-BY-FIELD BIT-EXACT — all 6 controllers ×
+  q∈{1.0,0.5} on corridor, the single-intersection four on single-rush-ns, a grid max_pressure
+  guard, + batching invariance. Probe (per-core, B=20): 1.0s controllers ~24x, actuated ~61x — far
+  above the ~7x target (batching vectorizes the per-node Python-loop observe on top of the dynamics
+  gain), so the unchanged-controller hybrid needs no vectorization. **B3 COMPLETE.** 281 tests,
+  5 gates green. Not pushed. NEXT: B4 — rerun Part C sweeps (batched), then Part D.
 - **2026-07-18 · Phase-3 batching B3a: batched raw classical observation (bit-exact channels).**
   Stepan chose "batched observation ~7x" for B3. Factored `TrafficEnv._observe`'s per-approach
   aggregation into a shared `_aggregate_channels()` (+ `_ped_counts()`) — ONE computation both

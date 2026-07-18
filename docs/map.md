@@ -205,7 +205,13 @@ src/traffic_rl/
     ├── __init__.py        calibration + matrix runner + stats + report
     ├── calibrate.py       queue-discharge bench: MEASURED sat flow + startup
     │                      lost time (never textbook constants)
-    ├── runner.py          matrix: controllers x scenarios x seeds, process pool
+    ├── runner.py          matrix: controllers x scenarios x seeds, process pool;
+    │                      the phase-3 quality sweeps dispatch one BATCHED cell per
+    │                      (scenario, kind/ckpt, q) via batched_eval (bit-exact to run_cell)
+    ├── batched_eval.py    phase-3 batching: eval one RL checkpoint (eval_rl_batched)
+    │                      or one classical controller (eval_classical_batched) over
+    │                      B eval seeds in ONE BatchedWorlds -> B run_cell-schema rows,
+    │                      BIT-EXACT to per-seed run_cell (~7-60x/core; the sweep win)
     ├── stats.py           percentile bootstrap CIs (10k resamples, seeded)
     ├── report.py          leaderboard markdown + CI bar chart; honesty notes
     └── emergence.py       ADR 0004 §6 probe: green-onset cross-correlation of
@@ -266,7 +272,11 @@ tests/
 │   └── test_ppo_smoke.py  same machinery pin for PPO: arm dirs, curves,
 │                          checkpoint drives a 3-intersection World legally
 ├── experiments/
-│   └── test_{calibrate,stats,runner_report,emergence}.py
+│   ├── test_{calibrate,stats,runner_report,emergence}.py
+│   ├── test_batched_eval.py   B2 pin: eval_rl_batched per-world row == run_cell
+│   │                          bit-exact (+ batching invariance, mask + split sanity)
+│   └── test_batched_classical_eval.py  B3b ship-gate: eval_classical_batched row
+│                              == run_cell bit-exact, all 6 controllers, q∈{1,0.5}
 └── viewer/
     └── test_render_smoke.py   headless render smoke (SDL dummy)
 

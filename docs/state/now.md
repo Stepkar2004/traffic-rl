@@ -3,29 +3,39 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-18 — BATCHING BUILD UNDERWAY (plan: [phase-3-batching.md](../plans/phase-3-batching.md)). B1 + B2 + B3a LANDED.**
+**As of 2026-07-18 — BATCHING BUILD: B1 + B2 + B3 (ALL) LANDED. NEXT: B4 (rerun Part C batched → Part D).**
+Plan: [phase-3-batching.md](../plans/phase-3-batching.md).
 
 Goal: make the phase-3 sweeps ~7x faster by evaluating a cell's 20 eval seeds as one
 `BatchedWorlds` instead of 20 single-world processes. Gated, bit-exact-pinned chunks:
-**B1 batched metrics → B2 batched RL eval (7x on 4/5 stages) → B3 batched classical (C1)**,
-then rerun Part C + Part D. Governing rule: bit-exact vs the single-world path or it does
-not ship (a batched cell feeds the money plot). Return point: checkpoint `d682826`.
+**B1 batched metrics → B2 batched RL eval → B3 batched classical (C1) — ALL DONE**, then B4:
+rerun Part C + Part D. Governing rule: bit-exact vs the single-world path or it does not ship
+(a batched cell feeds the money plot). Return point: checkpoint `d682826`.
 
-- **B3a DONE — batched raw classical observation (Stepan chose "batched observation ~7x").**
-  Factored `_observe`'s per-approach aggregation into a shared `_aggregate_channels()`
-  (+ `_ped_counts()`) — ONE computation both eval paths read (RL normalizes, classical packs
-  raw), so they can't drift; `_observe` byte-unchanged (B4/B2/B1 pins green). New
-  `TrafficEnv.classical_channels()` returns the raw per-approach channels the 6 controllers read
-  + per-cw ped_waiting; `min_dist_m` float32 so actuated's `any(dist<=adv)` reduces bit-exact.
-  **Reshaping finding:** no controller reads `speed_mps` or the full distance array, so a
-  lightweight per-node Observation (6 scalars + `[min_dist]`) fed to the UNCHANGED single-world
-  controllers is bit-exact — the plan's original "HIGH risk (new observation path)" collapses to
-  just the observation (pinned), controller correctness is free. Pin
-  (`tests/envs/test_classical_channels.py`): batched channels == single-world `ApproachChannel`
-  fields FIELD-BY-FIELD BIT-EXACT under hold in lock-step, q∈{1.0,0.5}, single+corridor+grid.
-  **261 tests, 5 gates green.** NEXT: B3-probe (hybrid speed per controller, esp. the 0.1s
-  actuated) → B3b (`eval_classical_batched` eval driver + row pin vs run_cell + wire
-  `run_quality_sweep`).
+- **B3 DONE — batched classical eval (Stepan chose "batched observation ~7x"); bit-exact to run_cell.**
+  - **B3a — batched raw classical observation.** Factored `_observe`'s per-approach aggregation into
+    a shared `_aggregate_channels()` (+ `_ped_counts()`) — ONE computation both eval paths read (RL
+    normalizes, classical packs raw), so they can't drift; `_observe` byte-unchanged. New
+    `TrafficEnv.classical_channels()` returns the raw per-approach channels the 6 controllers read;
+    `min_dist_m` float32 so actuated's `any(dist<=adv)` reduces bit-exact. **Reshaping finding:** no
+    controller reads `speed_mps` or the full distance array, so a lightweight per-node Observation
+    (6 scalars + `[min_dist]`) fed to the UNCHANGED single-world controllers is bit-exact — the
+    plan's "HIGH risk (new observation path)" collapsed to just the observation; controller
+    correctness is free. Pin: `tests/envs/test_classical_channels.py`.
+  - **B3b — `eval_classical_batched` + wired `run_quality_sweep`.** Eval driver = the B2 driver with
+    the controller's cadence (`ctrl_every`=10 for 1.0s, 1 for the 0.1s actuated): advance → observe →
+    reconstruct Observations → per-node `decide` → `eval_apply_and_run(actions, ctrl_every)`,
+    mirroring `World.step` (so dynamics are the already-pinned B2 driver). `run_quality_sweep`
+    dispatches one batched cell per (scenario, kind, params, q). **Ship-gate pin**
+    (`tests/experiments/test_batched_classical_eval.py`): batched per-world row == `run_cell(...)`
+    FIELD-BY-FIELD BIT-EXACT — all 6 controllers × q∈{1.0,0.5} on corridor, the single-intersection
+    four, a grid guard, + batching invariance. Probe (per-core, B=20): 1.0s controllers ~24x,
+    actuated ~61x — far above the ~7x target, so no controller vectorization needed.
+  - **281 tests, 5 gates green.** All batching (B1-B3) is bit-exact vs the single-world path.
+  **NEXT — B4:** rerun the 5 Part-C sweep stages batched (RL via `run_rl_quality_sweep`, classical
+  via `run_quality_sweep`; writes `runs/sweep/phase3-*.json`), then build Part D (money plot, C4
+  trigger, C5 chart, single/grid panels, `results/phase-3.md`, README + post #3), then absorb +
+  delete the deep-plan spec AND phase-3-batching.md. Do NOT push.
 
 - **B1 DONE — batched ADR-0002 metrics on `BatchedWorlds`** (opt-in `collect_metrics`, OFF
   by default so training + single-world paths are byte-unchanged). Per-world completion

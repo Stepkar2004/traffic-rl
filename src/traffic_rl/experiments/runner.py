@@ -190,24 +190,34 @@ def run_quality_sweep(
     (ADR 0005 §4), so the money-plot reads p95 vs q per controller straight off the
     JSON. ``fixed_time``/``coordinated`` are noise-immune by construction — their
     rows must stay flat across q; a drift there is a bug, not a finding.
+
+    Phase-3 B3: each pool task is ONE batched cell — one (scenario, kind, params, q)
+    evaluated over ALL ``seeds`` at once via ``eval_classical_batched`` (num_worlds=B),
+    ~7x faster than one process per seed. Rows keep the same schema and are BIT-EXACT
+    to the per-seed ``run_cell`` they replace (batched observation + the unchanged
+    single-world controllers; pinned in ``test_batched_classical_eval.py``).
     """
-    cells: list[tuple[str, str, dict[str, Any], int, float]] = []
+    # local import: batched_eval imports _rl_provenance from this module, so a
+    # top-level import here would be circular.
+    from traffic_rl.experiments.batched_eval import eval_classical_batched
+
+    cells: list[tuple[str, str, dict[str, Any], float]] = []
     for sc in scenarios:
         path = str(scenario_dir / f"{sc}.yaml")
         for kind, params in controllers_for(Path(path), calibration):
             if controllers is not None and kind not in controllers:
                 continue
-            cells += [(path, kind, params, seed, q) for q in qualities for seed in seeds]
+            cells += [(path, kind, params, q) for q in qualities]
     rows: list[dict[str, Any]] = []
     t0 = time.perf_counter()
     with ProcessPoolExecutor(max_workers=workers) as pool:
         futures = [
-            pool.submit(run_cell, path, kind, params, seed, measure_s, q)
-            for path, kind, params, seed, q in cells
+            pool.submit(eval_classical_batched, path, kind, params, seeds, q, measure_s)
+            for path, kind, params, q in cells
         ]
         for i, fut in enumerate(as_completed(futures), 1):
-            rows.append(fut.result())
-            if i % 40 == 0 or i == len(cells):
+            rows.extend(fut.result())
+            if i % 5 == 0 or i == len(cells):
                 elapsed = time.perf_counter() - t0
                 print(f"  quality-sweep: {i}/{len(cells)} cells ({elapsed:,.0f}s)", flush=True)
     rows.sort(key=lambda r: (r["scenario"], r["controller"], -r["quality"], r["seed"]))
