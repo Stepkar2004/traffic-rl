@@ -2,6 +2,17 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-17 · Phase-3 fix: demand_rand (B9) now re-draws across the autoreset.**
+  `TrafficEnv`'s NEXT_STEP autoreset called `sim.reset(...)` WITHOUT `demand_rand`, so B9's
+  per-episode randomization only ever hit episode 0 — training reaches every later episode
+  through the autoreset, not `reset()`, so the C5 demand-generalist substrate silently
+  degraded to a fixed-demand specialist after the first episode. One-line fix (pass
+  `demand_rand=self._demand_rand` in the autoreset branch) + a differential pin
+  (`test_demand_rand_reapplies_across_autoreset`): episode 1 reached via autoreset == episode 1
+  via an unseeded `reset()`. Caught while wiring the C3 quality-DR arm, before any C5 run
+  finished — the 2 running C5 runs were killed and relaunched on the fixed path. Root cause:
+  B9's tests exercised `BatchedWorlds.reset(demand_rand=)` and the direct `reset()` path but
+  never an autoreset boundary. 236 tests, 5 gates green. Not pushed.
 - **2026-07-17 · Phase-3 B9: per-episode demand randomization — Part B COMPLETE.**
   `DemandRandomization(rate_lo_veh_h, rate_hi_veh_h, mirror_p, axis_key="west",
   mirror_key="east")` in `core/config.py`: each training episode, per world, the axis

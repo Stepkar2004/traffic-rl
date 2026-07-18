@@ -12,6 +12,7 @@ from traffic_rl.core.config import (
     APPROACHES,
     ControllerConfig,
     DemandConfig,
+    DemandRandomization,
     DemandSegment,
     EpisodeConfig,
     SimConfig,
@@ -122,6 +123,33 @@ def test_next_step_autoreset_off_by_one() -> None:
     _, _reward3, _, trunc3, _ = env.step(hold)  # first REAL step of episode 2
     assert not trunc3.any()
     assert env.sim.t > 0.0
+
+
+def test_demand_rand_reapplies_across_autoreset() -> None:
+    """B9 is a TRAINING knob, and training reaches every episode after the first
+    via NEXT_STEP autoreset — so demand_rand must be re-drawn there, not only at
+    the initial reset(). Pin: episode 1 reached by autoreset carries the SAME
+    randomized schedule as episode 1 reached by an unseeded reset() (which takes
+    the demand_rand path). Before the fix the autoreset fell back to base demand
+    and the two diverged, so per-episode randomization only ever hit episode 0."""
+    cfg = _cfg()
+    dr = DemandRandomization(rate_lo_veh_h=400.0, rate_hi_veh_h=1200.0, mirror_p=0.5)
+    hold = np.zeros((2, 3), dtype=np.int64)
+
+    auto = TrafficEnv(cfg, num_envs=2, episode_s=10.0, demand_rand=dr)
+    auto.reset(seed=5)
+    for _ in range(auto.episode_steps):
+        auto.step(hold)  # the last step truncates -> autoreset pending
+    auto.step(hold)  # consume the autoreset -> now in episode 1
+    via_autoreset = [a.copy() for a in auto.sim._veh_arrivals]
+
+    direct = TrafficEnv(cfg, num_envs=2, episode_s=10.0, demand_rand=dr)
+    direct.reset(seed=5)  # episode 0
+    direct.reset()  # episode 1, the reset() path that already passed demand_rand
+    via_reset = [a.copy() for a in direct.sim._veh_arrivals]
+
+    assert len(via_autoreset) == len(via_reset)
+    assert all(np.array_equal(a, b) for a, b in zip(via_autoreset, via_reset, strict=True))
 
 
 def test_same_seed_same_trajectory() -> None:

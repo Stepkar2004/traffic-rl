@@ -169,7 +169,10 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
             # NEXT_STEP autoreset: this step's actions are ignored; the new
             # episodes' first observations come back with reward 0.
             self._episode += 1
-            self.sim.reset(self._root_seed, self._episode)
+            # B9: demand_rand must re-draw EVERY episode. Training reaches every
+            # episode after the first through this autoreset (not reset()), so
+            # omitting it here silently randomized episode 0 only.
+            self.sim.reset(self._root_seed, self._episode, demand_rand=self._demand_rand)
             self._elapsed = 0
             self._pending_autoreset = False
             self._last_occupied_t[:] = -1.0e9
