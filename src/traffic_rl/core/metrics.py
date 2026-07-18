@@ -6,6 +6,7 @@ boundary-queued time counts; p95 wait is the fairness headline; stops use
 hysteresis; pedestrian wait is first-class.
 """
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -60,6 +61,74 @@ class EpisodeMetrics:
     safety_interventions: int
 
 
+def finalize_episode_metrics(
+    veh_demand_t: Sequence[float],
+    veh_travel_s: Sequence[float],
+    veh_wait_s: Sequence[float],
+    veh_stops: Sequence[float],
+    ped_demand_t: Sequence[float],
+    ped_wait_s: Sequence[float],
+    *,
+    warmup_s: float,
+    measure_s: float,
+    unserved_demand: int,
+    unserved_peds: int,
+    in_network_at_end: int,
+    refused_commands: int,
+    forced_switches: int,
+    safety_interventions: int,
+) -> EpisodeMetrics:
+    """The ADR 0002 §6 window math over one world's completion records.
+
+    THE single definition of the per-cohort aggregation — both the single-world
+    ``MetricsCollector.finalize`` and the batched ``BatchedWorlds.finalize_metrics``
+    call this, so the two eval paths cannot drift by a rounding step (phase-3
+    batching's bit-exact rule). Two cohorts, deliberately:
+
+    EXPERIENCE metrics (travel, wait, stops) follow trips whose DEMAND EVENT
+    fired in the window — the arriving cohort's experience. RATE metrics
+    (throughput) count trips COMPLETED in the window — under saturation the
+    demand cohort is stuck in queue and would understate the discharge rate ~3x
+    (chunk-5 review finding).
+    """
+    lo, hi = warmup_s, warmup_s + measure_s
+    d = np.asarray(veh_demand_t, dtype=np.float64)
+    all_travel = np.asarray(veh_travel_s, dtype=np.float64)
+    in_win = (d >= lo) & (d < hi)
+    travel = all_travel[in_win]
+    wait = np.asarray(veh_wait_s, dtype=np.float64)[in_win]
+    stops = np.asarray(veh_stops, dtype=np.float64)[in_win]
+    completion_t = d + all_travel
+    completed_in_window = int(np.count_nonzero((completion_t >= lo) & (completion_t < hi)))
+    pd = np.asarray(ped_demand_t, dtype=np.float64)
+    ped_in_win = (pd >= lo) & (pd < hi)
+    ped_wait = np.asarray(ped_wait_s, dtype=np.float64)[ped_in_win]
+
+    def _mean(x: np.ndarray) -> float:
+        return float(x.mean()) if x.size else float("nan")
+
+    def _p95(x: np.ndarray) -> float:
+        return float(np.percentile(x, 95)) if x.size else float("nan")
+
+    return EpisodeMetrics(
+        mean_travel_time_s=_mean(travel),
+        mean_wait_s=_mean(wait),
+        p95_wait_s=_p95(wait),
+        throughput_veh_h=completed_in_window / (measure_s / 3600.0),
+        stops_per_vehicle=_mean(stops),
+        mean_ped_wait_s=_mean(ped_wait),
+        p95_ped_wait_s=_p95(ped_wait),
+        n_trips=int(travel.size),
+        n_ped_crossings=int(ped_wait.size),
+        unserved_demand=unserved_demand,
+        unserved_peds=unserved_peds,
+        in_network_at_end=in_network_at_end,
+        refused_commands=refused_commands,
+        forced_switches=forced_switches,
+        safety_interventions=safety_interventions,
+    )
+
+
 @dataclass
 class MetricsCollector:
     """Collects completion records during a run; finalize() applies the window."""
@@ -100,43 +169,16 @@ class MetricsCollector:
         forced_switches: int,
         safety_interventions: int,
     ) -> EpisodeMetrics:
-        """Aggregate the run (ADR 0002 §6). Two cohorts, deliberately:
-
-        EXPERIENCE metrics (travel, wait, stops) follow trips whose DEMAND
-        EVENT fired in the window — the arriving cohort's experience.
-        RATE metrics (throughput) count trips COMPLETED in the window — under
-        saturation the demand cohort is stuck in queue and would understate
-        the discharge rate ~3x (chunk-5 review finding).
-        """
-        lo, hi = self.warmup_s, self.window_end_s
-        d = np.asarray(self._veh_demand_t, dtype=np.float64)
-        all_travel = np.asarray(self._veh_travel_s, dtype=np.float64)
-        in_win = (d >= lo) & (d < hi)
-        travel = all_travel[in_win]
-        wait = np.asarray(self._veh_wait_s, dtype=np.float64)[in_win]
-        stops = np.asarray(self._veh_stops, dtype=np.float64)[in_win]
-        completion_t = d + all_travel
-        completed_in_window = int(np.count_nonzero((completion_t >= lo) & (completion_t < hi)))
-        pd = np.asarray(self._ped_demand_t, dtype=np.float64)
-        ped_in_win = (pd >= lo) & (pd < hi)
-        ped_wait = np.asarray(self._ped_wait_s, dtype=np.float64)[ped_in_win]
-
-        def _mean(x: np.ndarray) -> float:
-            return float(x.mean()) if x.size else float("nan")
-
-        def _p95(x: np.ndarray) -> float:
-            return float(np.percentile(x, 95)) if x.size else float("nan")
-
-        return EpisodeMetrics(
-            mean_travel_time_s=_mean(travel),
-            mean_wait_s=_mean(wait),
-            p95_wait_s=_p95(wait),
-            throughput_veh_h=completed_in_window / (self.measure_s / 3600.0),
-            stops_per_vehicle=_mean(stops),
-            mean_ped_wait_s=_mean(ped_wait),
-            p95_ped_wait_s=_p95(ped_wait),
-            n_trips=int(travel.size),
-            n_ped_crossings=int(ped_wait.size),
+        """Aggregate the run (ADR 0002 §6) via the shared window helper."""
+        return finalize_episode_metrics(
+            self._veh_demand_t,
+            self._veh_travel_s,
+            self._veh_wait_s,
+            self._veh_stops,
+            self._ped_demand_t,
+            self._ped_wait_s,
+            warmup_s=self.warmup_s,
+            measure_s=self.measure_s,
             unserved_demand=unserved_demand,
             unserved_peds=unserved_peds,
             in_network_at_end=in_network_at_end,

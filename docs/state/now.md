@@ -3,6 +3,24 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
+**As of 2026-07-18 — BATCHING BUILD UNDERWAY (plan: [phase-3-batching.md](../plans/phase-3-batching.md)). B1 LANDED.**
+
+Goal: make the phase-3 sweeps ~7x faster by evaluating a cell's 20 eval seeds as one
+`BatchedWorlds` instead of 20 single-world processes. Three gated, bit-exact-pinned chunks:
+**B1 batched metrics → B2 batched RL eval (7x on 4/5 stages) → B3 batched classical (C1)**,
+then rerun Part C + Part D. Governing rule: bit-exact vs the single-world path or it does
+not ship (a batched cell feeds the money plot). Return point: checkpoint `d682826`.
+
+- **B1 DONE — batched ADR-0002 metrics on `BatchedWorlds`** (opt-in `collect_metrics`, OFF
+  by default so training + single-world paths are byte-unchanged). Per-world completion
+  collectors + per-world diagnostics → `finalize_metrics() -> list[EpisodeMetrics]`. The
+  §6 cohort math is now ONE shared helper (`metrics.finalize_episode_metrics`) both paths
+  call. Pin (`tests/envs/test_batched_metrics.py`, written first): a B=4 batched run's
+  per-world metrics == 4 standalone `World` runs FIELD-BY-FIELD BIT-EXACT (corridor + grid,
+  two half-cycles exercising the refused + forced arms). **248 tests, 5 gates green.** NEXT: B2.
+
+---
+
 **As of 2026-07-18 — PERF INVESTIGATION DONE; BATCHING GREENLIT; this commit is a CHECKPOINT before the batching build.**
 
 Part C's post-training sweeps were relaunched (15 workers) then CANCELLED — no stage JSON had

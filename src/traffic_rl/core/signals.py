@@ -18,7 +18,7 @@ from enum import IntEnum
 import numpy as np
 
 from traffic_rl.core import timing
-from traffic_rl.core.arrays import BOOL, F64, I32
+from traffic_rl.core.arrays import BOOL, F64, I32, I64
 from traffic_rl.core.config import SignalTimingConfig
 from traffic_rl.core.topology import N_PHASES, Topology
 
@@ -107,6 +107,10 @@ class SignalState:
 
         self.refused = 0
         self.forced = 0
+        #: Per-intersection forced-switch tally (max-red cap firings). The World
+        #: reads the scalar ``forced`` and is byte-unchanged; batched eval sums
+        #: this per world for its ``forced_switches`` diagnostic (phase-3 B1).
+        self.forced_by_node: I64 = np.zeros(n_i, dtype=np.int64)
 
     # -- controller-facing ---------------------------------------------------
 
@@ -286,6 +290,7 @@ class SignalState:
                         target = int(np.argmax(starving[i]))  # lowest starving phase
                         self._begin_yellow(int(i), target)
                         self.forced += 1
+                        self.forced_by_node[int(i)] += 1
 
     def wall_active(self) -> BOOL:
         """Per lane: does a stop-line wall stand at its end this dt?

@@ -2,6 +2,18 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-18 · Phase-3 batching B1: batched ADR-0002 metrics on `BatchedWorlds`.**
+  Opt-in `collect_metrics` (OFF by default → training + single-world paths byte-unchanged):
+  per-world completion collectors (veh via the reused `MetricsCollector.on_vehicles_completed`;
+  peds via a new `crosswalk` field on `CompletedCrossings` so crossings bin by world) + per-world
+  diagnostics (`SignalState.forced_by_node` summed per world; refused from `decision_step`'s
+  return; unserved/in-network by world) → `finalize_metrics() -> list[EpisodeMetrics]`. The
+  ADR-0002 §6 cohort math is extracted to ONE shared `metrics.finalize_episode_metrics` both
+  the single-world and batched paths call (no mirrored float ops). Pin written first
+  (`tests/envs/test_batched_metrics.py`): a B=4 batched run's per-world metrics == 4 standalone
+  `World` runs FIELD-BY-FIELD BIT-EXACT (corridor + grid; half-cycles 8s/150s pin the refused +
+  forced arms; non-vacuous guard). Foundation for batched eval (B2 RL, B3 classical). 248 tests,
+  5 gates green. Not pushed. Plan: docs/plans/phase-3-batching.md.
 - **2026-07-18 · Perf investigation + CHECKPOINT (no src change): batching is the sweep win.**
   Probed why the phase-3 sweeps take ~2.5-3 h — the sim is per-step NumPy-dispatch-bound on small
   single-world arrays. Measured (real `BatchedWorlds`, fixed-time driver): batching the 20 eval

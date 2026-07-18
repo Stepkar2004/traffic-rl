@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from traffic_rl.core.arrays import BOOL, F32, F64, PedArrays
+from traffic_rl.core.arrays import BOOL, F32, F64, I32, PedArrays
 
 
 @dataclass(frozen=True)
@@ -23,6 +23,9 @@ class CompletedCrossings:
 
     demand_t: F64
     entered_t: F64
+    #: Crosswalk each finisher crossed. The single-world World ignores it;
+    #: batched eval bins crossings by world through it (phase-3 B1).
+    crosswalk: I32
 
     def __len__(self) -> int:
         return int(self.demand_t.shape[0])
@@ -31,6 +34,7 @@ class CompletedCrossings:
 _NO_CROSSINGS = CompletedCrossings(
     demand_t=np.empty(0, dtype=np.float64),
     entered_t=np.empty(0, dtype=np.float64),
+    crosswalk=np.empty(0, dtype=np.int32),
 )
 
 
@@ -69,6 +73,7 @@ def step_pedestrians(
     finished = CompletedCrossings(
         demand_t=peds.demand_t[:n][done].copy(),
         entered_t=peds.entered_t[:n][done].copy(),
+        crosswalk=peds.crosswalk[:n][done].copy(),
     )
     peds.compact(~done)
     return finished
