@@ -460,6 +460,20 @@ determinism contract (B2) — do not loosen the tolerance.
 
 ## B6. Frame-stack wrapper (build now, train only on trigger — C4)
 
+> **DONE 2026-07-17** (parallel subagent). `envs/wrappers.py::FrameStack(env, k)`
+> stacks the last k observations along the CHANNEL axis (k·48), order PINNED
+> oldest→newest; `reset` seeds k copies of frame 0; the step that CONSUMES a
+> NEXT_STEP autoreset reseeds the window per-env off the previous step's
+> truncation mask (no stale history bleeds across the boundary). `rl/controller.py`
+> gains `stack_k` (default 1 == bit-identical prior behavior): a per-node deque
+> with the identical order, comm-zeroing applied per frame BEFORE stacking, nets
+> widened to `k·N_CHANNELS`. `tests/envs/test_wrappers.py` pins the wrapper's
+> stacked channels == the controller's assembled input frame-for-frame (B8 item
+> 5), plus shape/reset/sliding-window/boundary semantics. Build-only; the k=4 arm
+> trains iff the C4 trigger fires. 229 tests + 5 gates green. Note: FrameStack is a
+> delegating wrapper, not a `gym.VectorEnv` subclass (promote it if a future
+> training loop annotates it as one).
+
 `envs/wrappers.py::FrameStack(env, k)`: stacks the last k observations along the
 channel axis, (B, n_i, D) → (B, n_i, k·D), reset seeds the stack with k copies of
 the first obs, NEXT_STEP autoreset boundaries reset the stack (use the truncation
@@ -469,6 +483,21 @@ width as a parameter. Test: wrapper-vs-controller stacking parity on a scripted
 sequence.
 
 ## B7. Filtered max-pressure (the classical-hybrid baseline)
+
+> **DONE 2026-07-17** (parallel subagent). `MaxPressure(filter_tau_s=0.0)` gains a
+> per-approach EMA over the queue (and, under `downstream`, exit) counts it reads,
+> `alpha = 1 - exp(-cadence_s / tau)`; `tau=0 ⇒ alpha=1 ⇒` smoothed == raw, a
+> bit-exact identity pinned by a test (the default path is untouched, goldens
+> frozen). The EMA advances each 1 s decision tick the signal is green (it holds
+> during yellow/all-red transitions, when the controller doesn't consult
+> pressure) — self-consistent and deterministic; a strict every-tick filter is a
+> one-line change if wanted. Registered `max_pressure_filtered` (kind →
+> `MaxPressure(**params)`, in `CONTROLLER_KINDS`, appended to `controllers_for`
+> for multi scenarios and `report.CONTROLLER_ORDER`) with params
+> `{downstream: true, filter_tau_s: 5.0}` — a new DEFAULT-matrix row for
+> corridors/grids (committed `leaderboard.md` unchanged until re-run). Tests: tau=0
+> identity, closed-form EMA + variance damping, fewer decision flaps on a
+> flickering queue. 229 tests + 5 gates green.
 
 `MaxPressure(filter_tau_s: float = 0.0)`: EMA over the queue and downstream counts
 it reads from Observation (tau=0 ⇒ exact current behavior, pinned by a test).

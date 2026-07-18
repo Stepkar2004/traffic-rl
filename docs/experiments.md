@@ -75,8 +75,12 @@ scenarios with topology-appropriate controller sets** (corridor-balanced joined
 in chunk 7 — it is ADR 0004 §5's corridor generalization profile and needs
 classical comparator rows): single-intersection scenarios run the phase-1 four
 (rows stay comparable forever); corridors/grids add `coordinated` (the
-hand-built green wave) and give max-pressure its network form
-(`downstream: true`). Expect substantially more wall time than phase 1's
+hand-built green wave), give max-pressure its network form (`downstream: true`),
+and — **as of phase 3, B7** — add `max_pressure_filtered` (`downstream: true` +
+`filter_tau_s: 5.0`): the same controller with an EMA over the queue/exit counts
+it reads, the cheap-state-estimation baseline for the noise sweep. Its rows only
+appear once the board is re-run; the committed classical `leaderboard.md` is
+unchanged until then. Expect substantially more wall time than phase 1's
 ~4 min — the full v2 run is scheduled for the training/run session.
 Auto-calibrates first if `runs/calibration.json` is missing. Outputs:
 

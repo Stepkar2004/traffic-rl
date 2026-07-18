@@ -2,6 +2,28 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-17 · Phase-3 B7: filtered max-pressure, the cheap-state-estimation baseline.**
+  `MaxPressure(filter_tau_s=0.0)` gains a per-approach EMA over the queue (and, under
+  `downstream`, exit) counts it reads — `alpha = 1 - exp(-cadence_s/tau)`, seeded at the first
+  frame; `tau=0 ⇒ alpha=1 ⇒` smoothed == raw, a bit-exact identity (default path untouched,
+  goldens frozen). The EMA advances each 1 s decision tick the signal is green and holds during
+  transitions (self-consistent, deterministic; a strict every-tick filter is a one-line change
+  if wanted). Registered `max_pressure_filtered` (`{downstream: true, filter_tau_s: 5.0}`) as a
+  corridors/grids leaderboard arm — a new DEFAULT-matrix row, so the committed `leaderboard.md`
+  is unchanged until a re-run. Tests: tau=0 identity, closed-form EMA + variance damping, fewer
+  decision flaps on a flickering queue. 229 tests, 5 gates green. Parallel-subagent chunk
+  (paired with B6). Not pushed.
+- **2026-07-17 · Phase-3 B6: FrameStack wrapper + controller-side stacking (build-only).**
+  `envs/wrappers.py::FrameStack(env, k)` stacks the last k observations along the channel axis
+  (k·48), order pinned oldest→newest; `reset` seeds k copies of frame 0 and the step that
+  consumes a NEXT_STEP autoreset reseeds the window per-env off the previous truncation mask (no
+  stale history across the boundary). `rl/controller.py` gains `stack_k` (default 1 ==
+  bit-identical prior behavior): a per-node deque with the identical order, comm-zeroing per
+  frame before stacking, nets widened to k·N_CHANNELS. The pin (`tests/envs/test_wrappers.py`)
+  asserts the wrapper's stacked channels == the controller's assembled input frame-for-frame,
+  so a checkpoint trained through the wrapper evals through the deque without drift (B8 item 5),
+  plus shape/reset/sliding-window/boundary semantics. Build-only; the k=4 arm trains iff the C4
+  trigger fires. Parallel-subagent chunk (paired with B7). Not pushed.
 - **2026-07-15 · Phase-3 B5: the quality dial wired end-to-end (config + CLI + provenance).**
   `SensingConfig(quality=1.0)` on SimConfig (strict loader, optional `sensing:` block,
   validated (0,1]); `World` builds `NoisyDetection` per node iff `quality < 1.0` keyed on the

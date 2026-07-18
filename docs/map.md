@@ -160,16 +160,23 @@ src/traffic_rl/
 │   │                      only (honestly detection-bounded); dt cadence
 │   └── max_pressure.py    Varaiya 2013 queue pressure; ped-blind by design —
 │                          the signal machine is its fairness floor; network
-│                          form (downstream=True) subtracts exit occupancy
+│                          form (downstream=True) subtracts exit occupancy;
+│                          filter_tau_s>0 EMA-smooths the counts (the
+│                          max_pressure_filtered arm) — cheap state estimation
 ├── envs/
-│   ├── __init__.py        RL environments (ADR 0004); exports TrafficEnv
+│   ├── __init__.py        RL environments (ADR 0004); exports TrafficEnv +
+│   │                      FrameStack
 │   ├── batching.py        replicate_topology (B copies, ids offset) +
 │   │                      BatchedWorlds: World's exact sub-step order over
 │   │                      merged arrays, per-world demand/reward accounting
-│   └── traffic_env.py     TrafficEnv (batched VectorEnv: 48-channel obs,
-│                          action masks, ADR 0004 reward, NEXT_STEP autoreset;
-│                          quality<1 routes _observe through the sensors kernel
-│                          with per-vehicle world keys) + SingleTrafficEnv (B=1)
+│   ├── traffic_env.py     TrafficEnv (batched VectorEnv: 48-channel obs,
+│   │                      action masks, ADR 0004 reward, NEXT_STEP autoreset;
+│   │                      quality<1 routes _observe through the sensors kernel
+│   │                      with per-vehicle world keys) + SingleTrafficEnv (B=1)
+│   └── wrappers.py        FrameStack(env, k): stack last k obs on the channel
+│                          axis (k·48), reseed on NEXT_STEP autoreset; the
+│                          controller-side deque (rl/controller.py) mirrors it
+│                          bit-for-bit (phase 3, the C4 memory arm)
 ├── rl/
 │   ├── __init__.py        agents package (torch enters here, nowhere else)
 │   ├── features.py        THE 48-channel ADR 0004 vector from an Observation
@@ -180,7 +187,8 @@ src/traffic_rl/
 │   │                      (config.json, curves.csv, ckpt_best/final.pt)
 │   ├── ppo.py             parameter-shared PPO: team reward, GAE cut at
 │   │                      truncations, comm/nocomm ablation arm directories
-│   └── controller.py      RLController: checkpoint -> Controller protocol;
+│   └── controller.py      RLController: checkpoint -> Controller protocol
+│                          (optional stack_k history mirrors FrameStack);
 │                          quick_episode_metrics for training-time p95 evals
 ├── viewer/
 │   ├── __init__.py        viewer imports core, never the reverse
@@ -229,9 +237,12 @@ tests/
 ├── envs/
 │   ├── test_batching.py   batched == sequential; world isolation; the anchor:
 │   │                      B=1 BatchedWorlds step-for-step == World (same seed)
-│   └── test_traffic_env.py   ADR 0004 contract: masks never refused, autoreset
-│                             off-by-one, determinism, comm-ablation zeroing,
-│                             gymnasium checker
+│   ├── test_traffic_env.py   ADR 0004 contract: masks never refused, autoreset
+│   │                         off-by-one, determinism, comm-ablation zeroing,
+│   │                         gymnasium checker
+│   └── test_wrappers.py   FrameStack semantics + the parity pin: the wrapper's
+│                          stacked channels == RLController's stack_k deque,
+│                          frame-for-frame, incl. reset + autoreset reseed
 ├── rl/
 │   ├── test_features.py   the anti-drift pin: controller features == env
 │   │                      observation, channel by channel, same sim state —

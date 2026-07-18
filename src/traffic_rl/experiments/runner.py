@@ -114,6 +114,9 @@ def controllers_for(
     ]
     if multi:
         out.append(("coordinated", {}))
+        # filtered max-pressure is the network baseline (cheap state estimation
+        # vs raw counts under sensing noise) — same gate as coordinated
+        out.append(("max_pressure_filtered", {"downstream": True, "filter_tau_s": 5.0}))
     return out
 
 

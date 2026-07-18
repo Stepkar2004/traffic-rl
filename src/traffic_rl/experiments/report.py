@@ -27,7 +27,14 @@ METRIC_COLUMNS = (
     ("p95_ped_wait_s", "p95 ped wait (s)", 1),
 )
 DIAGNOSTICS = ("unserved_demand", "unserved_peds", "refused_commands", "forced_switches")
-CONTROLLER_ORDER = ("fixed_time", "coordinated", "webster", "actuated", "max_pressure")
+CONTROLLER_ORDER = (
+    "fixed_time",
+    "coordinated",
+    "webster",
+    "actuated",
+    "max_pressure",
+    "max_pressure_filtered",
+)
 
 
 def _row_order(agg_keys: set[tuple[str, str]], scenario: str) -> list[str]:

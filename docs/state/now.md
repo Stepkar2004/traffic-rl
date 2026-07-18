@@ -3,6 +3,45 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
+**As of 2026-07-17 — PHASE-3 PART B: B6 ∥ B7 LANDED (the parallel-subagent fan-out wave):**
+
+The plan's two disjoint-file chunks ran as two parallel subagents; the main session verified
+the combined tree against all 5 gates (**229 tests**, +7 over B5), reviewed both diffs, and
+committed each as its own chunk boundary. Neither touches the B2-B5 parity spine.
+
+- **B6 — `envs/wrappers.py::FrameStack(env, k)`** (build-only, the C4 memory arm): stacks the
+  last k observations along the CHANNEL axis (k·48), order PINNED oldest→newest; `reset` seeds
+  k copies of frame 0, and the step that CONSUMES a NEXT_STEP autoreset reseeds the window
+  per-env off the previous truncation mask (no stale history bleeds across). `rl/controller.py`
+  gains `stack_k` (default 1 == bit-identical prior behavior): a per-node deque with the
+  identical order, comm-zeroing per frame BEFORE stacking, nets widened to k·N_CHANNELS. The
+  pin (`tests/envs/test_wrappers.py`) asserts the wrapper's stacked channels == the
+  controller's assembled input frame-for-frame — so a checkpoint trained through the wrapper
+  evaluates through the deque without drift. Trains only if the C4 trigger fires.
+- **B7 — filtered max-pressure** (`control/max_pressure.py`): `filter_tau_s>0` turns on a
+  per-approach EMA over the queue/exit counts the controller reads (`alpha = 1 -
+  exp(-cadence_s/tau)`); `tau=0` is a bit-exact identity (default path frozen, goldens
+  unchanged). Registered as the `max_pressure_filtered` leaderboard arm (`{downstream: true,
+  filter_tau_s: 5.0}`) for corridors/grids — a new DEFAULT-matrix row (committed
+  `leaderboard.md` unchanged until re-run). The cheap-state-estimation baseline for the noise
+  sweep: does a one-line filter recover what noise took, between raw classics and RL?
+
+**Design choice surfaced for Stepan (B7):** the EMA advances each 1 s decision tick the signal
+is GREEN and holds during yellow/all-red transitions (when the controller doesn't consult
+pressure) — self-consistent and deterministic; a strict every-tick filter is a one-line change
+if he prefers it.
+
+**Next action: B9 (per-episode demand randomization) in the MAIN session** — Stepan's
+demand-generalist substrate (C5). Plan: append a `demand_rand` RNG stream (golden-safe —
+`SeedSequence.spawn` keys are index-stable, so `demand`/`behavior`/`sensors` are byte-unchanged);
+add `DemandRandomization(rate_lo, rate_hi, mirror_p)` in `core/config.py`; thread it PPOConfig →
+TrafficEnv → `BatchedWorlds.reset` (per-world axis rate + EB/WB mirror drawn from the NEW stream,
+so `demand_rand=None` stays bit-identical); `train-ppo --demand-rand`; record in config.json;
+eval unchanged; pin None==today. Part C trainings/sweeps + grid PPO (A2) stay PARKED until
+Stepan schedules compute.
+
+---
+
 **As of 2026-07-15 (later) — PHASE-3 PART B: B2-B5 LANDED (the main-session parity spine +
 the quality dial wired end-to-end):**
 

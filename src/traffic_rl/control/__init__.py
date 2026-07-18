@@ -12,7 +12,15 @@ from traffic_rl.control.max_pressure import MaxPressure
 from traffic_rl.control.webster import Webster
 from traffic_rl.core.config import ControllerConfig
 
-CONTROLLER_KINDS = ("fixed_time", "webster", "actuated", "max_pressure", "coordinated", "rl")
+CONTROLLER_KINDS = (
+    "fixed_time",
+    "webster",
+    "actuated",
+    "max_pressure",
+    "max_pressure_filtered",
+    "coordinated",
+    "rl",
+)
 
 
 def make_controller(cfg: ControllerConfig) -> Controller:
@@ -24,6 +32,9 @@ def make_controller(cfg: ControllerConfig) -> Controller:
     if cfg.kind == "actuated":
         return ActuatedGapOut(**cfg.params)
     if cfg.kind == "max_pressure":
+        return MaxPressure(**cfg.params)
+    if cfg.kind == "max_pressure_filtered":
+        # same controller; params carry downstream + the EMA time constant
         return MaxPressure(**cfg.params)
     if cfg.kind == "coordinated":
         return CoordinatedFixedTime(**cfg.params)
