@@ -95,6 +95,19 @@ long-term costs. Blocked beats wrong.
   (steps × seeds × arms ÷ measured throughput) fits the compute window — the locked
   budgets multiplied out to ~30 h sequential and the run session needed a triage
   order bolted on afterward. raw (2026-07)
+- 2026-07-17 · A per-episode TRAINING feature (demand_rand, quality_rand) must be pinned
+  across the NEXT_STEP autoreset boundary, not just direct `reset()` — training reaches
+  every episode after the first via autoreset, so an episode-0-only bug sat behind green
+  tests + a "config recorded" check. raw (2026-07)
+- 2026-07-17 · Windows multiprocessing: any ad-hoc script calling a ProcessPoolExecutor
+  driver MUST wrap execution in `if __name__ == "__main__"` (+freeze_support) — spawn
+  re-imports the module per worker; without the guard it fork-bombs. Kill runaway pool
+  debris by CommandLine match (`*multiprocessing*`), never by out-dir substring. raw (2026-07)
+- 2026-07-18 · Before building a batched/vectorized twin of an interface, inventory what
+  its consumers actually READ — the surface to reproduce may be far smaller than the
+  interface. (Classical controllers read 6 scalars/approach, not the full dist/speed
+  arrays, so "batch the observation, keep the controllers unchanged" made bit-exactness
+  free and the plan's HIGH-risk chunk routine.) raw (2026-07)
 - 2026-07-15 · A head-to-head is valid only when the arms differ ONLY in the thing
   measured. Two near-miss FALSE headlines in the phase-2 run session, both the exact
   failure this rigor-branded repo exists to prevent: (a) quoted "PPO beats actuated"
