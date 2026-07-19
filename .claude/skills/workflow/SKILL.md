@@ -30,7 +30,13 @@ description: The SWE loop binding every implementation session in this repo - fi
      seed set for both (re-run the comparator on the new arm's seeds — never reuse a
      table computed on other seeds), and a learned controller trained FOR the condition
      it is judged in. A cross-seed or out-of-distribution number is noise or a
-     generalization probe, never a head-to-head.
+     generalization probe, never a head-to-head. Label every quoted arm `trained@X →
+     eval@Y`, so a clean-trained model scored under a shifted condition (noisy eval)
+     reads as a probe by construction — never silently as a head-to-head.
+   - **Stale conclusion = void** — before a decision leans on a past result, confirm its
+     setup still holds. When a setup changes (sensor model recalibrated, demand grid
+     rescaled, reward retuned), every verdict drawn under the old one is invalidated —
+     re-derive it, never carry the old number forward.
 4. **Document in the same chunk.** Update whatever the change made stale: README, the
    plan doc, an ADR for any new decision (`docs/decisions/`), docstrings — **and the
    three permanent surfaces (repo ADR 0003), checked by name at every chunk boundary:**
@@ -42,7 +48,10 @@ description: The SWE loop binding every implementation session in this repo - fi
    The test: "would a fresh session mis-learn anything if it read the docs right now?"
 5. **Commit at the chunk boundary.** Gates green → `docs/state/now.md` + `log.md`
    updated → commit. **NEVER push. The user pushes, or explicitly says push** — this repo
-   is public; an unpushed mistake is free, a pushed one is not.
+   is public; an unpushed mistake is free, a pushed one is not. A scratchpad run driver
+   that speeds a run ≥5% or would be rewritten next session is promoted to committed
+   `scripts/` (parameterized) as part of the chunk — rebuilding the same eval driver
+   every session is the anti-pattern.
 6. **Reflect.** A lesson landed (root cause found, default overridden, mistake repeated)?
    → run the evolve procedure: `skill-manager/references/evolve.md`. Task matched no
    skill? → one line in `docs/state/miss-log.md`, keep working. A realism/modeling
