@@ -62,6 +62,50 @@ def test_checkpoint_drives_corridor_world_without_refusals(smoke_run: Path) -> N
     assert world.counters.safety_interventions == 0
 
 
+def test_frame_stack_arm_trains_and_evals(tmp_path: Path) -> None:
+    """C4 memory arm: a stack_k=4 PPO run trains end to end (train env AND both
+    in-training evals frame-stacked), records stack_k in config.json, and its
+    checkpoint drives a World through an RLController(stack_k=4) deque without
+    refusals — the wrapper-vs-deque stacking parity (test_wrappers.py) keeps the
+    trained and evaluated stackings identical. A populated eval_p95_wait column
+    proves the World-based p95 eval (quick_episode_metrics, stack_k=4) ran too."""
+    import json
+
+    run = train_ppo(
+        PPOConfig(
+            scenario=SCENARIOS / "corridor-rush.yaml",
+            out_dir=tmp_path,
+            seed=0,
+            total_steps=256,
+            num_envs=2,
+            episode_s=20.0,
+            rollout_len=16,
+            minibatches=2,
+            epochs=1,
+            eval_every=256,
+            quality=0.5,
+            stack_k=4,
+            device="cpu",
+        )
+    )
+    assert json.loads((run / "config.json").read_text(encoding="utf-8"))["stack_k"] == 4
+    assert (run / "ckpt_final.pt").exists()
+    last = (run / "curves.csv").read_text(encoding="utf-8").strip().splitlines()[-1].split(",")
+    assert np.isfinite(float(last[3]))  # eval_return finite: the frame-stacked eval_env ran
+    assert last[4] != ""  # eval_p95_wait populated: the stack_k=4 World eval ran (may be NaN)
+
+    cfg = load_scenario(SCENARIOS / "corridor-rush.yaml")
+    controllers = [
+        RLController(checkpoint=run / "ckpt_final.pt", algo="ppo", stack_k=4, device="cpu")
+        for _ in range(3)
+    ]
+    world = World(cfg, seed=13, controller=controllers)
+    for _ in range(300):
+        world.step()
+    assert world.counters.refused_commands == 0
+    assert world.counters.safety_interventions == 0
+
+
 def test_nocomm_arm_gets_its_own_directory(tmp_path: Path) -> None:
     run = train_ppo(
         PPOConfig(

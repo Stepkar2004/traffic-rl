@@ -132,19 +132,26 @@ class RLController:
 
 
 def quick_episode_metrics(
-    scenario: SimConfig, policy: Policy, seed: int, episode_s: float, comm: bool = True
+    scenario: SimConfig,
+    policy: Policy,
+    seed: int,
+    episode_s: float,
+    comm: bool = True,
+    stack_k: int = 1,
 ) -> EpisodeMetrics:
     """One World episode under an in-memory policy -> EpisodeMetrics.
 
     Training-time curve evals (real p95 wait, not a proxy) — warmup 0,
-    measurement = the whole episode.
+    measurement = the whole episode. ``stack_k > 1`` assembles the per-node
+    history window (C4 memory arm) so a frame-stacked policy is fed the widened
+    features it was trained on.
     """
     cfg = dataclasses.replace(
         scenario,
         episode=EpisodeConfig(warmup_s=0.0, measure_s=episode_s, dt_s=scenario.episode.dt_s),
     )
     n_i = build_topology(cfg.topology).n_signals
-    controllers = [RLController(policy=policy, comm=comm) for _ in range(n_i)]
+    controllers = [RLController(policy=policy, comm=comm, stack_k=stack_k) for _ in range(n_i)]
     world = World(cfg, seed=seed, controller=controllers)
     world.run()
     return world.episode_metrics()

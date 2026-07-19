@@ -33,6 +33,7 @@ from traffic_rl.core.config import (
 )
 from traffic_rl.core.topology import N_PHASES
 from traffic_rl.envs.traffic_env import TrafficEnv
+from traffic_rl.envs.wrappers import FrameStack
 from traffic_rl.rl.controller import Policy, quick_episode_metrics
 from traffic_rl.rl.dqn import pick_device, write_run_config
 from traffic_rl.rl.features import N_CHANNELS
@@ -65,6 +66,7 @@ class PPOConfig:
     quality: float = 1.0  # sensing quality the agent trains under (ADR 0005)
     demand_rand: DemandRandomization | None = None  # per-episode demand (B9); eval stays fixed
     quality_rand: QualityRandomization | None = None  # per-episode quality (C3 DR); eval fixed
+    stack_k: int = 1  # frame-stack window (C4 memory arm); 1 = memoryless, bit-identical prior
 
 
 def train_ppo(ppo: PPOConfig) -> Path:
@@ -73,7 +75,7 @@ def train_ppo(ppo: PPOConfig) -> Path:
     device = pick_device(ppo.device)
     torch.manual_seed(ppo.seed)
 
-    env = TrafficEnv(
+    base_env = TrafficEnv(
         scenario,
         num_envs=ppo.num_envs,
         episode_s=ppo.episode_s,
@@ -82,10 +84,16 @@ def train_ppo(ppo: PPOConfig) -> Path:
         demand_rand=ppo.demand_rand,  # training only; the eval env below stays fixed
         quality_rand=ppo.quality_rand,  # C3 DR arm; eval env below stays a fixed quality
     )
+    # C4 memory arm: widen each observation to the last k frames (oldest-first).
+    # k=1 leaves base_env untouched, so the memoryless path is bit-identical.
+    env: TrafficEnv | FrameStack = (
+        FrameStack(base_env, ppo.stack_k) if ppo.stack_k > 1 else base_env
+    )
     n_i = env.n_i
+    d_in = ppo.stack_k * N_CHANNELS  # nets widen with the stack (nets.py takes d_in)
     rows = ppo.num_envs * n_i  # parameter sharing: one row per intersection
-    actor = Actor(N_CHANNELS, N_PHASES).to(device)
-    critic = Critic(N_CHANNELS).to(device)
+    actor = Actor(d_in, N_PHASES).to(device)
+    critic = Critic(d_in).to(device)
     optim = torch.optim.Adam(list(actor.parameters()) + list(critic.parameters()), lr=ppo.lr)
 
     arm = "comm" if ppo.comm else "nocomm"
@@ -99,7 +107,7 @@ def train_ppo(ppo: PPOConfig) -> Path:
             return int(actor(x, m).argmax(dim=1).item())
 
     horizon = ppo.rollout_len
-    b_obs = torch.zeros((horizon, rows, N_CHANNELS), device=device)
+    b_obs = torch.zeros((horizon, rows, d_in), device=device)
     b_mask = torch.zeros((horizon, rows, N_PHASES), dtype=torch.bool, device=device)
     b_act = torch.zeros((horizon, rows), dtype=torch.long, device=device)
     b_logp = torch.zeros((horizon, rows), device=device)
@@ -269,8 +277,11 @@ def _eval(
     greedy_policy: Policy,
 ) -> tuple[float, float]:
     """One greedy env episode return + REAL p95 wait from a World episode."""
-    eval_env = TrafficEnv(
+    base_eval = TrafficEnv(
         scenario, num_envs=1, episode_s=ppo.episode_s, comm=ppo.comm, quality=ppo.quality
+    )
+    eval_env: TrafficEnv | FrameStack = (
+        FrameStack(base_eval, ppo.stack_k) if ppo.stack_k > 1 else base_eval
     )
     e_obs, e_info = eval_env.reset(seed=ppo.seed * 1000 + 500)
     n_i = eval_env.n_i
@@ -289,5 +300,6 @@ def _eval(
         seed=ppo.seed * 1000 + 900,
         episode_s=ppo.episode_s,
         comm=ppo.comm,
+        stack_k=ppo.stack_k,  # C4: the World eval stacks per-node frames to match the net
     )
     return ret, float(metrics.p95_wait_s)

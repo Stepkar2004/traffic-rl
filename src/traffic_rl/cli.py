@@ -309,6 +309,12 @@ def train_ppo(
     quality: Annotated[
         float, typer.Option(help="Sensing quality to train under (ADR 0005; 1.0 = omniscient).")
     ] = 1.0,
+    stack_k: Annotated[
+        int,
+        typer.Option(
+            "--stack-k", help="Frame-stack window (C4 memory arm); 1 = memoryless (default)."
+        ),
+    ] = 1,
     demand_rand: Annotated[
         str | None,
         typer.Option(
@@ -345,6 +351,7 @@ def train_ppo(
             comm=comm,
             device=device,
             quality=quality,
+            stack_k=stack_k,
             demand_rand=dr,
             quality_rand=qr,
         )
