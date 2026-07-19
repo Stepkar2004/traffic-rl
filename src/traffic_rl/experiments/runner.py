@@ -164,7 +164,7 @@ def run_matrix(
 #: The phase-3 C1 quality sweep — the money-plot axis. q=1.0 is re-run IN the
 #: sweep (matched seeds beat recycling the committed board, and it also gives the
 #: filtered-MP arm a q=1.0 anchor the committed classical board never had).
-QUALITY_SWEEP: tuple[float, ...] = (1.0, 0.9, 0.75, 0.5, 0.25)
+QUALITY_SWEEP: tuple[float, ...] = (1.0, 0.9, 0.8, 0.7, 0.4)
 SWEEP_SCENARIOS: tuple[str, ...] = ("single-rush-ns", "corridor-rush", "grid-rush-diag")
 #: Held-out eval seeds (the phase-2 RL convention). The classical sweep AND every
 #: RL checkpoint eval share this set, so the money plot is matched-seed by

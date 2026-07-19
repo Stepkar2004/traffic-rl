@@ -90,6 +90,22 @@ per tick, to DETECTED objects, keyed by the hash of §1:
   term (peds are observed at a crosswalk, not along an approach), no state noise, no
   ped false positives. The bundle above only locked the vehicle curve; this line makes
   the ped curve part of the contract (it shipped in every Part-C training/sweep row).
+- **Recorded amendment (2026-07-18, §7 recalibration) — fulfils the `[CITE]` TODO above.**
+  The first phase-3 run's low-q rows were harsher than any deployed sensor stack (see
+  [research/sensor-noise-calibration-2026-07.md](../research/sensor-noise-calibration-2026-07.md):
+  modern fused video+radar detection is ~95-99% clear / ~0.8-0.9+ in bad weather; occlusion
+  is a tracking-continuity problem production systems largely solve, so no real stack loses
+  60-85% of a queue). Two bundle changes, keeping all five mechanisms:
+  (1) **occlusion `p_detect *= q` → `*= sqrt(q)`** — the queued-vehicle penalty was the least
+  realistic piece and drove the queue-count collapse; sqrt softens it (q=0.5 queued detection
+  0.375 → ~0.53) while keeping q=1 the exact identity. (2) **`FP_RATE 0.3 → 0.1`** (0.15 →
+  0.05 phantoms/lane/s at q=0.5) — the old rate was above real false-call rates. State-noise
+  sigmas unchanged. **q → reality:** q≈0.9-0.95 = modern fused stack (good); q≈0.7 = camera-only
+  bad weather / aging detector; q≈0.4 = legacy/degraded equipment (a labelled STRESS point, not
+  "adverse conditions"). **Invalidates** (re-run under the new bundle): `phase3-quality.json`
+  (C1), the C2 zero-shot eval, and the C3/C3-DR/C4 RL TRAINING arms. **Does NOT invalidate:**
+  phase-1/2 (q=1.0 identity) and the C5 demand-generalist arm (q=1.0 throughout). See §5 for the
+  revised grid.
 
 ## 3. The dial and the equivalence pin
 
@@ -127,8 +143,11 @@ per tick, to DETECTED objects, keyed by the hash of §1:
 
 ## 5. Sweep protocol (locked)
 
-- **Quality grid:** `{1.0, 0.9, 0.75, 0.5, 0.25}` (q=1.0 rows come free from existing
-  seed-matched artifacts where available; otherwise re-run — matched seeds beat recycling).
+- **Quality grid:** `{1.0, 0.9, 0.8, 0.7, 0.4}` (revised 2026-07-18, §2 recalibration; was
+  `{1.0, 0.9, 0.75, 0.5, 0.25}`). `1.0-0.7` is the realistic band (fused stack → camera-only bad
+  weather); `0.4` is a labelled legacy/degraded-equipment STRESS point, reported as such, never as
+  "adverse conditions". q=1.0 rows come free from existing seed-matched artifacts where available;
+  otherwise re-run — matched seeds beat recycling.
 - **Scenario set [REC]:** `single-rush-ns`, `corridor-rush`, `grid-rush-diag`. The **money
   plot** (p95 wait vs quality, one line per controller) is on `corridor-rush`.
 - **Controllers:** the topology-appropriate classical set + **filtered max-pressure**

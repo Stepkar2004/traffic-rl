@@ -3,6 +3,46 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
+**As of 2026-07-18 (latest) — SENSOR MODEL RECALIBRATED (ADR 0005 §7); C1+C2 RE-RUN IN FLIGHT.**
+_(Supersedes the "C4 FRAME-STACK ARM TRAINING (in flight)" block below — that arm was killed at
+92% and diagnosed; see the k=4 read below.)_
+
+Stepan + an external analysis (literature-backed) flagged that the phase-3 sensor model was a
+**strawman**: the low-q rows fogged sensors harder than any deployed detector stack. The whole repo
+is the honesty layer, so we recalibrated rather than ship an easy RL win/loss. Changes (all in this
+commit, gated 286-green):
+- **Occlusion penalty `×q → ×√q`** (`core/sensors.py`) — the #1 unrealistic lever. A real
+  fused/tracked stack coasts through a close leader; the old `×q` lost ~half a packed queue. Pinned:
+  at dist=50, q=0.5 the occluded detect rate is **0.486** (`×√0.5`), not the old `0.344`.
+- **False-positive rate `0.3 → 0.1`** (phantoms/lane/s at q→0).
+- **Sweep grid `{1.0, 0.9, 0.75, 0.5, 0.25} → {1.0, 0.9, 0.8, 0.7, 0.4}`** (`runner.QUALITY_SWEEP`,
+  single source). q→reality: **0.9-0.95 modern fused stack · 0.7 camera-only bad weather · 0.4
+  legacy/degraded (labelled stress, not realistic)**. This also fulfils the ADR 0005 §2 `[CITE]` TODO.
+- Recorded per ADR 0005 §7: an **amendment block** in the ADR (invalidates old-model C1/C2/C3/C3-DR/C4;
+  **phase-1/2 and C5 are UNAFFECTED** — all q=1.0 identity), the full reasoning + 6 sources in
+  **[research/sensor-noise-calibration-2026-07.md](../research/sensor-noise-calibration-2026-07.md)**.
+
+**k=4 memory-arm diagnostic (old model, 92%-trained ckpts, held-out seeds 1000-1019, q=0.5):**
+frame-stacking did **NOT** meaningfully help — seed0 58.6 [53.0, 64.6], seed1 41.3 [38.9, 43.7], both
+losing to actuated 35.3 and sitting in the same 40-63 band as the memoryless arms (zero-shot 40.2,
+DR 40.3/49.6). Read: the noise penalty was the **corrupted training signal**, not missing memory →
+**do not re-run k=4 by default**; the better lever if a gap persists is the **privileged (asymmetric)
+critic** already logged for phase 4 (watchout-later.md).
+
+**RE-RUN IN FLIGHT (background, all 12 cores):** C1 `quality-sweep` + C2 `zero-shot-sweep` — the two
+CHEAP eval-only stages the recalibration invalidated (new grid + √q; batched). Old-model
+`phase3-trained-at-q.json` + `phase3-dr.json` quarantined to `runs/sweep/_old-model/`;
+`phase3-c5-demand.json` (q=1.0) kept. **Efficient order:** re-run C1+C2 → read whether memoryless PPO
+now transfers across 0.7-1.0 vs actuated → ONLY then decide if the expensive C3/DR retraining (and the
+C4-if-trigger-fires call) is warranted. If the gap is gone, that's a clean POSITIVE result and no
+retraining ships.
+
+**NEXT:** analyze recalibrated C1+C2 → C3/DR/C4 decision → rebuild Part D (figures to `docs/assets/`
+`phase3-*`, rewrite `docs/results/phase-3.md` — the uncommitted draft has OLD-model numbers/grid),
+README phase-2 + phase-3 paragraphs (Stepan's voice, for review) + post #3 draft. Do NOT push.
+
+---
+
 **As of 2026-07-18 (later) — POST-BUILD REVIEW PASS + PHASE 4/5 PLANS DRAFTED.**
 
 Stepan asked for a health check on the 20-commit batching+Part-C build and forward

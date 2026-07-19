@@ -24,8 +24,10 @@ import matplotlib.pyplot as plt
 from traffic_rl.experiments.stats import CI, bootstrap_ci
 
 CORRIDOR = "corridor-rush"
-#: quality axis, perfect (left) -> foggy (right): the story reads as degradation
-QUALITIES = (1.0, 0.9, 0.75, 0.5, 0.25)
+#: quality axis, perfect (left) -> foggy (right): the story reads as degradation.
+#: 1.0-0.7 = realistic (modern fused stack to camera-only bad weather); 0.4 = an
+#: explicitly-labelled legacy/degraded-equipment stress point (ADR 0005 §7, 2026-07-18).
+QUALITIES = (1.0, 0.9, 0.8, 0.7, 0.4)
 
 
 def _load(path: Path) -> list[dict[str, Any]]:
@@ -128,14 +130,16 @@ def money_plot(sweep_dir: Path, out_path: Path) -> None:
     dr = _load(sweep_dir / "phase3-dr.json")
     _per_seed_lines(ax, xs, dr, QUALITIES, color="#762a83", label="PPO domain-randomized (quality)")
 
-    # --- C4 frame-stack memory arm at q=0.5 (if evaluated) ------------------ #
+    # --- C4 frame-stack memory arm (if evaluated) --------------------------- #
     c4_path = sweep_dir / "phase3-c4-framestack.json"
     if c4_path.exists():
         c4 = [r for r in _load(c4_path) if r["scenario"] == CORRIDOR]
         by_seed: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for r in c4:
             by_seed[r["checkpoint"]].append(r)
-        xi = QUALITIES.index(0.5)
+        # the memory arm is trained+evaluated at one quality; place its star there
+        c4_q = c4[0]["quality"] if c4 else 0.7
+        xi = QUALITIES.index(c4_q) if c4_q in QUALITIES else len(QUALITIES) - 1
         for i, (_ckpt, rows) in enumerate(sorted(by_seed.items())):
             ax.plot(
                 [xi],

@@ -208,8 +208,9 @@ def quality_sweep(
     """Phase-3 C1: the classical sensing-noise sweep (the money-plot substrate).
 
     Every topology-appropriate controller (incl. max_pressure_filtered) over
-    {single-rush-ns, corridor-rush, grid-rush-diag} x quality {1.0, 0.9, 0.75,
-    0.5, 0.25} x 20 seeds, full leaderboard protocol. Auto-calibrates first so
+    {single-rush-ns, corridor-rush, grid-rush-diag} x quality {1.0, 0.9, 0.8,
+    0.7, 0.4} (ADR 0005 §7 recalibrated grid) x 20 seeds, full leaderboard
+    protocol. Auto-calibrates first so
     Webster never runs on defaults. Rows land in <out>; figures + interpretation
     are Part D. Matched seeds across every q (q=1.0 is re-run in-sweep).
     """
@@ -249,8 +250,9 @@ def zero_shot_sweep(
     """Phase-3 C2: the zero-shot omniscience-overfit probe.
 
     Evaluate the q=1.0-trained phase-2 checkpoints (PPO comm/nocomm on
-    corridor-rush, DQN on single-rush-ns) across quality {1.0, 0.9, 0.75, 0.5,
-    0.25} on the held-out eval seeds. A GENERALIZATION probe, labelled as such
+    corridor-rush, DQN on single-rush-ns) across quality {1.0, 0.9, 0.8, 0.7,
+    0.4} (ADR 0005 §7 recalibrated grid) on the held-out eval seeds. A
+    GENERALIZATION probe, labelled as such
     (comparison integrity): does a policy trained on perfect eyes fall off a cliff
     when they fog? Missing checkpoints are skipped. Rows land in <out>.
     """

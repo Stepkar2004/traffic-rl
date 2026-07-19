@@ -2,6 +2,25 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-18 · Phase-3: RECALIBRATED the sensor model (ADR 0005 §7) — strawman → defensible.**
+  An external literature-backed analysis + Stepan flagged the phase-3 sensor model as a strawman: low-q
+  rows fogged sensors harder than any deployed detector stack, so any RL result under it would be
+  attacking a foil. This repo IS the honesty layer, so we recalibrated before shipping Part D.
+  `core/sensors.py`: **occlusion `×q → ×√q`** (the least-realistic lever — a fused/tracked stack coasts
+  through a close leader; old `×q` lost ~half a packed queue) and **FP_RATE `0.3 → 0.1`**;
+  `runner.QUALITY_SWEEP` grid **`{1.0,0.9,0.75,0.5,0.25} → {1.0,0.9,0.8,0.7,0.4}`** (1.0-0.7 realistic;
+  0.4 a labelled legacy/stress point). New pin `test_occlusion_penalty_is_sqrt_q_not_q` (occluded
+  detect rate 0.486 at dist=50/q=0.5, decisively above the old 0.344); q=1.0 identity + two-path
+  parity pins unchanged (recalibration touches only the noise magnitude). Recorded per ADR 0005 §7: an
+  amendment block in the ADR (naming the invalidated runs — old-model C1/C2/C3/C3-DR/C4; phase-1/2 and
+  C5 UNAFFECTED, all q=1.0) + the full reasoning and 6 sources in
+  `docs/research/sensor-noise-calibration-2026-07.md` (also fulfils the §2 `[CITE]` TODO). q→reality:
+  0.9-0.95 modern fused stack · 0.7 camera-only bad weather · 0.4 legacy/degraded. Stale grid refs
+  swept in cli.py + experiments.md. Full `uv run pytest -q` GREEN (286). **k=4 diagnostic (old model):
+  memory did NOT help** (seed0 58.6, seed1 41.3 vs actuated 35.3, memoryless 40-63 band) → the failure
+  was the corrupted training signal, not missing memory; don't re-run k=4 by default (privileged critic
+  is the phase-4 lever). Old-model trained-arm JSONs quarantined; **C1+C2 re-run launched** (12 cores,
+  batched) under the recalibrated model. Not pushed.
 - **2026-07-18 · Phase-3 C4: wired frame-stack into the PPO training path + launched the memory arm.**
   The C4 trigger fired (train-for-condition PPO@q=0.5 loses to actuated@q=0.5, non-overlapping CIs), so
   the pre-registered frame-stack arm is warranted. B6 built `FrameStack` + `RLController.stack_k`

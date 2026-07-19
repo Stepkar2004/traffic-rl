@@ -142,6 +142,20 @@ def test_occlusion_undercounts_a_packed_queue() -> None:
     assert packed.detected.mean() < spread.detected.mean()
 
 
+def test_occlusion_penalty_is_sqrt_q_not_q() -> None:
+    """Occlusion multiplies p_detect by sqrt(q), NOT q (ADR 0005 §7 recalibration,
+    2026-07-18): a real fused/tracked stack coasts through occlusion, so a packed
+    queue stays mostly visible. At dist=50, q=0.5 the base p_detect is 0.6875; the
+    occluded rate must be ~0.486 (x sqrt(0.5)), decisively above the old x q ~0.344
+    (which lost ~half the queue and was the least-realistic piece of the bundle)."""
+    n = 200_000
+    uid = np.arange(n, dtype=np.int64)
+    occ = detect_vehicles(np.full(n, 50.0), np.zeros(n), uid, np.full(n, 5.0), 0.5, key=7, tick=0)
+    rate = float(occ.detected.mean())
+    assert abs(rate - 0.486) < 0.01  # 0.6875 * sqrt(0.5)
+    assert rate > 0.44  # NOT the old x q penalty (~0.344)
+
+
 def test_dropout_is_correlated_within_a_five_second_window() -> None:
     """The detect/miss draw is constant across a 5 s window and can change across
     windows — real dropouts are not per-frame flicker."""

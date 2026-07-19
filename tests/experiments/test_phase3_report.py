@@ -12,7 +12,7 @@ from typing import Any
 
 from traffic_rl.experiments.phase3_report import c5_plot, money_plot
 
-QUALITIES = (1.0, 0.9, 0.75, 0.5, 0.25)
+QUALITIES = (1.0, 0.9, 0.8, 0.7, 0.4)  # matches runner.QUALITY_SWEEP (post-recalibration)
 SEEDS = (1000, 1001, 1002)  # enough for a bootstrap CI to have >1 sample
 
 
@@ -123,14 +123,14 @@ def test_money_plot_includes_c4_when_present(tmp_path: Path) -> None:
     sweep = tmp_path / "sweep"
     sweep.mkdir()
     _write_sweeps(sweep)
-    # the frame-stack arm: eval rows at q=0.5, both training seeds, run_cell schema
+    # the frame-stack arm: eval rows at its train quality, both seeds, run_cell schema
     c4 = [
         _rl_row(
             f"runs/rl/ppo-c4-framestack/comm/{seed}/ckpt_best.pt",
             "ppo",
             True,
             "corridor-rush",
-            0.5,
+            0.7,
             s,
             38.0,
         )

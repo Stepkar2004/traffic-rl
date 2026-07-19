@@ -63,6 +63,27 @@
   question there) and [phase-5.md](../plans/phase-5.md) (§2.2, round 3 on varying
   block lengths) (moves to Resolved when the phase-4 re-run happens).
 
+### Asymmetric (privileged) critic for RL under sensing noise — phase 4
+- **What.** Phase 3 found training PPO *under* noise (train-for-condition, C3) was WORSE and
+  more seed-unstable than the zero-shot policy, because noise corrupts the LEARNING signal, not
+  just eval: the critic must predict return from a noisy observation, so value targets are
+  high-variance and the policy gradient chases sensor artifacts. Standard fix (robust-RL /
+  sim-to-real): an **asymmetric actor-critic** — the critic sees the TRUE state (we HAVE it at
+  train time; the reward is already true-state), the actor sees only the noisy observation. The
+  advantage is then low-variance while the actor still learns a deployable noisy-input policy.
+  Directly attacks the phase-3 negative result. Sibling levers: a recurrent (GRU/LSTM) actor as
+  the learned belief-state (the C4 frame-stack is the poor-man's fixed-window version), and
+  domain randomization (already the phase-3 RL bright spot — carry it forward as the default).
+- **Why safe to defer.** Phase 3's honest result stands without it (DR is the shown robust arm;
+  C4 tests memory). This is a NEW method to raise the RL ceiling under partial observability,
+  not a fix to anything shipped — pure upside, no correctness debt.
+- **Which phase.** Phase 4 (the first phase after partial observability is established), gated on
+  the C4 outcome: if even memory does not beat actuated under noise, the privileged critic is the
+  next thing to try before concluding RL cannot win here.
+- **Hook.** `rl/ppo.py` (`Critic` already separate from `Actor`; feed it the pre-noise
+  observation / true SoA state at train time only); `rl/nets.py` for a recurrent actor variant.
+- Raised 2026-07-18 (phase-3 C4 session, surfaced while teaching "why does noise make RL worse").
+
 ## Resolved
 
 ### Demand-density / vehicle-count sweep — RESOLVED by the phase-2 run session

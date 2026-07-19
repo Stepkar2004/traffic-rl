@@ -107,7 +107,9 @@ the CLI always runs the full default matrix.
 **Current as of phase 3, C1.** The classical sensing-noise sweep — the money-plot
 substrate. Every topology-appropriate controller (the phase-1 four on singles;
 corridors/grids add `coordinated` + `max_pressure_filtered`) over `single-rush-ns`,
-`corridor-rush`, `grid-rush-diag` × quality {1.0, 0.9, 0.75, 0.5, 0.25} × the 20
+`corridor-rush`, `grid-rush-diag` × quality {1.0, 0.9, 0.8, 0.7, 0.4} (ADR 0005 §7
+recalibrated grid, 2026-07-18: 1.0-0.7 realistic, 0.4 a labelled legacy/stress point;
+was {1.0, 0.9, 0.75, 0.5, 0.25}) × the 20
 held-out eval seeds (1000-1019, shared with the RL sweeps so the money plot is
 matched-seed), the full leaderboard protocol (300 s warmup + 3600 s measure). q=1.0 is
 re-run IN the sweep so every quality shares one seed set (matched seeds beat
@@ -127,8 +129,8 @@ vs the old single-world estimate of ~2.5-3 h (per-core probe: ~24x for 1.0 s con
 
 **Current as of phase 3, C2.** The zero-shot omniscience-overfit probe: the
 q=1.0-trained phase-2 checkpoints — PPO comm/nocomm (seed0) on `corridor-rush`,
-DQN (seed0) on `single-rush-ns` — evaluated across quality {1.0, 0.9, 0.75, 0.5,
-0.25} on the same held-out eval seeds (1000-1019) the classical sweep uses. A
+DQN (seed0) on `single-rush-ns` — evaluated across the ADR 0005 §7 grid {1.0, 0.9,
+0.8, 0.7, 0.4} on the same held-out eval seeds (1000-1019) the classical sweep uses. A
 GENERALIZATION probe, labelled as such in the writeup (comparison integrity),
 never a head-to-head against a policy trained for the noise: "does a policy
 trained on perfect eyes fall off a cliff when they fog?" Missing checkpoints

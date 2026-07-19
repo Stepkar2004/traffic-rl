@@ -69,11 +69,11 @@ _SENSOR_TAG = np.uint64(0x5E5E015051510101)
 # -- physical noise-bundle constants (ADR 0005 §2) -----------------------------
 
 DETECT_RANGE_M = 200.0  # detection probability saturates its distance term here
-OCCLUSION_GAP_M = 25.0  # a leader within this gap ahead multiplies p_detect by q
+OCCLUSION_GAP_M = 25.0  # a leader within this gap ahead multiplies p_detect by sqrt(q)
 DROPOUT_WINDOW_S = 5  # a missed object stays missed for this many whole seconds
 SIGMA_POS_M = 4.0  # position-error scale at q=0 (linear in 1-q)
 SIGMA_SPEED_MPS = 2.0  # speed-error scale at q=0 (linear in 1-q)
-FP_RATE = 0.3  # false-positive probability per approach lane per tick at q=0
+FP_RATE = 0.1  # false-positive probability per approach lane per tick at q=0
 
 
 def _splitmix(z: npt.ArrayLike) -> U64:
@@ -170,8 +170,13 @@ def detect_vehicles(
 
     near = np.minimum(d, DETECT_RANGE_M) / DETECT_RANGE_M
     p_detect = 1.0 - one_m_q * (0.5 + 0.5 * near)
+    # Occlusion: a queued vehicle (leader < 25 m ahead) is harder to detect, but a real
+    # fused/tracked stack coasts through occlusion rather than dropping the car, so the
+    # penalty is sqrt(q), NOT q (ADR 0005 §7 recalibration, 2026-07-18): at q=0.5 a queued
+    # near-stop car keeps ~0.53 detection, not 0.375 — queue counts stay mostly intact, as
+    # deployed detectors are engineered to keep them. sqrt(1)=1 preserves the q=1 identity.
     occluded = gap < OCCLUSION_GAP_M
-    p_detect = np.where(occluded, p_detect * quality, p_detect)
+    p_detect = np.where(occluded, p_detect * np.sqrt(quality), p_detect)
 
     window = np.int64(tick // DROPOUT_WINDOW_S)  # correlated 5 s dropout
     detected: BOOL = hash_uniform(key, uids, window, _C_DETECT) < p_detect
