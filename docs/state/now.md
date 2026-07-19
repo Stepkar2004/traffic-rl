@@ -16,6 +16,11 @@ retrospective); (3) further speed/quality levers appended to the phase-3 spec.
 Phase-3 state is unchanged: **C4 memory arm = Stepan's call; Part D = next fresh
 session** (design notes below stand).
 
+**Verified 2026-07-18 (Opus): full `uv run pytest -q` GREEN — 282 passed (5:17), all
+5 gates green** on the review-pass commit (1f47da3). The batched-eval bit-exact pins
+are in that run, so the batching+Part-C build is confirmed sound end to end. Nothing
+pushed (Stepan pushes).
+
 ---
 
 **As of 2026-07-18 — BATCHING BUILD: B1 + B2 + B3 (ALL) LANDED. NEXT: B4 (rerun Part C batched → Part D).**
