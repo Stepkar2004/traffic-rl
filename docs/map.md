@@ -107,8 +107,8 @@ src/traffic_rl/
 ├── py.typed               PEP 561 marker (package ships types; mypy strict)
 ├── cli.py                 Typer commands: run, view, replay, gif, calibrate,
 │                          leaderboard, bench, train-dqn, train-ppo,
-│                          emergence-probe, quality-sweep, zero-shot-sweep
-│                          (see docs/experiments.md)
+│                          emergence-probe, quality-sweep, zero-shot-sweep,
+│                          phase3-figures (see docs/experiments.md)
 ├── core/
 │   ├── __init__.py        core = pure kernels + one orchestrator; render-free
 │   ├── units.py           SI everywhere inside; imperial↔SI at the edges only
@@ -218,6 +218,9 @@ src/traffic_rl/
     │                      BIT-EXACT to per-seed run_cell (~7-60x/core; the sweep win)
     ├── stats.py           percentile bootstrap CIs (10k resamples, seeded)
     ├── report.py          leaderboard markdown + CI bar chart; honesty notes
+    ├── phase3_report.py   Part-D figures from the sweep JSONs: the sensing-noise
+    │                      money plot (p95 vs quality, all arms) + the C5
+    │                      generalist-vs-specialist chart (matched-seed; no green wave)
     └── emergence.py       ADR 0004 §6 probe: green-onset cross-correlation of
                            adjacent signals vs the travel-time lag (offset_score
                            1.0 = the encoded green wave, by construction)

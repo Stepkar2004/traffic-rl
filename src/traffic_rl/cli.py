@@ -171,6 +171,31 @@ def leaderboard(
 
 
 @app.command()
+def phase3_figures(
+    sweep_dir: Annotated[Path, typer.Option(help="Where the phase-3 sweep JSONs live.")] = Path(
+        "runs/sweep"
+    ),
+    out_dir: Annotated[Path, typer.Option(help="Committed figure directory.")] = Path(
+        "docs/assets"
+    ),
+) -> None:
+    """Phase-3 Part D: render the sensing-noise money plot + the C5 chart.
+
+    Reads the committed sweep JSONs (quality / zeroshot / trained-at-q / dr / c5,
+    plus the C4 frame-stack eval if present) and writes phase3-money-plot.png and
+    phase3-c5-generalist.png to <out_dir>. Matched-seed; the C4 memory-arm star
+    appears once runs/sweep/phase3-c4-framestack.json exists.
+    """
+    from traffic_rl.experiments.phase3_report import c5_plot, money_plot
+
+    money = out_dir / "phase3-money-plot.png"
+    c5 = out_dir / "phase3-c5-generalist.png"
+    money_plot(sweep_dir, money)
+    c5_plot(sweep_dir, c5)
+    typer.echo(f"phase3-figures: {money} + {c5}")
+
+
+@app.command()
 def quality_sweep(
     workers: Annotated[int | None, typer.Option(help="Process-pool size (default: cores).")] = None,
     scenario_dir: Annotated[Path, typer.Option(help="Scenario YAML directory.")] = Path(

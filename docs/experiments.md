@@ -138,6 +138,21 @@ Since B2 each (scenario, checkpoint, quality) cell runs as ONE batched episode
 (`eval_rl_batched`, bit-exact to per-seed `run_cell`); cost is minutes, not the
 old ~1 h estimate (part of the ~30-37 min all-stages B4 run).
 
+### `traffic-rl phase3-figures [--sweep-dir dir] [--out-dir dir]`
+
+**Current as of phase 3, Part D.** Renders the two committed Part-D figures from
+the sweep JSONs in `--sweep-dir` (default `runs/sweep/`) to `--out-dir` (default
+`docs/assets/`): `phase3-money-plot.png` (corridor-rush p95 wait on a LOG axis vs
+sensing quality, every classical + RL arm on matched eval seeds 1000-1019; RL arms
+shown PER TRAINING SEED because seed instability is itself a finding; NO coordinated
+green-wave line per the narrative rule) and `phase3-c5-generalist.png` (p95 vs
+eastbound demand: one demand-generalist PPO vs the per-demand specialist frontier).
+The C4 frame-stack "memory arm" appears as a star at q=0.5 once
+`runs/sweep/phase3-c4-framestack.json` exists (written by the C4 single-world eval;
+`eval_rl_batched` refuses stack_k>1, so the memory arm is evaluated via `run_cell`
+with `stack_k` in the controller params). Reads only committed artifacts — never
+re-computes numbers for prose (ADR 0003).
+
 ### `traffic-rl train-dqn <scenario.yaml> [--seed N] [--steps N] [--out dir] [--device auto|cuda|cpu] [--quality Q]`
 
 **Current as of phase 3, B5** (`--quality` added; core loop phase-2 chunk 5). Double DQN on a SINGLE intersection (the
