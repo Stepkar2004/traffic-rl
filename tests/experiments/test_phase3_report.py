@@ -10,7 +10,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from traffic_rl.experiments.phase3_report import c5_plot, money_plot
+from traffic_rl.experiments.phase3_report import c5_plot, money_plot, saturation_plot
 
 QUALITIES = (1.0, 0.9, 0.8, 0.7, 0.4)  # matches runner.QUALITY_SWEEP (post-recalibration)
 SEEDS = (1000, 1001, 1002)  # enough for a bootstrap CI to have >1 sample
@@ -142,3 +142,69 @@ def test_money_plot_includes_c4_when_present(tmp_path: Path) -> None:
     money = tmp_path / "money_c4.png"
     money_plot(sweep, money)
     assert money.stat().st_size > 2000
+
+
+def _write_saturation(d: Path) -> None:
+    rows: list[dict[str, Any]] = []
+    for dmd in (800, 1000):
+        for q in QUALITIES:
+            for s in SEEDS:
+                rows.append(
+                    {
+                        "_demand": dmd,
+                        "_label": f"ppo-eb{dmd}-seed0",
+                        "quality": q,
+                        "seed": s,
+                        "p95_wait_s": 120 + (1 - q) * 30,
+                    }
+                )
+                rows.append(
+                    {
+                        "_demand": dmd,
+                        "_label": f"ppo-eb{dmd}-seed1",
+                        "quality": q,
+                        "seed": s,
+                        "p95_wait_s": 200 + (1 - q) * 40,
+                    }
+                )
+                rows.append(
+                    {
+                        "_demand": dmd,
+                        "_label": "actuated",
+                        "quality": q,
+                        "seed": s,
+                        "p95_wait_s": 650.0,
+                    }
+                )
+                rows.append(
+                    {
+                        "_demand": dmd,
+                        "_label": "max_pressure",
+                        "quality": q,
+                        "seed": s,
+                        "p95_wait_s": 1400.0,
+                    }
+                )
+    (d / "phase3-saturation-noise.json").write_text(json.dumps(rows), encoding="utf-8")
+
+
+def test_saturation_plot_renders(tmp_path: Path) -> None:
+    sweep = tmp_path / "sweep"
+    sweep.mkdir()
+    _write_saturation(sweep)
+    out = tmp_path / "sat.png"
+    saturation_plot(sweep, out, demand=1000)
+    assert out.stat().st_size > 2000
+
+
+def test_money_plot_renders_without_optional_arms(tmp_path: Path) -> None:
+    # the recalibrated reality: only classical + zero-shot exist (the trained-at-q /
+    # dr arms were quarantined, not retrained). money_plot must render without them.
+    sweep = tmp_path / "sweep"
+    sweep.mkdir()
+    _write_sweeps(sweep)
+    (sweep / "phase3-trained-at-q.json").unlink()
+    (sweep / "phase3-dr.json").unlink()
+    out = tmp_path / "money_min.png"
+    money_plot(sweep, out)
+    assert out.stat().st_size > 2000

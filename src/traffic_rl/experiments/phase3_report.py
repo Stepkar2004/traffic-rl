@@ -122,13 +122,24 @@ def money_plot(sweep_dir: Path, out_path: Path) -> None:
         label="PPO zero-shot (trained q=1.0)",
     )
 
-    # --- trained-at-q diagonal (each ckpt at its OWN train-q), both seeds --- #
-    taq = _load(sweep_dir / "phase3-trained-at-q.json")
-    _diagonal(ax, xs, taq, zs, color="#b2182b", label="PPO trained-for-condition")
-
-    # --- DR PPO (quality domain-randomized), both seeds --------------------- #
-    dr = _load(sweep_dir / "phase3-dr.json")
-    _per_seed_lines(ax, xs, dr, QUALITIES, color="#762a83", label="PPO domain-randomized (quality)")
+    # --- trained-at-q diagonal + DR arm (both OPTIONAL) --------------------- #
+    # Absent under the recalibrated model: the zero-shot result already ties
+    # actuated across the realistic band, so a per-condition (C3) or DR retrain was
+    # judged unnecessary and the old-model runs are quarantined. Each renders only
+    # if its JSON exists (same pattern as the C4 arm below).
+    taq_path = sweep_dir / "phase3-trained-at-q.json"
+    if taq_path.exists():
+        _diagonal(ax, xs, _load(taq_path), zs, color="#b2182b", label="PPO trained-for-condition")
+    dr_path = sweep_dir / "phase3-dr.json"
+    if dr_path.exists():
+        _per_seed_lines(
+            ax,
+            xs,
+            _load(dr_path),
+            QUALITIES,
+            color="#762a83",
+            label="PPO domain-randomized (quality)",
+        )
 
     # --- C4 frame-stack memory arm (if evaluated) --------------------------- #
     c4_path = sweep_dir / "phase3-c4-framestack.json"
@@ -306,6 +317,81 @@ def c5_plot(sweep_dir: Path, out_path: Path) -> None:
     ax.set_title(
         "One policy for all demand, or one per demand?\n"
         "corridor, q=1.0, matched eval seeds 1000-1019"
+    )
+    ax.grid(True, which="both", axis="y", color="0.9", lw=0.6)
+    ax.legend(fontsize=9)
+    ax.spines[["top", "right"]].set_visible(False)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path)
+    plt.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# saturation-robustness (does the learned edge survive the fog?)               #
+# --------------------------------------------------------------------------- #
+def saturation_plot(sweep_dir: Path, out_path: Path, demand: int = 1000) -> None:
+    """p95 wait (log y) vs sensing quality at a SATURATING demand: the demand-
+    SPECIALIST PPO (both seeds, trained AT this demand on clean sensors, so demand is
+    in-distribution and only sensing is zero-shot) vs actuated (capacity-bound here)
+    and max-pressure. Reads phase3-saturation-noise.json (rows tagged _demand/_label).
+    The story: at eb1000 actuated is flat-and-saturated while PPO holds 2-6x lower and
+    that gap does NOT close as the sensors fog."""
+    rows = [
+        r for r in _load(sweep_dir / "phase3-saturation-noise.json") if r.get("_demand") == demand
+    ]
+    xs = _x()
+    fig, ax = plt.subplots(figsize=(9.0, 5.5), dpi=150)
+
+    def line(label_key: str) -> list[float]:
+        return [
+            (
+                _ci_p95(
+                    [r for r in rows if r.get("_label") == label_key and r["quality"] == q]
+                ).mean
+                if any(r.get("_label") == label_key and r["quality"] == q for r in rows)
+                else float("nan")
+            )
+            for q in QUALITIES
+        ]
+
+    ax.plot(
+        xs,
+        line("actuated"),
+        color="#1b7837",
+        lw=3.0,
+        marker="o",
+        label="actuated (capacity-bound here)",
+    )
+    ax.plot(xs, line("max_pressure"), color="0.4", ls="-.", lw=1.4, label="max-pressure")
+    ax.plot(
+        xs,
+        line(f"ppo-eb{demand}-seed0"),
+        color="#2166ac",
+        lw=2.2,
+        marker="s",
+        ms=5,
+        label="PPO specialist (seed0)",
+    )
+    ax.plot(
+        xs,
+        line(f"ppo-eb{demand}-seed1"),
+        color="#2166ac",
+        lw=2.2,
+        ls="--",
+        marker="s",
+        ms=5,
+        label="PPO specialist (seed1)",
+    )
+
+    ax.set_yscale("log")
+    ax.set_xticks(xs)
+    ax.set_xticklabels([f"q={q}" for q in QUALITIES])
+    ax.set_xlabel("sensing quality  (perfect sensors -> heavy noise)")
+    ax.set_ylabel("p95 wait (s), log scale  -  lower is better")
+    ax.set_title(
+        f"Does the learned edge survive the fog? Saturating demand (eb{demand})\n"
+        "corridor, matched eval seeds 1000-1019 - the PPO win holds across the whole dial"
     )
     ax.grid(True, which="both", axis="y", color="0.9", lw=0.6)
     ax.legend(fontsize=9)

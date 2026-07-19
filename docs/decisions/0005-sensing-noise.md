@@ -5,8 +5,9 @@
   then (the async-gate mode used since phase 1); any change AFTER the first full phase-3
   run follows §7.
 - **Deciders:** Claude (drafted), Stepan (confirmed 2026-07-15).
-- **Context:** phase-3 plan ([phase-3.md](../plans/phase-3.md)) + the implementation
-  handoff ([phase-3-deep-plan-spec.md](../plans/phase-3-deep-plan-spec.md) Part B).
+- **Context:** phase-3 plan ([phase-3.md](../plans/phase-3.md)); the implementation was
+  carried out per a temporary deep-spec since absorbed and deleted (outcomes in
+  [results/phase-3.md](../results/phase-3.md)).
   Binds under [ADR 0002](0002-metrics-and-realism-constraints.md) (metrics, locked) and
   [ADR 0004](0004-rl-env-and-reward.md) (env/reward/eval, locked). Phase-3 noise applies
   ONLY to what controllers observe; the reward and every ADR 0002 metric stay computed

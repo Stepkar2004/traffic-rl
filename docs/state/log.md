@@ -2,6 +2,28 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-19 · Phase-3 Part D COMPLETE — recalibrated results, saturation teeth, verified, shipped.**
+  Re-ran the two cheap invalidated stages under the recalibrated ×√q model (C1 classical +
+  C2 zero-shot, 12 cores, ~14 min): zero-shot PPO (trained q=1.0) **ties actuated across the whole
+  realistic band 0.7-1.0**, only slipping mildly at the q=0.4 stress point. That tie is at a demand
+  where PPO and actuated tie even at q=1.0, so — following Stepan's steer — added a **saturation
+  sweep** (the phase-2 `ppo-demand/eb800,eb1000` specialists, trained at their demand, zero-shot on
+  noise): the eb1000 win is **decisive and survives fog** (PPO 112-290 vs actuated ~655, non-
+  overlapping at every q, both seeds; q=1.0 reproduces the phase-2 anchors to the decimal). Also
+  evaluated the **C5 demand-generalist under noise**: it collapses at saturation *even at q=1.0*
+  (728 vs specialist 166 at eb1000, reproduces committed C5 exactly) — a demand-generalization /
+  feature-saturation limit, not a noise effect; the phase-4 fixes are uncapped/log-scaled features
+  + a demand schedule, NOT a noise-trained arm. **No C3/C4/DR retrain** (no gap to close);
+  old-model runs quarantined. An **adversarial verification subagent** independently recomputed
+  every number from the committed JSONs and reproduced two cells bit-exact — all six claim-blocks
+  CONFIRMED, two LOW caveats (the filtered-MP "hurts" is a directional/under-noise mean trend,
+  CI-separated only at q=0.4 — folded into the writeup). Wrote **results/phase-3.md**; added a
+  **saturation-robustness figure** + made the money-plot's trained-at-q/dr/c4 arms optional
+  (`phase3_report.saturation_plot`, `traffic-rl phase3-figures` now renders 3; +2 tests). Evolved
+  the **workflow skill** (provenance labels, stale-conclusion=void, shared-asset promotion) via
+  skill-manager; saved workflow-fix memories; absorbed the deep-spec + batching plans (perf levers
+  → watchout §E) and deleted them. **Post #3 drafted** (standalone universal hook — the fix for
+  post #2's insider/sequel hook, diagnosed as the reason it flopped). Not pushed.
 - **2026-07-18 · Phase-3: RECALIBRATED the sensor model (ADR 0005 §7) — strawman → defensible.**
   An external literature-backed analysis + Stepan flagged the phase-3 sensor model as a strawman: low-q
   rows fogged sensors harder than any deployed detector stack, so any RL result under it would be

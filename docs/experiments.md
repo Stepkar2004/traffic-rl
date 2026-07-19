@@ -142,18 +142,26 @@ old ~1 h estimate (part of the ~30-37 min all-stages B4 run).
 
 ### `traffic-rl phase3-figures [--sweep-dir dir] [--out-dir dir]`
 
-**Current as of phase 3, Part D.** Renders the two committed Part-D figures from
-the sweep JSONs in `--sweep-dir` (default `runs/sweep/`) to `--out-dir` (default
-`docs/assets/`): `phase3-money-plot.png` (corridor-rush p95 wait on a LOG axis vs
-sensing quality, every classical + RL arm on matched eval seeds 1000-1019; RL arms
-shown PER TRAINING SEED because seed instability is itself a finding; NO coordinated
-green-wave line per the narrative rule) and `phase3-c5-generalist.png` (p95 vs
-eastbound demand: one demand-generalist PPO vs the per-demand specialist frontier).
-The C4 frame-stack "memory arm" appears as a star at q=0.5 once
-`runs/sweep/phase3-c4-framestack.json` exists (written by the C4 single-world eval;
-`eval_rl_batched` refuses stack_k>1, so the memory arm is evaluated via `run_cell`
-with `stack_k` in the controller params). Reads only committed artifacts — never
-re-computes numbers for prose (ADR 0003).
+**Current as of phase 3, Part D (recalibrated model).** Renders the three committed
+Part-D figures from the sweep JSONs in `--sweep-dir` (default `runs/sweep/`) to
+`--out-dir` (default `docs/assets/`):
+- `phase3-money-plot.png` — corridor-rush p95 wait on a LOG axis vs sensing quality,
+  classical arms + zero-shot PPO on matched eval seeds 1000-1019; NO coordinated
+  green-wave line (narrative rule). The `trained-at-q` / `dr` / `c4` RL arms render
+  ONLY if their JSON exists — under the recalibrated model they don't (the zero-shot
+  result ties actuated across the realistic band, so no per-condition retrain was run;
+  the old-model runs are quarantined in `runs/sweep/_old-model/`).
+- `phase3-saturation-noise.png` — does the learned edge survive the fog? p95 vs
+  sensing quality at eb1000 (a saturating demand): the demand-SPECIALIST PPO (both
+  seeds, trained at that demand on clean sensors, so demand is in-distribution and
+  only sensing is zero-shot) vs actuated (capacity-bound here) + max-pressure. Reads
+  `phase3-saturation-noise.json`.
+- `phase3-c5-generalist.png` — p95 vs eastbound demand: one demand-generalist PPO vs
+  the per-demand specialist frontier (q=1.0).
+
+Reads only committed artifacts — never re-computes numbers for prose (ADR 0003). The
+`phase3-saturation-noise.json` and `phase3-c5-noise.json` inputs are produced by
+scratchpad eval drivers (candidates for promotion to `scripts/`), not a CLI command.
 
 ### `traffic-rl train-dqn <scenario.yaml> [--seed N] [--steps N] [--out dir] [--device auto|cuda|cpu] [--quality Q]`
 

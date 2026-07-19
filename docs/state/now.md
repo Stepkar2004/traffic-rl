@@ -3,7 +3,47 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
+**As of 2026-07-19 — PHASE-3 PART D COMPLETE (results shipped locally); phase-3 science done.**
+
+All recalibrated sweeps ran and were **independently verified** (an adversarial subagent
+recomputed every headline number from the committed JSONs; two cells reproduce bit-exact).
+Interpreted in **[results/phase-3.md](../results/phase-3.md)**. Headline: **a learned
+controller is robust to realistic sensor noise** — it ties the best classical baseline
+(actuated) as sensors fog across q 0.7-1.0 (zero-shot, a generalization probe), AND **keeps
+its heavy-traffic advantage under fog** (eb1000 demand-specialist beats actuated at every q,
+non-overlapping CIs, both seeds — a fair head-to-head, trained-for-demand, noise zero-shot).
+The count-based classical methods (`max_pressure`) and the EMA-filter "fix" fall apart under
+noise; `actuated` (presence detection) is flat-robust. **Honest negatives:** the
+demand-generalist (C5) collapses at saturation (~728 vs specialist ~166 at eb1000) — a
+*demand*-generalization/feature-saturation problem present already at q=1.0, the first phase-4
+target; eb800 seed instability; grid RL still parked.
+
+- **Figures** rendered to `docs/assets/`: `phase3-money-plot.png`, `phase3-saturation-noise.png`,
+  `phase3-c5-generalist.png` (via `traffic-rl phase3-figures`; the trained-at-q/dr/c4 arms are
+  now optional and absent).
+- **No C3/C4/DR retrain** (decision): the zero-shot tie across the realistic band leaves no gap
+  for per-condition/memory training to close. Old-model runs quarantined in
+  `runs/sweep/_old-model/`. Frame-stack (C4) not run — diagnostic showed memory didn't help;
+  the privileged (asymmetric) critic is the phase-4 lever if a gap ever appears.
+- **Workflow evolved** (skill-manager): 3 rules into the workflow skill — provenance-labelled
+  comparisons (`trained@X → eval@Y`), stale-conclusion=void, shared-asset promotion to
+  `scripts/`. Workflow-fix memories saved. The deep-spec + batching plans were absorbed (perf
+  levers → watchout-later §E) and deleted.
+- **Post #3 DRAFTED** ([docs/posts/2026-07-19-phase-3-sensor-noise.md](../posts/2026-07-19-phase-3-sensor-noise.md);
+  Stepan's voice, standalone universal "the AI's eyes fog" hook — the fix for post #2's
+  insider/sequel hook that flopped). Fresh visual recommended: a split-screen fog view (true vs
+  what the AI sees), which needs a viewer ghost-detection overlay (watchout §E).
+
+**Awaiting Stepan:** post-voice review + the visual decision; whether to build the demand+quality
+"one true generalist" (phase 4); the push. **Do NOT push. NEXT:** phase 4 (demand generalization
+— uncap/log-scale the queue features + a within-episode demand schedule; then heterogeneity, the
+privileged critic, grid RL). HEAD after the Part-D commit.
+
+---
+
 **As of 2026-07-18 (latest) — SENSOR MODEL RECALIBRATED (ADR 0005 §7); C1+C2 RE-RUN IN FLIGHT.**
+_(Superseded by the Part-D-complete block above — C1+C2 finished, saturation + C5-under-noise ran,
+results shipped.)_
 _(Supersedes the "C4 FRAME-STACK ARM TRAINING (in flight)" block below — that arm was killed at
 92% and diagnosed; see the k=4 read below.)_
 

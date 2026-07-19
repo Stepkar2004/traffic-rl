@@ -179,20 +179,23 @@ def phase3_figures(
         "docs/assets"
     ),
 ) -> None:
-    """Phase-3 Part D: render the sensing-noise money plot + the C5 chart.
+    """Phase-3 Part D: render the sensing-noise money plot + saturation + C5 charts.
 
-    Reads the committed sweep JSONs (quality / zeroshot / trained-at-q / dr / c5,
-    plus the C4 frame-stack eval if present) and writes phase3-money-plot.png and
-    phase3-c5-generalist.png to <out_dir>. Matched-seed; the C4 memory-arm star
-    appears once runs/sweep/phase3-c4-framestack.json exists.
+    Reads the committed sweep JSONs and writes phase3-money-plot.png (corridor-rush
+    p95 vs sensing quality; classical + zero-shot PPO, with the trained-at-q / dr /
+    C4 arms drawn only if their JSON exists), phase3-saturation-noise.png (does the
+    learned edge survive the fog at eb1000), and phase3-c5-generalist.png (one policy
+    for all demand vs the specialist frontier) to <out_dir>. All matched-seed.
     """
-    from traffic_rl.experiments.phase3_report import c5_plot, money_plot
+    from traffic_rl.experiments.phase3_report import c5_plot, money_plot, saturation_plot
 
     money = out_dir / "phase3-money-plot.png"
+    saturation = out_dir / "phase3-saturation-noise.png"
     c5 = out_dir / "phase3-c5-generalist.png"
     money_plot(sweep_dir, money)
+    saturation_plot(sweep_dir, saturation)
     c5_plot(sweep_dir, c5)
-    typer.echo(f"phase3-figures: {money} + {c5}")
+    typer.echo(f"phase3-figures: {money} + {saturation} + {c5}")
 
 
 @app.command()

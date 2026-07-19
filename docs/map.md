@@ -219,8 +219,9 @@ src/traffic_rl/
     ├── stats.py           percentile bootstrap CIs (10k resamples, seeded)
     ├── report.py          leaderboard markdown + CI bar chart; honesty notes
     ├── phase3_report.py   Part-D figures from the sweep JSONs: the sensing-noise
-    │                      money plot (p95 vs quality, all arms) + the C5
-    │                      generalist-vs-specialist chart (matched-seed; no green wave)
+    │                      money plot (p95 vs quality) + the saturation-robustness
+    │                      plot (does the learned edge survive fog at eb1000) + the
+    │                      C5 generalist-vs-specialist chart (matched-seed; no green wave)
     └── emergence.py       ADR 0004 §6 probe: green-onset cross-correlation of
                            adjacent signals vs the travel-time lag (offset_score
                            1.0 = the encoded green wave, by construction)
@@ -308,10 +309,10 @@ docs/
 ├── decisions/             ADRs 0001 (stack), 0002 (metrics — THE spec), 0003 (docs),
 │                          0004 (RL env), 0005 (sensing noise — phase 3, accepted)
 ├── plans/                 phase-1.md (done), phase-2.md, phase-2-runbook.md
-│                          (superseded), phase-3.md + phase-3-deep-plan-spec.md
-│                          + phase-3-batching.md (active; specs deleted when
-│                          phase 3 ships), phase-4.md, phase-5.md (drafts)
-├── results/               phase-1.md, phase-2.md — what the runs meant
+│                          (superseded), phase-3.md (done; its temporary deep-spec +
+│                          batching specs were absorbed and deleted at Part-D close),
+│                          phase-4.md, phase-5.md (drafts)
+├── results/               phase-1.md, phase-2.md, phase-3.md — what the runs meant
 ├── state/                 now.md / roadmap.md / log.md / miss-log.md /
 │                          watchout-later.md
 ├── research/              sim-architecture-notes-2026-07.md

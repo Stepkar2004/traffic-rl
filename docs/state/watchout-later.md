@@ -154,3 +154,33 @@
   the determinism suite, and profile the lexsort/gather fraction of `step_vehicles` first.
 - **Which phase / hook.** A dedicated perf chunk (post-batching); `core/arrays.py` +
   `core/vehicles.py`.
+
+### §E — post-batching speed levers (absorbed 2026-07-19 from the deleted phase-3 deep-plan-spec)
+
+Profiled on the landed batched substrate (cProfile, B=20; profiles were in session
+scratchpad). Baseline per cell: RL eval 3.3 s, max-pressure 3.0 s, **actuated 10.8 s
+corridor / 25 s grid** (the only 0.1 s-cadence controller — dominates sweep makespan);
+PPO training ~90% env-bound. OPTIONAL (sweeps already run ~30-37 min); do them only if
+phase 4/5 sweep volume warrants. Ranked, each with its bit-exactness risk:
+1. **Vectorize actuated in the batched classical eval (~2x on the slowest cells).**
+   `_reconstruct_observations` is 37% of an actuated cell; ActuatedGapOut is stateless
+   over arrays the batched path already has — a `BatchedActuated` twin (pure comparisons,
+   no float reorder), pinned bit-exact vs existing `runs/sweep/` rows. Keep the loop for
+   stateful Webster/MaxPressure.
+2. **Cache sensor-hash draws across sub-second recomputes (~15% off noisy actuated).**
+   Draws keyed on `tick=round(t)` + the 5 s dropout window recompute identical arrays
+   10-50x; memoize per (tick, uids). Low risk.
+3. **Merge the 4 noisy qualities into one B=80 batch per checkpoint (measured 1.65x).**
+   Per-world quality plumbing exists (`_quality_w`); keep q=1.0 cells SEPARATE (omniscient
+   branch — routing them through the kernel breaks the q=1.0 pin). One parity pin needed.
+4. **Vectorize the spawn scans (~10-14% off RL/1 s-cadence cells, near-zero risk).**
+   `_spawn_vehicles`/`_spawn_peds` loop B×origins every substep (~1.7M mostly-empty iters);
+   per-origin next-due arrays + one vectorized mask. Bit-exact by construction.
+5. **Route training's periodic `_eval` through the batched driver (~5+ min per 5M run).**
+   `eval_rl_batched` at B=1 is already pinned bit-exact to `quick_episode_metrics`.
+6. **Move torch imports out of `batched_eval.py` module top** (~50 s CPU per classical
+   stage — every spawned worker pays the 2.6 s import). Move into `_load_greedy`. Zero risk.
+Ruled out (do not re-litigate): micro-opts A-H + Numba (above); no O(n²) hot paths;
+float64 deliberate. **Note (post-3 visual):** the deep-spec flagged a viewer
+ghost-detection overlay (show missed/phantom detections) as a phase-4 nicety worth
+building for the phase-3 post if the fog visual is wanted — see the post-3 asset brief.
