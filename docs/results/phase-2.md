@@ -337,7 +337,8 @@ glow-up), which the eval path never imports.
 Phase 2's answer, in one line: **on a saturating network a learned policy matches the
 best classical adaptive control at normal load and pulls clearly ahead as the road
 fills — communication did not (yet) earn its keep, and the hand-built green wave is a
-schedule that breaks when traffic stops following the schedule.** The three open
-threads — grid RL, the emergence probe, and comm re-tested under heterogeneity — are
-what phase 3+ (partial observability, then heterogeneity, then topology) are built to
-close.
+schedule that breaks when traffic stops following the schedule.** The two open
+threads — grid RL (parked) and comm re-tested under heterogeneity — are what
+phase 3+ (partial observability, then heterogeneity, then topology) are built to
+close; the emergence probe closed 2026-07-15 (above: the wave did not emerge — the
+policy wins by reacting, not by phase-locking).

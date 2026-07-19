@@ -24,11 +24,14 @@ machine. Gates must be green before every commit.
 
 ## The commands
 
-All are subcommands of `traffic-rl` (entry point installed by `uv sync`); every one
-is **current as of phase 2, chunk 4**. Scenarios now cover both phases: the three
-phase-1 singles (`single-balanced`, `single-rush-ns`, `single-night`) plus the
-phase-2 networks (`corridor-rush` — 1x3 arterial, the green-wave scenario;
-`grid-balanced` and `grid-rush-diag` — 3x3 grids). Any command takes any of them.
+All are subcommands of `traffic-rl` (entry point installed by `uv sync`); **each
+command states its own phase-currency below** (they range from phase 1 to phase 3).
+Scenarios: the three phase-1 singles (`single-balanced`, `single-rush-ns`,
+`single-night`), the phase-2 networks (`corridor-rush` — 1x3 arterial;
+`corridor-balanced` — its symmetric generalization profile; `grid-balanced` and
+`grid-rush-diag` — 3x3 grids), and `corridor-rush-wb` (the westbound mirror,
+phase-2 finish-up A5 — a generalization probe input, not in the leaderboard
+matrix). Any command takes any of them.
 
 ### `traffic-rl run <scenario.yaml> [--seed N] [--record path.npz] [--quality Q]`
 
@@ -80,8 +83,8 @@ and — **as of phase 3, B7** — add `max_pressure_filtered` (`downstream: true
 `filter_tau_s: 5.0`): the same controller with an EMA over the queue/exit counts
 it reads, the cheap-state-estimation baseline for the noise sweep. Its rows only
 appear once the board is re-run; the committed classical `leaderboard.md` is
-unchanged until then. Expect substantially more wall time than phase 1's
-~4 min — the full v2 run is scheduled for the training/run session.
+unchanged until then. The full v2 board ran in the phase-2 run session
+(2026-07-15) and is the committed table.
 Auto-calibrates first if `runs/calibration.json` is missing. Outputs:
 
 - `docs/leaderboard.md` — the committed results table (bootstrap CIs; the
@@ -92,8 +95,9 @@ Auto-calibrates first if `runs/calibration.json` is missing. Outputs:
   fogs it for the phase-3 sweep); RL rows add checkpoint-provenance columns
   (`algo`/`comm`/`checkpoint`/`train_git_sha`) so a mixed-arm board self-distinguishes.
 
-The committed table currently holds the CORRECTED phase-1 single-intersection
-results (re-run 2026-07-14 after the SoA slot-reuse fix). This is THE command to
+The committed table is the phase-2 v2 classical board (7 scenarios; its
+single-intersection rows reproduce the CORRECTED phase-1 numbers, post
+SoA-slot-reuse fix). This is THE command to
 re-check any number quoted in README, the leaderboard, or a post.
 Restrict a run: `run_matrix` accepts `scenarios`/`controllers` (used by tests);
 the CLI always runs the full default matrix.
@@ -113,9 +117,11 @@ over all 20 seeds** (`eval_classical_batched`, batched observation + the unchang
 controllers), BIT-EXACT to the per-seed `run_cell` it replaces (pinned). Auto-calibrates
 first. Rows land in `runs/sweep/phase3-quality.json` (gitignored; each self-describes its
 `quality` per ADR 0005). `fixed_time`/`coordinated` are noise-immune, so their rows stay
-flat across q (a drift there is a bug). Figures + interpretation are Part D. Cost: the old
-single-world estimate was ~2-3 h CPU pool; batching cut per-core work sharply (probe:
-~24x for 1.0 s controllers, ~61x for actuated) — B4 records the actual batched wall-clock.
+flat across q (a drift there is a bug; the B4 run verified fixed_time byte-flat). Figures +
+interpretation are Part D. Measured cost (B4, 2026-07-18): ALL FIVE phase-3 sweep stages
+(this one + zero-shot + trained-at-q + DR + C5 demand) ran batched in ~30-37 min total,
+vs the old single-world estimate of ~2.5-3 h (per-core probe: ~24x for 1.0 s controllers,
+~61x for actuated).
 
 ### `traffic-rl zero-shot-sweep [--runs-dir dir] [--workers N] [--scenario-dir dir] [--out path]`
 
@@ -128,7 +134,9 @@ never a head-to-head against a policy trained for the noise: "does a policy
 trained on perfect eyes fall off a cliff when they fog?" Missing checkpoints
 (`runs/` is gitignored) are skipped with a note. Rows carry checkpoint provenance
 (algo/comm/checkpoint/train_git_sha) and land in `runs/sweep/phase3-zeroshot.json`.
-Measured cost: ~1 h CPU pool.
+Since B2 each (scenario, checkpoint, quality) cell runs as ONE batched episode
+(`eval_rl_batched`, bit-exact to per-seed `run_cell`); cost is minutes, not the
+old ~1 h estimate (part of the ~30-37 min all-stages B4 run).
 
 ### `traffic-rl train-dqn <scenario.yaml> [--seed N] [--steps N] [--out dir] [--device auto|cuda|cpu] [--quality Q]`
 
@@ -191,11 +199,13 @@ green-indicator series and compare the correlation peak to the travel-time lag
 Default controller is the scenario's own; `--controller fixed_time --params
 '{"cycle_s": 60.0, "split_ns": 0.4}'` gives the no-coordination foil,
 `--checkpoint` evaluates an RL policy (kind `rl`). JSON rows (with full
-correlation curves for figures) land in `runs/emergence/`. Smoke-measured
-discrimination on corridor-rush (2 seeds, 420 s — preview, not results):
-coordinated 0.868 vs fixed_time 0.303. The protocol probe (900 s, 5+ seeds,
-all three arms + comm ablation) runs in the run session —
-see [plans/phase-2-runbook.md](plans/phase-2-runbook.md).
+correlation curves for figures) land in `runs/emergence/`. The protocol probe RAN
+2026-07-15 (corridor-rush, 900 s, 10 seeds, all arms): the wave did NOT emerge —
+offset_score coordinated 0.94 [0.93, 0.96] (the by-construction reference) vs
+PPO comm 0.20 / no-comm 0.38, indistinguishable from the fixed-time clock (0.29).
+The learned policy matches actuated by opportunistic, demand-triggered progression,
+not phase-locking. Full table + interpretation:
+[results/phase-2.md](results/phase-2.md).
 
 ### `traffic-rl bench`
 
@@ -211,11 +221,11 @@ nonzero if the overlap guard ever fires.
   (the diff review must justify it; golden churn is a red flag otherwise).
 - `initc lint-paths` — enforce root-relative paths repo-wide.
 
-## Reproducing the committed phase-1 artifacts
+## Reproducing the committed artifacts
 
 | Artifact | Recipe |
 |---|---|
-| `docs/leaderboard.md` + `docs/assets/leaderboard-p95-wait.png` | `uv run traffic-rl leaderboard` |
+| `docs/leaderboard.md` + `docs/assets/leaderboard-p95-wait.png` (phase-2 v2 board) | `uv run traffic-rl leaderboard` |
 | `runs/calibration.json` | `uv run traffic-rl calibrate` |
 | Phase-1 gate GIFs (`runs/gifs/*-s42.gif`) | `traffic-rl run <scenario> --seed 42 --record runs/traces/<name>.npz`, then `traffic-rl gif` on the trace |
 | Golden fixture (`tests/core/data/`) | regen command above, only with a justified diff |

@@ -3,6 +3,21 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
+**As of 2026-07-18 (later) — POST-BUILD REVIEW PASS + PHASE 4/5 PLANS DRAFTED.**
+
+Stepan asked for a health check on the 20-commit batching+Part-C build and forward
+plans. Done this pass: (1) a four-agent probe review of the new code (batched eval,
+sensing/noise stack, docs currency, perf headroom) — findings + fixes recorded in
+the log entry and folded below; (2) **[phase-4.md](../plans/phase-4.md)** and
+**[phase-5.md](../plans/phase-5.md)** drafted as full phase frames (phases-4-5-draft.md
+retired; watchout links repointed; each plan ends with a binding SELF-CORRECT chunk —
+phase 4's last chunk re-grounds phase-5.md, phase 5 ends with the series
+retrospective); (3) further speed/quality levers appended to the phase-3 spec.
+Phase-3 state is unchanged: **C4 memory arm = Stepan's call; Part D = next fresh
+session** (design notes below stand).
+
+---
+
 **As of 2026-07-18 — BATCHING BUILD: B1 + B2 + B3 (ALL) LANDED. NEXT: B4 (rerun Part C batched → Part D).**
 Plan: [phase-3-batching.md](../plans/phase-3-batching.md).
 

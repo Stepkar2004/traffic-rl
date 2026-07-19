@@ -130,8 +130,10 @@ def _noisy_parity(quality: float, seed: int) -> None:
         for i in range(n_i):
             o = observers[i].observe(cast("World", env.sim))
             mine = features_from_observation(o, comm=True)
-            np.testing.assert_allclose(
-                mine, env_obs[0, i], atol=1e-5, err_msg=f"q={quality} intersection {i} drifted"
+            # ADR 0005 §3 locks this parity BIT-FOR-BIT (both paths hash the same
+            # world-local keys) — exact equality, not a tolerance.
+            np.testing.assert_array_equal(
+                mine, env_obs[0, i], err_msg=f"q={quality} intersection {i} drifted"
             )
 
     check(obs)

@@ -5,13 +5,15 @@
 > Scope is the code layer — `src/`, `tests/`, `scenarios/`, `docs/`, `runs/`, configs.
 > The `.claude/` skills layer sits above the code and documents itself.
 >
-> **Current as of: phase 2 run session** — the full RL stack is code-complete on top
-> of the complete phase 1 (single 4-way + four classical controllers + leaderboard):
-> corridor + grid builders, vectorized signal machines, batched VectorEnv,
-> coordinated green-wave baseline, hand-rolled Double DQN and parameter-shared
-> PPO (comm ablation). Training runs happen in the phase-2 run session. Sibling
-> docs: [experiments.md](experiments.md) (how to run things),
-> [results/phase-1.md](results/phase-1.md) (what the runs meant).
+> **Current as of: phase 3, batching build + Part-C sweeps (2026-07-18)** — on top of
+> the complete phases 1-2 (single 4-way → corridor/grid, four classical controllers +
+> coordinated, DQN + parameter-shared PPO, committed v2 leaderboard): the sensing-noise
+> stack (counter-based kernel, NoisyDetection, quality dial, ADR 0005), demand/quality
+> randomization, FrameStack, filtered max-pressure, and the batched-eval layer
+> (20-seed cells as one `BatchedWorlds`, bit-exact to `run_cell`). Part-C sweep data
+> is on disk; Part D (writeup) pending. Sibling docs: [experiments.md](experiments.md)
+> (how to run things), [results/phase-1.md](results/phase-1.md) +
+> [results/phase-2.md](results/phase-2.md) (what the runs meant).
 
 ## At a glance
 
@@ -84,7 +86,8 @@ surge — the headline scenario), `single-night` (sparse).
   `miss-log.md` (skill-gap notes) and `watchout-later.md` (deferred realism concerns to
   revisit at the right phase).
 - `results/` — per-phase interpretation of experiment runs (ADR 0003).
-- `leaderboard.md` + `assets/` — the committed phase-1 results table, CI chart, GIF.
+- `leaderboard.md` + `assets/` — the committed classical leaderboard (phase-2 v2:
+  7 scenarios incl. corridor/grid; phase-1 rows reproduced within it), CI chart, GIFs.
 - `research/` — pre-phase-1 architecture research notes.
 - `vision.md` — the human-owned WHY. `posts/` — gitignored post drafts.
 
@@ -104,7 +107,8 @@ src/traffic_rl/
 ├── py.typed               PEP 561 marker (package ships types; mypy strict)
 ├── cli.py                 Typer commands: run, view, replay, gif, calibrate,
 │                          leaderboard, bench, train-dqn, train-ppo,
-│                          emergence-probe (see docs/experiments.md)
+│                          emergence-probe, quality-sweep, zero-shot-sweep
+│                          (see docs/experiments.md)
 ├── core/
 │   ├── __init__.py        core = pure kernels + one orchestrator; render-free
 │   ├── units.py           SI everywhere inside; imperial↔SI at the edges only
@@ -244,7 +248,7 @@ tests/
 │   ├── test_observation_noisy.py   NoisyDetection: the q=1.0 equivalence pin
 │   │                      (== PerfectObservation, corridor + grid, every node,
 │   │                      many ticks) + reproducibility + queue undercount
-│   └── test_{fixed_time,webster,actuated,max_pressure,observation}.py
+│   └── test_{fixed_time,webster,actuated,max_pressure,coordinated,observation}.py
 ├── envs/
 │   ├── test_batching.py   batched == sequential; world isolation; the anchor:
 │   │                      B=1 BatchedWorlds step-for-step == World (same seed)
@@ -296,23 +300,33 @@ scenarios/
 docs/
 ├── map.md                 this file
 ├── experiments.md         command/experiment reference + phase currency
-├── leaderboard.md         committed phase-1 results (20 seeds, CIs)
+├── leaderboard.md         committed classical board (phase-2 v2, 7 scenarios, 20 seeds, CIs)
 ├── vision.md              human-owned WHY
 ├── decisions/             ADRs 0001 (stack), 0002 (metrics — THE spec), 0003 (docs),
 │                          0004 (RL env), 0005 (sensing noise — phase 3, accepted)
 ├── plans/                 phase-1.md (done), phase-2.md, phase-2-runbook.md
-│                          (the run-session handoff), phase-3.md (draft),
-│                          phases-4-5-draft.md
+│                          (superseded), phase-3.md + phase-3-deep-plan-spec.md
+│                          + phase-3-batching.md (active; specs deleted when
+│                          phase 3 ships), phase-4.md, phase-5.md (drafts)
 ├── results/               phase-1.md, phase-2.md — what the runs meant
 ├── state/                 now.md / roadmap.md / log.md / miss-log.md /
 │                          watchout-later.md
 ├── research/              sim-architecture-notes-2026-07.md
-├── assets/                leaderboard-p95-wait.png, phase-2-demand-sweep.png, rush-ns-actuated.gif
+├── assets/                leaderboard-p95-wait.png, phase-2-demand-sweep.png,
+│                          phase-2-emergence.png, rush-ns-actuated.gif
 └── posts/                 (gitignored) post drafts
 
 runs/                      (gitignored)
 ├── calibration.json       measured sat flow + startup lost time
 ├── leaderboard/           raw per-run metric rows (results.json)
+├── rl/                    training artifacts (config.json + curves.csv + checkpoints
+│                          per run): dqn/, ppo/, ppo-demand/, ppo-c3-q{0.25,0.5,0.75}/,
+│                          ppo-c3-qrand/, ppo-c5-demandgen/, smoke*/
+├── sweep/                 phase-3 sweep row JSONs (quality, zeroshot, trained-at-q,
+│                          dr, c5-demand)
+├── emergence/             emergence-probe JSON rows
+├── demand-scenarios/      generated per-demand scenario YAMLs (sweep inputs)
+├── generalization/        mirrored/balanced zero-shot eval rows
 ├── traces/                npz recordings from `run --record`
 └── gifs/                  exported GIFs
 

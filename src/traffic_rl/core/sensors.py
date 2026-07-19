@@ -123,10 +123,12 @@ def sensor_key(world_seed: int) -> int:
     """Per-world sensing key from the world's construction/demand seed.
 
     Separated from the demand keyspace by ``_SENSOR_TAG`` so sensing noise is
-    independent of the arrival schedule drawn from the same seed. Returns a plain
-    int in [0, 2**64) — pass it straight back as the ``key`` argument below.
+    independent of the arrival schedule drawn from the same seed. Accepts any
+    non-negative int (a seedless World's SeedSequence entropy is 128-bit — only
+    the low 64 bits key the hash). Returns a plain int in [0, 2**64) — pass it
+    straight back as the ``key`` argument below.
     """
-    return int(_splitmix(np.uint64(world_seed) ^ _SENSOR_TAG))
+    return int(_splitmix(np.uint64(world_seed & 0xFFFFFFFFFFFFFFFF) ^ _SENSOR_TAG))
 
 
 # -- detection kernels (both observation paths call these) ---------------------

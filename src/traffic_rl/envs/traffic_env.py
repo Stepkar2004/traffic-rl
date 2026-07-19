@@ -114,6 +114,10 @@ class TrafficEnv(VectorEnv[Any, Any, Any]):
         self.num_envs = num_envs
         self.cfg = cfg
         self.comm = comm
+        if not 0.0 < quality <= 1.0:  # SensingConfig validates the config path;
+            # this guards direct construction (quality > 1 would silently take
+            # the omniscient fast path)
+            raise ValueError(f"quality must be in (0, 1], got {quality}")
         self.quality = quality  # < 1.0 routes _observe through the sensing kernel
         # training-only per-episode demand randomization (B9); None on eval envs
         self._demand_rand = demand_rand

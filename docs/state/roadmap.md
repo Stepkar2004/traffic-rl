@@ -14,14 +14,16 @@
 - 2D top-down only; 3D is a non-goal (far-future maybe).
 - Honesty layer everywhere: RL that can't beat max-pressure ships as a negative result.
 
-Phase plans live in `docs/plans/` — [phase-1.md](../plans/phase-1.md) is complete
-(2026-07-12, pending Stepan's gate review); [phase-2.md](../plans/phase-2.md) is the
-draft plan for the next phase; [phases-3-5-draft.md](../plans/phases-3-5-draft.md)
-holds draft directions.
+Phase plans live in `docs/plans/` — [phase-1.md](../plans/phase-1.md) and
+[phase-2.md](../plans/phase-2.md) are executed (phase 2 complete + pushed
+2026-07-15; grid PPO parked); [phase-3.md](../plans/phase-3.md) is the CURRENT
+phase (code + sweeps done 2026-07-18; Part D writeup pending); [phase-4.md](../plans/phase-4.md)
+and [phase-5.md](../plans/phase-5.md) are detailed drafts (each phase's last chunk
+re-grounds the next plan — the self-correct rule).
 
 ## Phases
 
-1. **World + honest floor** (complete 2026-07-12, gate review pending) — lock metrics BEFORE building (mean travel time,
+1. **World + honest floor** (complete 2026-07-12) — lock metrics BEFORE building (mean travel time,
    mean wait, p95 wait = fairness, throughput, stops/vehicle, pedestrian wait as
    first-class) and realism constraints (yellow = physics ~1s/10 mph, ped min-green,
    max-red starvation cap, all-red clearance); build the custom 2D sim on a **single
@@ -31,13 +33,13 @@ holds draft directions.
    (asymmetric rush, balanced, night). Post: the 70-years-of-engineering leaderboard +
    the mean-vs-p95 starvation reveal. (Amended 2026-07-11: grid + coordinated-offset
    baseline moved to phase 2 — offsets only exist with more than one signal.)
-2. **Omniscient RL (and the grid)** (next; draft plan exists) — chain intersections, then the 3×3 grid (topology
+2. **Omniscient RL (and the grid)** (complete 2026-07-15, pushed; grid PPO parked; headline: the wave did NOT emerge — the learned policy ties actuated by reacting, and pulls ahead only as the network saturates) — chain intersections, then the 3×3 grid (topology
    configs, not new code), plus the coordinated-offset fixed-time baseline (hand-built
    green wave) and likely permissive turning movements; DQN/PPO on one intersection,
    then parameter-shared PPO on the grid; realism constraints as hard action masks,
    reward = −total-wait + p95 penalty; train on one demand profile / test on others;
    communication ablation. Headline: does a green wave EMERGE, or must it be encoded?
-3. **Partial observability** — sensor model with a quality dial (detection probability,
+3. **Partial observability** (CURRENT — code + all sweep data done 2026-07-18; writeup/Part D + the C4 memory arm pending) — sensor model with a quality dial (detection probability,
    range, occlusion, noisy speed, false positives); classical controllers get their REAL
    sensors too (actuated was designed for loop detectors — fair fight); POMDP tooling
    (frame-stacking, recurrence). Money plot: performance vs detection rate, every

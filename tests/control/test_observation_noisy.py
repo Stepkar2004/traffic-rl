@@ -150,3 +150,12 @@ def test_low_quality_undercounts_the_queue() -> None:
         seen_q += sum(c.queue_len for c in noisy.observe(world).approaches)
     assert true_q > 0
     assert seen_q < true_q  # net undercount despite false positives
+
+
+def test_seedless_noisy_world_constructs_and_steps() -> None:
+    """Regression (2026-07-18 review): a seedless World's SeedSequence entropy is
+    128-bit; sensor_key must mask to 64 bits instead of overflowing np.uint64."""
+    cfg = dataclasses.replace(_cfg("corridor"), sensing=SensingConfig(quality=0.5))
+    world = World(cfg, seed=None)  # crashed with OverflowError before the fix
+    world.step()
+    assert isinstance(world.obs_models[0], NoisyDetection)

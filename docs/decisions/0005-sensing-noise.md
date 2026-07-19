@@ -85,12 +85,18 @@ per tick, to DETECTED objects, keyed by the hash of §1:
 - **[CITE — realism-scan to supply at review]:** anchor the parameter choices (detection
   ranges, position/speed error scales) with 1-2 published loop/video detector-accuracy
   citations so the dial means something (phase-3.md §7 assigns this to realism-scan).
+- **Recorded amendment (2026-07-18, review pass):** pedestrian detection was implemented
+  as a FLAT `p_detect = q` with the same 5 s correlated-dropout window — no distance
+  term (peds are observed at a crosswalk, not along an approach), no state noise, no
+  ped false positives. The bundle above only locked the vehicle curve; this line makes
+  the ped curve part of the contract (it shipped in every Part-C training/sweep row).
 
 ## 3. The dial and the equivalence pin
 
 - `quality ∈ (0, 1]`, one scalar. `quality = 1.0` ⇒ every object detected, measurements =
-  truth, zero false positives — the kernel short-circuits and the callers may skip it on
-  the hot path, **but the equivalence pin runs it both ways once to prove the arithmetic.**
+  truth, zero false positives — the CALLERS may skip the kernel on the hot path (the
+  kernel itself deliberately never branches on quality, so the pin exercises its real
+  arithmetic), **and the equivalence pin runs it both ways once to prove the arithmetic.**
 - **Reward stays omniscient** (ADR 0004 §3, true-state person-seconds). **Metrics stay
   ADR 0002** (computed from true state). **Masks are untouched** — they derive from the
   signal machine's own state (`earliest_switch_s`), not observations, so noise cannot make

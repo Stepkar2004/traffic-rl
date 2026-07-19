@@ -82,8 +82,9 @@ def leaderboard_markdown(rows: list[dict[str, Any]], calibration: dict[str, floa
         "",
         "Honesty notes:",
         "",
-        "- Webster's flow channel is omniscient in phase 1 (true arrival rates); "
-        "phase 3 replaces it with noisy detection, same channel.",
+        "- Webster's flow channel is omniscient (true arrival rates) in every "
+        "phase so far: ADR 0005 deliberately keeps flow noise-free in phase 3 "
+        "(detection-derived flow is a recorded deferred extension).",
         f"- Webster runs on the sim's MEASURED saturation flow "
         f"({calibration['saturation_flow_veh_h']:.0f} veh/h, startup lost "
         f"{calibration['startup_lost_time_s']:.2f} s), never textbook constants.",

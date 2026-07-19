@@ -39,12 +39,11 @@
   approaches the curve (realistic, more code). Flag to Stepan at phase-5 planning.
 - **Not the same as.** Roundabout entry gap-acceptance (yielding to the circulating
   stream) is a deferred NEW KERNEL, not a speed cap — tracked in
-  [phases-4-5-draft.md](../plans/phases-4-5-draft.md), reserved via the topology
+  [phase-5.md](../plans/phase-5.md), reserved via the topology
   conflict-point concept.
-- Raised 2026-07-14 (phase-1 second-pass teaching session). **Planted 2026-07-15:**
-  named in the phase-5 section of
-  [phases-4-5-draft.md](../plans/phases-4-5-draft.md) (moves to Resolved when the
-  kernel lands).
+- Raised 2026-07-14 (phase-1 second-pass teaching session). **Planted 2026-07-15,
+  re-planted 2026-07-18:** named in [phase-5.md](../plans/phase-5.md) §1/§2 (moves
+  to Resolved when the kernel lands).
 
 ### Re-test the comm ablation once drivers/lengths vary — phase 4 (again phase 5)
 - **What.** Phase 2 found comm ≈ nocomm (communication bought no advantage). Leading
@@ -59,10 +58,10 @@
   at phase 5 (varying block lengths); flag both at their realism-scan.
 - **Hook.** Existing PPO comm/nocomm training + eval; phase-4 per-vehicle `v0/t_hw`
   distributions (`core/arrays.py`); phase-5 topology builders.
-- Raised 2026-07-14 (phase-2 run session). **Planted 2026-07-15:** named in BOTH the
-  phase-4 and phase-5 sections of
-  [phases-4-5-draft.md](../plans/phases-4-5-draft.md) (moves to Resolved when the
-  phase-4 re-run happens).
+- Raised 2026-07-14 (phase-2 run session). **Planted 2026-07-15, re-planted
+  2026-07-18:** named in BOTH [phase-4.md](../plans/phase-4.md) (§4.3, a headline
+  question there) and [phase-5.md](../plans/phase-5.md) (§2.2, round 3 on varying
+  block lengths) (moves to Resolved when the phase-4 re-run happens).
 
 ## Resolved
 
@@ -72,9 +71,8 @@
   trained at each demand level (not a generalization probe), matched eval seeds,
   both training seeds shown — it became the phase-2 centrepiece
   ([results/phase-2.md](../results/phase-2.md), commit cfb1d24). The demand axis is
-  now a standing stress axis, named in the phase-4 section of
-  [phases-4-5-draft.md](../plans/phases-4-5-draft.md) for the re-run under
-  heterogeneity.
+  now a standing stress axis, named in [phase-4.md](../plans/phase-4.md) §4.4
+  for the re-run under heterogeneity.
 
 ## Performance — deferred / rejected optimizations
 

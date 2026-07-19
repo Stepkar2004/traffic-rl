@@ -6,7 +6,7 @@ Protocol (ADR 0002 §6): 20 seeds per cell, 300 s warmup excluded, 3600 s measur
 
 Honesty notes:
 
-- Webster's flow channel is omniscient in phase 1 (true arrival rates); phase 3 replaces it with noisy detection, same channel.
+- Webster's flow channel is omniscient (true arrival rates) in every phase so far: ADR 0005 deliberately keeps flow noise-free in phase 3 (detection-derived flow is a recorded deferred extension).
 - Webster runs on the sim's MEASURED saturation flow (1440 veh/h, startup lost 1.60 s), never textbook constants.
 - ActuatedGapOut sees only a stop-line loop + 50 m advance detector.
 - FixedTime runs a deliberately naive 50/50 split - it is the floor, and losing to it means something is broken.

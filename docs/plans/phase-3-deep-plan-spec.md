@@ -13,6 +13,19 @@
 > locked), [phase-3.md](phase-3.md) (the phase frame). Scope decisions marked
 > **[REC]** are recommendations Stepan can veto at the ADR 0005 async review; work
 > does not block on the review (the async-gate mode used since phase 1).
+>
+> **STATUS AS OF 2026-07-18 (read this, skip what is done):** DONE — A1, A3, A5, A6,
+> B1 (ADR 0005 accepted), B2-B7, B9, C1, C2, C3 (+DR), C5; all five sweep-stage row
+> sets are on disk in `runs/sweep/` (rerun batched per the sibling
+> [phase-3-batching.md](phase-3-batching.md), ~30-37 min total). **PARKED** — A2/A4
+> (grid PPO + grid rows; Stepan's call, results/phase-2.md records it). **C4: the
+> pre-registered trigger FIRED** (trained-at-q0.5 PPO loses to actuated@q0.5,
+> non-overlapping CIs — actuated 35.3 [34.6, 35.9] vs seeds 63.4 / 44.1); the k=4
+> frame-stack arm is NOT yet trained — Stepan schedules it, or Part D ships with
+> "trigger fired, memory arm pending". **REMAINING — Part D** (writeup + figures;
+> design notes in docs/state/now.md), then absorb+delete this file and
+> phase-3-batching.md. §E below (added at the 2026-07-18 review pass) lists
+> post-batching speed/quality levers for Part D or later.
 
 ## Binding rules (repeated because this session commits and runs experiments)
 
@@ -628,6 +641,54 @@ concurrent; full classical board ≈ 1 h CPU pool.
   anything this phase surfaced.
 - Final: absorb what remains of this file into phase-3.md/ADR 0005, **delete this
   file**, commit. NEVER push.
+
+# Part E — post-batching speed + quality levers (added 2026-07-18 review pass)
+
+Profiled on the LANDED batched substrate (cProfile, 420 sim-s cells, B=20;
+profiles in the session scratchpad). Baseline: RL eval cell 3.3 s; max-pressure
+3.0 s; **actuated 10.8 s corridor / 25 s grid** (the only 0.1 s-cadence
+controller — it dominates sweep makespan); PPO training is ~90% env-bound (the
+torch update is negligible). Ranked; each names its bit-exactness risk. These are
+OPTIONAL — the sweeps already run in ~30-37 min; do them only if phase 4/5 sweep
+volume warrants (they compound with watchout-later's deferred item J):
+
+1. **Vectorize actuated in the batched classical eval (~2x on the slowest
+   cells).** `_reconstruct_observations` (batched_eval.py) is 37% of an actuated
+   cell (1.26M ApproachChannel constructions) + the per-(world,node) decide loop
+   13%. ActuatedGapOut is stateless over arrays the batched path already has —
+   a ~15-elementwise-op `BatchedActuated` twin replaces both, pinned bit-exact
+   against the existing `runs/sweep/` rows (pure comparisons, no float reorder).
+   Keep the loop for stateful Webster/MaxPressure (1 s cadence, cheap).
+2. **Cache sensor-hash draws across sub-second recomputes (~15% off noisy
+   actuated cells).** Hashing is 17% of the actuated q=0.5 profile; draws are
+   keyed on `tick = round(t)` (changes every 10 substeps) and the 5 s dropout
+   window, so identical arrays are recomputed 10-50x. Memoize per (tick, uids)
+   — a cache hit returns the byte-identical array. Low risk.
+3. **Merge the noisy-quality axis into one B=80 batch per checkpoint (measured
+   1.65x).** Per-world quality plumbing already exists (`_quality_w`); evaluate
+   the 4 noisy qualities as one batch with per-world q. Keep q=1.0 cells
+   SEPARATE (they take the omniscient branch; routing them through the kernel
+   would break the q=1.0 pin). Needs one parity pin vs existing per-q rows.
+4. **Vectorize the spawn scans (~10-14% off RL/1 s-cadence cells, near-zero
+   risk).** `_spawn_vehicles`/`_spawn_peds` loop over B×origins every substep
+   (~1.7M mostly-empty iterations per cell); per-origin next-due arrays + one
+   vectorized mask short-circuit it. Bit-exact by construction.
+5. **Route training's periodic `_eval` through the batched driver (~5+ min per
+   5M run).** `quick_episode_metrics` does per-node per-tick 1-row tensor
+   forwards; `eval_rl_batched` at B=1 is already pinned bit-exact to that path.
+6. **Move torch imports out of `batched_eval.py` module top** — every spawned
+   classical worker pays the 2.6 s torch import (~50 s CPU per stage). Move
+   into `_load_greedy`. Zero risk.
+
+Ruled out by the same profiling (do not re-litigate; see also watchout-later's
+Performance section): no O(n²) hot paths, float64 use is deliberate,
+`_flow_hist` is cold, the process pool already packs 20 cores — and micro-opts
+A-H + Numba remain rejected. Code-quality follow-ups from the review pass, for
+the Part D session: a grid variant of the noisy parity pin (only corridor is
+exercised at q<1), and note `eval_rl_batched` raises NotImplementedError for
+`stack_k != 1` — if the C4 frame-stack arm trains, its eval goes through
+single-world `run_cell` (which accepts `stack_k`) until a batched FrameStack
+twin exists.
 
 ## Open items for Stepan (async; defaults proceed unless he vetoes)
 

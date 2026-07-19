@@ -2,6 +2,28 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-18 · Post-build review pass + phase-4/5 plans (Fable session, 4-agent probe).**
+  Four parallel probe agents reviewed the 20-commit batching+Part-C build. Findings:
+  ONE real bug — `sensor_key` overflowed on a seedless World's 128-bit entropy
+  (`core/sensors.py`; fixed with a 64-bit mask + regression test); the noisy parity
+  pin was provably bit-exact but asserted at atol=1e-5 — tightened to
+  `assert_array_equal` per ADR 0005's bit-for-bit lock; a tautological quality-DR
+  pin replaced with a degenerate-DR pin (U(q,q) == fixed q, bit-exact — now covers
+  the per-world-array broadcast path); `TrafficEnv` gained a quality-range guard;
+  two ADR 0005 amendments recorded (flat ped-detection curve; caller-side
+  short-circuit wording). Docs staleness sweep fixed in place: map.md re-headed to
+  phase 3 + missing files/dirs, experiments.md stale claims corrected (v2 board ran;
+  batched sweep actuals ~30-37 min; emergence protocol numbers), leaderboard
+  header's wrong phase-3-flow claim fixed in report.py + the committed artifact,
+  roadmap.md brought to reality, results/phase-2.md closing line updated, deep-spec
+  given a STATUS block (done/parked/C4-fired). Perf agent profiled the batched
+  substrate → §E added to the spec: 6 ranked levers (vectorize actuated ~2x on the
+  slowest cells; hash-draw caching; B=80 quality-merged batches 1.65x; spawn-scan
+  vectorization; batched training eval; torch-import move). **Phase-4.md and
+  phase-5.md drafted as full frames** (phases-4-5-draft.md retired, links repointed);
+  each ends with a binding self-correct chunk (phase 4 re-grounds phase-5.md;
+  phase 5 = series retrospective). Not run, per Stepan: the C4 memory arm + Part D.
+
 - **2026-07-18 · Phase-3 B4: Part-C sweeps rerun BATCHED — all 5 stages, data landed + validated.**
   Ran the batched sweep driver (resumable — skips a stage whose JSON exists). 5 JSONs in `runs/sweep/`
   (gitignored): C1 classical (1600 rows), C2 zero-shot (300), C3 trained-at-q (600), DR (200), C5

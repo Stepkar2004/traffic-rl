@@ -41,14 +41,17 @@ def _run(env: TrafficEnv, steps: int, seed: int) -> list[np.ndarray]:
     return frames
 
 
-def test_none_is_bit_identical_to_fixed_quality() -> None:
-    """quality_rand=None leaves the fixed-quality observation path byte-unchanged,
-    both at a fogged quality and omniscient."""
+def test_degenerate_dr_is_bit_identical_to_fixed_quality() -> None:
+    """U(q, q) draws exactly q, so degenerate DR must be bit-identical to the fixed
+    scalar — this pins the per-world-ARRAY quality broadcast (``_q_for`` feeding the
+    kernel an array) against the scalar path, which nothing else exercises. At
+    q=1.0 it additionally pins the kernel arithmetic against the omniscient fast
+    path THROUGH the env (DR always routes via the kernel)."""
     for q in (1.0, 0.5):
-        a = _run(_env(quality=q, quality_rand=None), 20, seed=3)
-        b = _run(_env(quality=q), 20, seed=3)
+        a = _run(_env(quality=q), 20, seed=3)
+        b = _run(_env(quality=q, quality_rand=QualityRandomization(q, q)), 20, seed=3)
         assert all(np.array_equal(x, y) for x, y in zip(a, b, strict=True))
-    assert _env(quality=0.5)._quality_w is None
+    assert _env(quality=0.5)._quality_w is None  # DR off => no per-world array
 
 
 def test_draw_is_deterministic_in_seed_and_episode() -> None:
