@@ -2,6 +2,18 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-19 · README rewritten to phase 3; phase 3 pushed to origin/main.** The README was two
+  phases stale (still "Status: phase 1"). Restructured it phase-3-first: a phase-3 section leading
+  with the sensor-fog split GIF and the money plot (count-based control breaks under fog, the learned
+  policy stays robust without training for noise, saturation win survives), a phase-2 section (PPO
+  matches the best adaptive baseline at load, pulls ahead at saturation) with the demand-sweep figure,
+  and phase 1 demoted to the foundation block. Added a `sensor-gif` reproduction line to Quickstart.
+  Kept the coordination/green-wave conclusions out of the public narrative (standing rule); matched
+  the existing README voice. Drafted for Stepan's review, approved, then — on his explicit go — all
+  phase-3 commits + the README were pushed to origin/main (was at cfb1d24 = phase 2), so the Sunday
+  2026-07-20 post's repo link lands on phase-3 content. Docs-only change: fast gates (ruff/format/
+  mypy/lint-paths) green; pytest unaffected (no source touched since the 290-green Part-D commit).
+
 - **2026-07-19 · Phase-3 post visual: the sensor-fog GIF + money-plot text fix.**
   Built the phase-3 lead post visual (Stepan approved the idea): `viewer/sensor_view.py` +
   `traffic-rl sensor-gif` render a STACKED split-screen GIF — the true road (top) over what a

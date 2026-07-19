@@ -84,6 +84,24 @@
   observation / true SoA state at train time only); `rl/nets.py` for a recurrent actor variant.
 - Raised 2026-07-18 (phase-3 C4 session, surfaced while teaching "why does noise make RL worse").
 
+### Analytical validation layer (queuing theory / LWR flow) — post phase 5 (validation, not phase-gated)
+- **What.** Add an analytical sanity-check that cross-validates the microsimulation's
+  EMERGENT delay and flow against closed-form theory in regimes where theory is clean:
+  queuing-theory delay formulas (M/M/1-style approximations at an isolated approach) and
+  the macroscopic LWR kinematic-wave model (flow as a density wave). The sim produces
+  queues and delay as an emergent output of Poisson arrivals + car-following; this confirms
+  those outputs match theory where theory is trustworthy, and localizes any disagreement.
+- **Why safe to defer.** Pure additive analysis over already-recorded traces — touches no
+  sim kernel and changes no shipped result, so zero correctness debt; it can land whenever.
+  The phase-1..3 results stand without it. This is a credibility/validation win, not a fix.
+- **Which phase.** After phase 5 (topology), as a standalone validation pass, NOT gated on
+  any realism increment. A cheap version (single-approach M/M/1 delay vs sim) could slot in
+  earlier if a reviewer presses on it.
+- **Hook.** A new analysis module over the recorded npz traces + `experiments/stats.py`;
+  reads true-state metrics that already exist, no new sim state.
+- Raised 2026-07 via external feedback on the phase-2 LinkedIn post (name kept in the
+  gitignored social layer). Fits the repo's honesty/rigor ethos directly.
+
 ## Resolved
 
 ### Demand-density / vehicle-count sweep — RESOLVED by the phase-2 run session

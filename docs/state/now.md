@@ -3,7 +3,7 @@
 > Updated at every chunk boundary (gates pass → this file + log.md → commit).
 > Cold start reads: CLAUDE.md (constitution) → this file → roadmap.md → docs/plans/.
 
-**As of 2026-07-19 — PHASE-3 PART D COMPLETE (results shipped locally); phase-3 science done.**
+**As of 2026-07-19 — PHASE 3 COMPLETE + PUSHED to origin/main; README rewritten to phase 3.**
 
 All recalibrated sweeps ran and were **independently verified** (an adversarial subagent
 recomputed every headline number from the committed JSONs; two cells reproduce bit-exact).
@@ -37,14 +37,20 @@ target; eb800 seed instability; grid RL still parked.
   — true road (top) over what the AI sees (bottom): detected solid, missed hollow, phantoms magenta.
   Recorder now writes `veh_uid` (persistent id) so detection is stable across frames. Money-plot
   title fixed (was a dangling "CIs in the table"; now the plain-language thesis).
-- **README still at phase 1** (two phases stale — no phase-2/phase-3 content). NOT auto-updated
-  (public narrative = Stepan's voice); a phase-2 + phase-3 rewrite is drafted-on-request, his review.
+- **README REWRITTEN to phase 3** (2026-07-19, Stepan approved): restructured phase-3-first —
+  sensor-fog GIF + money plot lead, phase-2 demand-sweep next, phase-1 foundation below; his voice;
+  coordination/green-wave conclusions kept OUT of the public narrative. `sensor-gif` reproduction
+  line added to Quickstart.
+- **PUSHED to origin/main** (2026-07-19, on Stepan's explicit go): all phase-3 commits + the README
+  are now live. Previously origin was at cfb1d24 (phase 2); the Sunday post's repo link now lands on
+  phase-3 content.
 
-**Awaiting Stepan:** post-voice review + hook pick (the visual is built); the README phase-2/3
-rewrite; whether to build the demand+quality "one true generalist" (phase 4); the push. **Do NOT
-push. NEXT:** phase 4 (demand generalization
-— uncap/log-scale the queue features + a within-episode demand schedule; then heterogeneity, the
-privileged critic, grid RL). HEAD after the Part-D commit.
+**Post #3** scheduled by Stepan for **Sun 2026-07-20 12:00** (LinkedIn); he adds the first comment
+(repo link + money plot) manually after it posts, then records the outcome in the post draft file.
+
+**Awaiting Stepan:** whether to build the demand+quality "one true generalist" (phase 4); post-3
+outcome to be recorded. **NEXT:** phase 4 (demand generalization — uncap/log-scale the queue
+features + a within-episode demand schedule; then heterogeneity, the privileged critic, grid RL).
 
 ---
 
