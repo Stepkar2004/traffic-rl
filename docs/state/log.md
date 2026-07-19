@@ -2,6 +2,17 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-18 · Phase-3 C4: wired frame-stack into the PPO training path + launched the memory arm.**
+  The C4 trigger fired (train-for-condition PPO@q=0.5 loses to actuated@q=0.5, non-overlapping CIs), so
+  the pre-registered frame-stack arm is warranted. B6 built `FrameStack` + `RLController.stack_k`
+  build-only; commit `7cec87e` wires `stack_k` through the TRAINING path: `PPOConfig.stack_k` (default 1
+  = byte-identical, auto-recorded in config.json), `train_ppo` wraps the train env + `_eval` env with
+  `FrameStack` when k>1 and sizes the nets/buffer to `stack_k*N_CHANNELS`, `quick_episode_metrics`
+  threads `stack_k` → `RLController` so the World-based p95 eval stacks the same window; CLI `--stack-k`;
+  smoke test (a k=4 run trains + its checkpoint drives a World via `RLController(stack_k=4)`, 0 refusals).
+  Launched 2 seeds (k=4, q=0.5, comm, corridor, 5M, `--device cpu`) → `runs/rl/ppo-c4-framestack/`.
+  Probe: **~1085 steps/s, ~77 min/seed** — CPU beats GPU-auto here (sim-bound; GPU adds transfer). Not
+  pushed. NEXT: full pytest, confirm training done, eval C4 single-world vs actuated@q0.5, Part D.
 - **2026-07-18 · Post-build review pass + phase-4/5 plans (Fable session, 4-agent probe).**
   Four parallel probe agents reviewed the 20-commit batching+Part-C build. Findings:
   ONE real bug — `sensor_key` overflowed on a seedless World's 128-bit entropy

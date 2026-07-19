@@ -23,7 +23,40 @@ pushed (Stepan pushes).
 
 ---
 
-**As of 2026-07-18 — BATCHING BUILD: B1 + B2 + B3 (ALL) LANDED. NEXT: B4 (rerun Part C batched → Part D).**
+**As of 2026-07-18 (late) — C4 FRAME-STACK ARM TRAINING (in flight); then eval C4 → Part D.**
+
+The C4 trigger fired, so the pre-registered frame-stack (memory) arm is warranted. Two commits
+landed on top of the review-pass HEAD (`ef29eff`, 282 green) + my evolve commit (`54592c7`):
+- **`7cec87e` — wired frame-stack into the PPO TRAINING path** (B6 built it build-only).
+  `PPOConfig.stack_k` (default 1 = byte-identical prior; auto-recorded in config.json);
+  `train_ppo` wraps the train env with `FrameStack` when k>1 + sizes Actor/Critic + rollout buffer
+  to `d_in = stack_k*N_CHANNELS`; `_eval` wraps its env + threads `stack_k` into
+  `quick_episode_metrics` → `RLController(stack_k=)`; CLI `--stack-k`; smoke test. Gated (rl/ green).
+- **C4 TRAINING LAUNCHED (running, NOT a commit — ckpts in gitignored `runs/`):** 2 seeds, k=4,
+  q=0.5, comm, corridor-rush, 5M steps, **`--device cpu`**. Out: `runs/rl/ppo-c4-framestack/comm/seed{0,1}/`;
+  logs `runs/rl/_c4-logs/seed{0,1}.log`. **Probe (~500k/5M): ~1085 steps/s → total ~77 min, ETA ~22:45.**
+  CPU is FASTER than GPU-auto here (baseline `auto`→GPU ~800 steps/s; sim-bound, GPU adds transfer).
+  Early in-training eval p95 ~31-40s (promising but NOT the real test — held-out q=0.5 eval is).
+
+**IMMEDIATE NEXT (fresh session):**
+1. **Run the FULL suite** `uv run pytest -q` — deferred after the `7cec87e` wiring commit to keep the
+   probe clean (wiring is additive + rl/ green, but confirm). Then **check C4 training done** (both
+   `curves.csv` reach 5,001,216 steps; `ckpt_best.pt` present).
+2. **Eval C4:** the C4 result = frame-stack PPO@q=0.5 vs actuated@q=0.5 (35.3 [34.6,35.9]) on held-out
+   seeds 1000-1019. `eval_rl_batched` RAISES for stack_k>1, so eval SINGLE-WORLD via `run_cell(...,
+   "rl", {checkpoint, algo:"ppo", comm:True, stack_k:4}, seed, sensing_quality=0.5)` — confirm
+   `run_cell`/`make_controller("rl")` threads `stack_k` into `RLController` (add to params). Bootstrap
+   CI, compare to actuated: memory closed the gap ⇒ "RL needs memory under noise"; still loses ⇒
+   "even memory doesn't beat the baseline here". Either is a clean C4 result.
+3. **Part D** (below).
+
+**Sweep data VALID** (sensor_key fix is a no-op for seeds 1000-1019 — masks only ≥2⁶⁴). All 5 JSONs
+in `runs/sweep/` ready. **Asset convention (Stepan):** Part D post material → `docs/assets/` named
+`phase3-*` (e.g. `phase3-money-plot.png`, `phase3-*.gif`).
+
+---
+
+**As of 2026-07-18 — BATCHING BUILD: B1 + B2 + B3 (ALL) LANDED. B4 sweeps rerun (data ready).**
 Plan: [phase-3-batching.md](../plans/phase-3-batching.md).
 
 Goal: make the phase-3 sweeps ~7x faster by evaluating a cell's 20 eval seeds as one
