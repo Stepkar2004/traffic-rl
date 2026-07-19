@@ -67,6 +67,7 @@ class TraceWriter:
         self._veh_lane: list[np.ndarray] = []
         self._veh_s: list[np.ndarray] = []
         self._veh_v: list[np.ndarray] = []
+        self._veh_uid: list[np.ndarray] = []  # persistent spawn id (for the sensor-fog view)
         self._ped_offsets: list[int] = [0]
         self._ped_cw: list[np.ndarray] = []
         self._ped_state: list[np.ndarray] = []
@@ -85,6 +86,7 @@ class TraceWriter:
         self._veh_lane.append(w.vehicles.lane[:n].copy())
         self._veh_s.append(w.vehicles.s[:n].copy())
         self._veh_v.append(w.vehicles.v[:n].copy())
+        self._veh_uid.append(w.vehicles.uid[:n].copy())
         m = w.peds.n
         self._ped_offsets.append(self._ped_offsets[-1] + m)
         self._ped_cw.append(w.peds.crosswalk[:m].copy())
@@ -118,6 +120,7 @@ class TraceWriter:
             veh_lane=_cat(self._veh_lane, np.int32),
             veh_s=_cat(self._veh_s, np.float32),
             veh_v=_cat(self._veh_v, np.float32),
+            veh_uid=_cat(self._veh_uid, np.int64),
             ped_offsets=np.asarray(self._ped_offsets, dtype=np.int64),
             ped_cw=_cat(self._ped_cw, np.int32),
             ped_state=_cat(self._ped_state, np.int8),
@@ -148,6 +151,7 @@ class Frame:
     active: np.ndarray  # per-intersection active phase
     indication: np.ndarray  # per-intersection Indication values
     ped_ind: np.ndarray  # per-crosswalk PedIndication values
+    veh_uid: I64 | None = None  # persistent spawn id if the trace recorded it (sensor-fog view)
 
 
 class Trace:
@@ -170,6 +174,8 @@ class Trace:
         self._veh_lane: I32 = data["veh_lane"]
         self._veh_s: F32 = data["veh_s"]
         self._veh_v: F32 = data["veh_v"]
+        # persistent spawn id: recorded since the sensor-fog view; older traces lack it
+        self._veh_uid: I64 | None = data["veh_uid"] if "veh_uid" in data.files else None
         self._ped_offsets: I64 = data["ped_offsets"]
         self._ped_cw: I32 = data["ped_cw"]
         self._ped_state = data["ped_state"]
@@ -196,4 +202,5 @@ class Trace:
             active=self._active[k],
             indication=self._indication[k],
             ped_ind=self._ped_ind[k],
+            veh_uid=None if self._veh_uid is None else self._veh_uid[v0:v1],
         )

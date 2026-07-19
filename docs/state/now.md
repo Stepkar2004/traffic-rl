@@ -31,11 +31,18 @@ target; eb800 seed instability; grid RL still parked.
   levers → watchout-later §E) and deleted.
 - **Post #3 DRAFTED** ([docs/posts/2026-07-19-phase-3-sensor-noise.md](../posts/2026-07-19-phase-3-sensor-noise.md);
   Stepan's voice, standalone universal "the AI's eyes fog" hook — the fix for post #2's
-  insider/sequel hook that flopped). Fresh visual recommended: a split-screen fog view (true vs
-  what the AI sees), which needs a viewer ghost-detection overlay (watchout §E).
+  insider/sequel hook that flopped).
+- **Fog GIF BUILT** (the lead post visual, Stepan approved): `viewer/sensor_view.py` +
+  `traffic-rl sensor-gif` render the STACKED split-screen `docs/assets/phase3-sensor-fog-split.gif`
+  — true road (top) over what the AI sees (bottom): detected solid, missed hollow, phantoms magenta.
+  Recorder now writes `veh_uid` (persistent id) so detection is stable across frames. Money-plot
+  title fixed (was a dangling "CIs in the table"; now the plain-language thesis).
+- **README still at phase 1** (two phases stale — no phase-2/phase-3 content). NOT auto-updated
+  (public narrative = Stepan's voice); a phase-2 + phase-3 rewrite is drafted-on-request, his review.
 
-**Awaiting Stepan:** post-voice review + the visual decision; whether to build the demand+quality
-"one true generalist" (phase 4); the push. **Do NOT push. NEXT:** phase 4 (demand generalization
+**Awaiting Stepan:** post-voice review + hook pick (the visual is built); the README phase-2/3
+rewrite; whether to build the demand+quality "one true generalist" (phase 4); the push. **Do NOT
+push. NEXT:** phase 4 (demand generalization
 — uncap/log-scale the queue features + a within-episode demand schedule; then heterogeneity, the
 privileged critic, grid RL). HEAD after the Part-D commit.
 

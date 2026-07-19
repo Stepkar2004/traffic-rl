@@ -64,6 +64,20 @@ stat names the protocol, and the live counters are labelled as network totals, n
 implied to be only the visible cars). GIFs always come from traces: the expensive sim
 runs once, headless.
 
+### `traffic-rl sensor-gif <trace.npz> <out.gif> [--quality Q] [--start/--end] [--fps] [--size]`
+
+**Current as of phase 3, Part D.** The sensing-noise visual: a STACKED split-screen GIF
+of the true road (top) over what a controller perceives through noisy sensors (bottom).
+Applies the ADR 0005 `core.sensors` kernel at `--quality` (default 0.65) to the trace —
+detected cars stay solid, MISSED cars drop to hollow ghost outlines, PHANTOM false
+positives flash magenta — with a light-grey frame around each panel. Illustrative (a
+fixed sensing key, not any one controller's exact observations), so it is a post/teaching
+visual, NOT an eval artifact. The trace must carry per-vehicle ids: the recorder writes
+`veh_uid` since this feature (older traces lack it and are refused with a clear error —
+re-record with `run --record`). Reproduces `docs/assets/phase3-sensor-fog-split.gif`:
+`traffic-rl run scenarios/corridor-rush.yaml --seed 7 --record <t>.npz`, then
+`traffic-rl sensor-gif <t>.npz docs/assets/phase3-sensor-fog-split.gif --start 360 --end 410 --fps 18`.
+
 ### `traffic-rl calibrate` → `runs/calibration.json`
 
 Queue-discharge bench (ADR 0002 §5): measures the sim's OWN saturation flow and

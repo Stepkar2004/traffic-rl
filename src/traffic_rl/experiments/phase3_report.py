@@ -168,8 +168,9 @@ def money_plot(sweep_dir: Path, out_path: Path) -> None:
     ax.set_xlabel("sensing quality  (perfect sensors -> heavy noise)")
     ax.set_ylabel("p95 wait (s), log scale  -  the fairness metric, lower is better")
     ax.set_title(
-        "Sensing noise on the rush corridor: does a learned policy hold up?\n"
-        "corridor-rush, matched eval seeds 1000-1019, 95% CIs in the table"
+        "Sensor noise breaks count-based control, not the learned policy\n"
+        "corridor p95 wait, lower is better; PPO (blue) and actuated (green) both stay flat, "
+        "20 runs/point"
     )
     ax.grid(True, which="both", axis="y", color="0.9", lw=0.6)
     ax.legend(fontsize=8, ncol=2, loc="upper left")

@@ -129,6 +129,40 @@ def gif(
 
 
 @app.command()
+def sensor_gif(
+    trace_path: Annotated[Path, typer.Argument(help="npz trace (record it with veh ids).")],
+    out: Annotated[Path, typer.Argument(help="Output .gif path.")],
+    quality: Annotated[float, typer.Option(help="Sensing quality q for the fogged panel.")] = 0.65,
+    start: Annotated[float | None, typer.Option(help="Start time (s).")] = None,
+    end: Annotated[float | None, typer.Option(help="End time (s).")] = None,
+    every: Annotated[int, typer.Option(help="Take every N-th frame.")] = 1,
+    fps: Annotated[int, typer.Option(help="GIF frames per second.")] = 20,
+    size: Annotated[int, typer.Option(help="Panel width in pixels.")] = 640,
+) -> None:
+    """Phase-3 sensor-fog GIF: the true road (top) over what the AI sees (bottom).
+
+    Applies the ADR 0005 sensing kernel at ``--quality`` to a recorded trace: detected
+    cars stay solid, missed cars drop to hollow ghosts, phantoms flash magenta. An
+    illustrative post visual (fixed sensing key), not an eval artifact. The trace must
+    carry per-vehicle ids (re-record with the current recorder if an old trace lacks them).
+    """
+    from traffic_rl.core.recorder import Trace
+    from traffic_rl.viewer.sensor_view import export_fog_gif
+
+    n = export_fog_gif(
+        Trace(trace_path),
+        out,
+        quality=quality,
+        start_s=start,
+        end_s=end,
+        every=every,
+        fps=fps,
+        size_px=size,
+    )
+    typer.echo(f"sensor-gif: {n} frames -> {out}")
+
+
+@app.command()
 def leaderboard(
     n_seeds: Annotated[int, typer.Option(help="Seeds per (controller, scenario) cell.")] = 20,
     workers: Annotated[int | None, typer.Option(help="Process-pool size (default: cores).")] = None,

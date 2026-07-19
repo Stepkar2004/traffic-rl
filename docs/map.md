@@ -204,7 +204,9 @@ src/traffic_rl/
 │   ├── draw.py            Frame -> surface; no World access, offscreen-safe
 │   ├── replay.py          frame sources: Trace, or live World wrapped as one
 │   ├── app.py             interactive loop (SPACE/RIGHT/UP/DOWN/R/Q)
-│   └── gif.py             Trace -> GIF, rendered offscreen (no display)
+│   ├── gif.py             Trace -> GIF, rendered offscreen (no display)
+│   └── sensor_view.py     phase-3 fog GIF: true road over what the AI sees
+│                          (core.sensors applied to a trace; detected/missed/phantom)
 └── experiments/
     ├── __init__.py        calibration + matrix runner + stats + report
     ├── calibrate.py       queue-discharge bench: MEASURED sat flow + startup

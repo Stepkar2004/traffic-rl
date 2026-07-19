@@ -2,6 +2,20 @@
 
 > One entry per chunk, newest first: date · what happened · what it proved or changed.
 
+- **2026-07-19 · Phase-3 post visual: the sensor-fog GIF + money-plot text fix.**
+  Built the phase-3 lead post visual (Stepan approved the idea): `viewer/sensor_view.py` +
+  `traffic-rl sensor-gif` render a STACKED split-screen GIF — the true road (top) over what a
+  controller perceives through the real ADR 0005 sensor kernel at a chosen quality (bottom):
+  detected cars solid, MISSED cars hollow ghosts, PHANTOM false positives magenta, a light-grey
+  frame around each panel. Vertical stacking (feed-friendly) + framed panels landed on Stepan's
+  layout feedback (the old dark divider read as a road). The recorder now records `veh_uid` (a
+  backward-compatible optional field — older traces load, the fog view refuses them with a clear
+  error) so per-car detection is stable across frames instead of flickering. Rendered
+  `docs/assets/phase3-sensor-fog-split.gif` from a corridor-rush trace. Also fixed the money-plot
+  title (it referenced a "table" that isn't on the plot; now the plain thesis "Sensor noise breaks
+  count-based control, not the learned policy") and re-rendered it. +2 render tests (round-trip +
+  the no-veh_uid guard); 5 gates green. Post #3 draft updated (GIF built, numbers verified). Not
+  pushed. Open: README is still at phase 1 (Stepan's-voice rewrite pending his review).
 - **2026-07-19 · Phase-3 Part D COMPLETE — recalibrated results, saturation teeth, verified, shipped.**
   Re-ran the two cheap invalidated stages under the recalibrated ×√q model (C1 classical +
   C2 zero-shot, 12 cores, ~14 min): zero-shot PPO (trained q=1.0) **ties actuated across the whole
